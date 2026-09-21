@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn, signOut, useSession } from "next-auth/react";
-import { LogOut, Zap, CheckCircle, AlertCircle, Tag, Plus, Filter, X, RefreshCw, HelpCircle, LayoutDashboard, Menu, Settings } from "lucide-react";
+import { LogOut, Zap, CheckCircle, AlertCircle, Tag, Plus, Filter, X, RefreshCw, HelpCircle, LayoutDashboard, Menu, Settings, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { GithubIcon } from "@/components/icons/GithubIcon";
 import { VigilIcon } from "@/components/icons/VigilIcon";
@@ -89,16 +89,22 @@ export default function Header(props: HeaderProps = {}) {
         <div className="flex items-center justify-between w-full">
             {/* Left Cluster */}
             <div className="flex items-center gap-3">
-                {/* Vigil icon — doubles as sync trigger */}
+                {/* Vigil icon — doubles as sync trigger (full sync with RGB flair) */}
                 <button
                     onClick={onSync}
                     disabled={syncing}
                     className="relative group/icon cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
                     title="Sync all repositories"
                 >
-                    <div className="p-1.5 rounded-lg bg-gradient-to-br from-indigo-600/10 to-purple-600/10 border border-indigo-500/20 group-hover/icon:border-indigo-400/50 group-hover/icon:from-indigo-600/20 group-hover/icon:to-purple-600/20 group-hover/icon:shadow-lg group-hover/icon:shadow-indigo-500/20 transition-all duration-200">
-                        <VigilIcon className={`h-6 w-6 text-indigo-300 group-hover/icon:text-indigo-200 transition-colors duration-200 ${syncing ? 'animate-spin' : ''}`} />
+                    <div className="relative p-1.5 rounded-lg bg-gradient-to-br from-indigo-600/10 to-purple-600/10 border border-indigo-500/20 group-hover/icon:border-indigo-400/50 group-hover/icon:from-indigo-600/20 group-hover/icon:to-purple-600/20 group-hover/icon:shadow-lg group-hover/icon:shadow-indigo-500/20 transition-all duration-200">
+                        {/* RGB animated glow ring */}
+                        <div className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 opacity-0 group-hover/icon:opacity-30 transition-opacity duration-300 motion-safe:animate-[spin_3s_linear_infinite] blur" />
+                        <VigilIcon className={`h-6 w-6 text-indigo-300 group-hover/icon:text-indigo-200 transition-colors duration-200 relative z-10 ${syncing ? 'animate-spin drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' : 'motion-safe:animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_4px_rgba(168,85,247,0.4)]'}`} />
                     </div>
+                    {/* Sync all label on hover */}
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-slate-900 border border-indigo-500/30 rounded opacity-0 group-hover/icon:opacity-100 transition-opacity duration-200 whitespace-nowrap text-indigo-300">
+                        Sync All
+                    </span>
                 </button>
                 <div className="flex flex-col leading-none gap-0.5">
                     <h1 className="text-lg font-bold tracking-wide">
@@ -116,49 +122,6 @@ export default function Header(props: HeaderProps = {}) {
             <div className="hidden md:flex items-center gap-3">
                 {/* Rate Limit Indicator */}
                 {session && <RateLimitDisplay {...rateLimitState} />}
-
-                {/* Show Hidden Button — sits between the rate-limit indicator and Add repo */}
-                {session && onToggleHidden && (
-                    <button
-                        onClick={onToggleHidden}
-                        className={`p-2 rounded-lg border transition-all duration-300 ${showHidden
-                            ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400 shadow-lg shadow-indigo-500/20'
-                            : 'bg-slate-800/90 border-slate-700 text-slate-400 hover:border-slate-600 hover:text-slate-300'
-                            }`}
-                        title={showHidden ? "Hide hidden repositories" : "Show hidden repositories"}
-                    >
-                        {/* Using Eye/EyeOff logic, assuming Eye is 'show' state meaning active */}
-                        <div className="relative">
-                            <div className={`absolute inset-0 bg-indigo-500 rounded-full blur-sm opacity-0 transition-opacity ${showHidden ? 'opacity-20' : ''}`}></div>
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className={`relative transition-transform ${showHidden ? 'scale-110' : ''}`}
-                            >
-                                {showHidden ? (
-                                    <>
-                                        <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
-                                        <circle cx="12" cy="12" r="3" />
-                                    </>
-                                ) : (
-                                    <>
-                                        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-                                        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-                                        <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-                                        <line x1="2" x2="22" y1="2" y2="22" />
-                                    </>
-                                )}
-                            </svg>
-                        </div>
-                    </button>
-                )}
 
                 {/* Repo Controls */}
                 {session && onToggleAddRepo && (
@@ -276,6 +239,16 @@ export default function Header(props: HeaderProps = {}) {
                                             <option value="no-forks" className="bg-slate-900 text-slate-300">No Forks</option>
                                             <option value="forks-only" className="bg-slate-900 text-slate-300">Forks Only</option>
                                         </select>
+                                        {/* Hidden toggle inside filter dropdown */}
+                                        {onToggleHidden && (
+                                            <button
+                                                onClick={onToggleHidden}
+                                                className={`flex items-center gap-2 px-3 py-1.5 bg-slate-700/60 border-2 rounded-lg text-slate-100 hover:border-indigo-400/80 hover:shadow-sm hover:shadow-indigo-500/30 focus:outline-none focus:border-indigo-400 transition-all duration-200 text-sm font-medium cursor-pointer ${showHidden ? 'border-indigo-500/60 text-indigo-400' : 'border-slate-600 text-slate-400'}`}
+                                            >
+                                                <EyeOff className="h-3.5 w-3.5" />
+                                                <span>{showHidden ? 'Hide hidden' : 'Show hidden'}</span>
+                                            </button>
+                                        )}
                                         {hasActiveFilters && (
                                             <button
                                                 onClick={onClearFilters}
@@ -344,19 +317,6 @@ export default function Header(props: HeaderProps = {}) {
                         <LayoutDashboard className="h-4 w-4" />
                         <span>PMO</span>
                     </Link>
-                )}
-
-                {/* Sync Button */}
-                {onSync && isAuthenticated && (
-                    <button
-                        onClick={onSync}
-                        disabled={syncing}
-                        className="flex items-center gap-1.5 px-3 py-2 btn-primary-gradient disabled:bg-slate-800 disabled:cursor-not-allowed rounded-lg transition-colors font-medium shadow-lg text-sm"
-                        data-tour="sync-all"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                        {syncing ? 'Syncing...' : 'Sync'}
-                    </button>
                 )}
 
                 {session ? (
@@ -628,14 +588,6 @@ export default function Header(props: HeaderProps = {}) {
                             )}
                         </button>
                     )}
-                    {onToggleHidden && (
-                        <button
-                            onClick={onToggleHidden}
-                            className={`flex items-center gap-1.5 px-3 py-2 bg-slate-800 border rounded-lg text-sm font-medium transition-colors ${showHidden ? 'border-indigo-500/50 text-indigo-400' : 'border-slate-700 text-slate-300'}`}
-                        >
-                            {showHidden ? 'Hide hidden' : 'Show hidden'}
-                        </button>
-                    )}
                     {onStartTour && (
                         <button
                             onClick={() => { onStartTour(); setMobileMenuOpen(false); }}
@@ -720,6 +672,16 @@ export default function Header(props: HeaderProps = {}) {
                                 <option value="forks-only">Forks Only</option>
                             </select>
                         </div>
+                        {/* Hidden toggle inside mobile filter dropdown */}
+                        {onToggleHidden && (
+                            <button
+                                onClick={onToggleHidden}
+                                className={`self-start flex items-center gap-2 px-3 py-2 bg-slate-700/60 border-2 rounded-lg text-slate-100 hover:border-indigo-400/80 hover:shadow-sm hover:shadow-indigo-500/30 focus:outline-none focus:border-indigo-400 transition-all duration-200 text-sm font-medium ${showHidden ? 'border-indigo-500/60 text-indigo-400' : 'border-slate-600 text-slate-400'}`}
+                            >
+                                <EyeOff className="h-3.5 w-3.5" />
+                                <span>{showHidden ? 'Hide hidden' : 'Show hidden'}</span>
+                            </button>
+                        )}
                         {hasActiveFilters && (
                             <button
                                 onClick={onClearFilters}

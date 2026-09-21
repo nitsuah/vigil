@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { PmoRepoSummary, PmoPortfolio, PmoInProgressItem } from '@/app/api/pmo/overview/route';
 import { PmoChat } from '@/components/pmo/PmoChat';
+import { DependencyGraph } from '@/components/dashboard/DependencyGraph';
 
 // ─── health visualization ─────────────────────────────────────────────────────
 
@@ -501,6 +502,11 @@ export default function PmoDashboard(): React.JSX.Element | null {
                             </div>
                         </section>
                     )}
+
+                    {/* Cross-Repo Dependencies */}
+                    <section className="space-y-3">
+                        <DependencyGraph />
+                    </section>
 
                     {/* Per-repo cards */}
                     {repos.length > 0 && (

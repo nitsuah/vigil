@@ -10,7 +10,6 @@ import { RepoTableRow } from '@/components/dashboard/RepoTableRow';
 import { useRepos, useRepoDetails, useRepoExpansion, useRepoPolling } from '@/hooks/useDashboard';
 import { useRepoActions } from '@/hooks/useRepoActions';
 import { MobileRepoCard } from '@/components/dashboard/MobileRepoCard';
-import { DependencyGraph } from '@/components/dashboard/DependencyGraph';
 import { useRepoFilters } from '@/hooks/useRepoFilters';
 import { useRepoChat } from '@/hooks/useRepoChat';
 import { RepoChatPanel } from '@/components/chat/RepoChatPanel';
@@ -333,7 +332,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-        <DependencyGraph />
       </div>
       <RepoChatPanel
         isOpen={chatRepoName !== null}

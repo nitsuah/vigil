@@ -1,0 +1,26 @@
+[1m[38;2;173;127;168m▲ Next.js 16.3.5[39m[22m (Turbopack)
+[32m[1m✓[22m[39m Running next.config.ts took 248ms
+
+[37m[1m [22m[39m Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 error:
+./app
+[1m[31mError[39m: Could not find the Next.js package (next/package.json)[22m
+Resolved from: [1m[31mC:\Users\ajhar\code\overseer\.claude\worktrees\navbar-v2\app[39m[22m
+Filesystem root used for resolution: [1m[31mC:\Users\ajhar\code\overseer\.claude\worktrees\navbar-v2[39m[22m
+
+Possible causes:
+  - node_modules is being reorganized by a concurrent install (e.g. pnpm adding a package with a `next` peer dependency). This is transient and should clear once the install completes.
+  - node_modules/next was removed, renamed, or has a broken symlink.
+  - The workspace root is incorrect — see [32mturbopack.root[39m in the Next.js config docs for how to configure it.
+  - In a monorepo, the Next.js package may only exist in a directory above the closest directory containing a package manager lockfile. The workspace root is detected by locating the nearest package manager lockfile.
+  - Next.js is installed globally rather than as a project dependency. This is not supported; install it locally.
+
+Note: To ensure a hermetic build and a portable cache, files outside of the workspace root are not compiled.
+
+https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory
+
+
+    at <unknown> (Filesystem root used for resolution: [1m[31m[90mC:\Users\ajhar\code\overseer\.claude\worktrees\navbar-v2[39m[39m[22m)
+    at <unknown> (https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory)

@@ -150,7 +150,7 @@ export async function POST(
                 }
 
                 try {
-                    const content = await fs.readFile(templatePath, 'utf-8');
+                    const content = await fs.readFile(/*turbopackIgnore: true*/ templatePath, 'utf-8');
                     filesToAdd.push({
                         path: targetPath,
                         content
