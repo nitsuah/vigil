@@ -40,7 +40,7 @@ export function useRateLimit(enabled: boolean = true): RateLimitState {
       if (inflight) return;
       inflight = true;
       try {
-        const res = await fetch('/api/github-rate-limit', { signal: controller.signal });
+        const res = await fetch('/api/github-rate-limit', { signal: controller.signal, credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           if (!aborted) { setRateLimit(data); setError(null); }

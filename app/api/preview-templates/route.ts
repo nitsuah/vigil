@@ -177,15 +177,15 @@ export async function POST(request: NextRequest) {
       // gitignore, pre_commit_hooks, testing_framework, and linting are handled specially below based on language
     };
     
-    // Target paths (where files should go in the user's repo)
+    // Target paths (where files should go in the user's repo) - support both root and docs/
     const TARGET_PATHS: Record<string, string> = {
-      // Core docs go in root
+      // Core docs go in root (default)
       readme: 'README.md',
       roadmap: 'ROADMAP.md',
       tasks: 'TASKS.md',
       metrics: 'METRICS.md',
       features: 'FEATURES.md',
-      // Community standards go in root
+      // Community standards go in root (default)
       code_of_conduct: 'CODE_OF_CONDUCT.md',
       contributing: 'CONTRIBUTING.md',
       security: 'SECURITY.md',
@@ -209,7 +209,35 @@ export async function POST(request: NextRequest) {
       dependabot: '.github/dependabot.yml',
       ci_cd: '.github/workflows/ci.yml',
     };
-    
+
+    // Alternative target paths for docs/ subdirectory
+    const DOCS_TARGET_PATHS: Record<string, string> = {
+      readme: 'docs/README.md',
+      roadmap: 'docs/ROADMAP.md',
+      tasks: 'docs/TASKS.md',
+      metrics: 'docs/METRICS.md',
+      features: 'docs/FEATURES.md',
+      code_of_conduct: 'docs/CODE_OF_CONDUCT.md',
+      contributing: 'docs/CONTRIBUTING.md',
+      security: 'docs/SECURITY.md',
+      changelog: 'docs/CHANGELOG.md',
+      license: 'docs/LICENSE',
+    };
+
+    // Types that support both root and docs/ folder
+    const DOCS_ALTERNATIVE_TYPES = new Set<string>([
+      'readme',
+      'roadmap',
+      'tasks',
+      'metrics',
+      'features',
+      'code_of_conduct',
+      'contributing',
+      'security',
+      'changelog',
+      'license',
+    ]);
+
     for (const docType of docTypes) {
       const normalized = String(docType).toLowerCase();
       
@@ -478,6 +506,20 @@ export async function POST(request: NextRequest) {
           type: isPractice ? 'practice' : 'doc',
           practiceType: isPractice ? normalized : undefined,
         });
+
+        // Also generate preview for docs/ alternative path if applicable
+        if (DOCS_ALTERNATIVE_TYPES.has(normalized)) {
+          const docsPath = DOCS_TARGET_PATHS[normalized];
+          if (docsPath) {
+            previews.push({
+              path: docsPath,
+              content,
+              docType: normalized,
+              type: isPractice ? 'practice' : 'doc',
+              practiceType: isPractice ? normalized : undefined,
+            });
+          }
+        }
       } catch (error) {
         console.warn('Template not found for', docType, ':', error);
       }

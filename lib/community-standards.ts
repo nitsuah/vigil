@@ -27,9 +27,10 @@ export function checkCommunityStandards(
     const fallbackSet = new Set(fallbackFiles);
     const standards: CommunityStandard[] = [];
 
-    // CODE_OF_CONDUCT — root or .github/ in repo; root in org .github fallback
+    // CODE_OF_CONDUCT — root, .github/, or docs/ in repo; root in org .github fallback
     const codeOfConductInRepo = lowerFiles.includes('code_of_conduct.md') ||
-                                 lowerFiles.includes('.github/code_of_conduct.md');
+                                 lowerFiles.includes('.github/code_of_conduct.md') ||
+                                 lowerFiles.includes('docs/code_of_conduct.md');
     const codeOfConductInFallback = fallbackSet.has('code_of_conduct.md');
     const contributingInRepo = lowerFiles.includes('contributing.md') ||
                                lowerFiles.includes('.github/contributing.md') ||
@@ -39,9 +40,10 @@ export function checkCommunityStandards(
                            : lowerFiles.includes('docs/contributing.md') ? 'docs/CONTRIBUTING.md'
                            : null;
     const contributingInFallback = fallbackSet.has('contributing.md');
-    // SECURITY — root or .github/ in repo; root in org .github fallback
+    // SECURITY — root, .github/, or docs/ in repo; root in org .github fallback
     const securityInRepo = lowerFiles.includes('security.md') ||
-                           lowerFiles.includes('.github/security.md');
+                           lowerFiles.includes('.github/security.md') ||
+                           lowerFiles.includes('docs/security.md');
     const securityInFallback = fallbackSet.has('security.md');
 
     // Core community files

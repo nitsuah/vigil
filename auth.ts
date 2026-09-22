@@ -45,9 +45,10 @@ if (process.env.NEXTAUTH_URL) {
 export const { handlers, signIn, signOut, auth } = NextAuth({
     secret: process.env.NEXTAUTH_SECRET,
     basePath: '/api/auth',
-    debug: false, // Disable verbose logging. Enabling debug logging in production caused significant performance degradation due to excessive log output, which led to increased response times and high memory usage under load. Disabling debug logging resolved these issues by reducing log volume and resource consumption.
+    debug: true, // Enable verbose logging to debug OAuth issue
     trustHost: true, // Required for Netlify preview deployments with dynamic URLs
-    useSecureCookies: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    // Disable secure cookies for localhost HTTP (needed for local dev in production mode)
+    useSecureCookies: process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_URL?.includes('localhost'),
     session: {
         strategy: 'jwt', // Explicitly use JWT strategy to persist accessToken
     },
