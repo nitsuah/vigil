@@ -2,6 +2,18 @@ import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import logger from './lib/log';
 
+// Exact-match check (not substring) so a host like "notlocalhost.example.com" doesn't
+// falsely qualify for the localhost HTTP exemption below.
+function isLocalhostHttpUrl(url: string | undefined): boolean {
+    if (!url) return false;
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'http:' && parsed.hostname === 'localhost';
+    } catch {
+        return false;
+    }
+}
+
 // Validate required environment variables
 if (!process.env.GITHUB_ID) {
     throw new Error('Missing required environment variable: GITHUB_ID');
@@ -45,9 +57,11 @@ if (process.env.NEXTAUTH_URL) {
 export const { handlers, signIn, signOut, auth } = NextAuth({
     secret: process.env.NEXTAUTH_SECRET,
     basePath: '/api/auth',
-    debug: false, // Disable verbose logging. Enabling debug logging in production caused significant performance degradation due to excessive log output, which led to increased response times and high memory usage under load. Disabling debug logging resolved these issues by reducing log volume and resource consumption.
+    debug: process.env.NODE_ENV !== 'production', // Verbose logging outside production only
     trustHost: true, // Required for Netlify preview deployments with dynamic URLs
-    useSecureCookies: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    // Disable secure cookies only for exact HTTP localhost (needed for local dev in production
+    // mode); substring matching on NEXTAUTH_URL would also match hosts like "notlocalhost.example.com"
+    useSecureCookies: process.env.NODE_ENV === 'production' && !isLocalhostHttpUrl(process.env.NEXTAUTH_URL),
     session: {
         strategy: 'jwt', // Explicitly use JWT strategy to persist accessToken
     },

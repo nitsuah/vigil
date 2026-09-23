@@ -11,6 +11,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/api/auth') ||
     pathname === '/login' ||
     pathname === '/' ||
+    pathname === '/api/health' ||
+    pathname === '/api/version' ||
+    pathname === '/api/github-rate-limit' ||
     pathname.startsWith('/api/repos') ||
     pathname.startsWith('/api/repo-details') ||
     pathname === '/api/seed-defaults' ||

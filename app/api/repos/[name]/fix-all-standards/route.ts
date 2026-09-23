@@ -91,6 +91,10 @@ export async function POST(
                 'security',
                 'license',
                 'changelog',
+                'roadmap',
+                'metrics',
+                'features',
+                'tasks',
                 'issue_template',
                 'pr_template',
                 'codeowners',
@@ -136,7 +140,7 @@ export async function POST(
                     templatePath = path.join(process.cwd(), 'templates', '.github', 'ISSUE_TEMPLATE', 'bug_report.md');
                     targetPath = '.github/ISSUE_TEMPLATE/bug_report.md';
                 } else if (standard.standard_type === 'license') {
-                    templatePath = path.join(process.cwd(), 'templates', 'LICENSE');
+                    templatePath = path.join(process.cwd(), 'templates', 'community-standards', 'LICENSE');
                     targetPath = 'LICENSE';
                 } else if (standard.standard_type === 'flow_tasks_prompt') {
                     templatePath = path.join(process.cwd(), 'templates', '.github', 'prompts', 'FLOW-TASKS.md');
@@ -144,6 +148,10 @@ export async function POST(
                 } else if (standard.standard_type === 'handoff_prompt') {
                     templatePath = path.join(process.cwd(), 'templates', '.github', 'prompts', 'HANDOFF.md');
                     targetPath = '.github/prompts/HANDOFF.md';
+                } else if (['contributing', 'code_of_conduct', 'security', 'changelog', 'roadmap', 'metrics', 'code_of_conduct', 'features', 'tasks'].includes(standard.standard_type)) {
+                    // Community standards are in templates/community-standards/
+                    templatePath = path.join(process.cwd(), 'templates', 'community-standards', `${standard.standard_type.toUpperCase()}.md`);
+                    targetPath = `${standard.standard_type.toUpperCase()}.md`;
                 } else {
                     templatePath = path.join(process.cwd(), 'templates', `${standard.standard_type.toUpperCase()}.md`);
                     targetPath = `${standard.standard_type.toUpperCase()}.md`;

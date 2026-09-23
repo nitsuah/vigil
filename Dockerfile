@@ -13,12 +13,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 COPY scripts ./scripts
-RUN GITHUB_ID=docker-build-placeholder \
-    GITHUB_SECRET=docker-build-placeholder \
-    NEXTAUTH_SECRET=docker-build-placeholder \
-    NEXTAUTH_URL=http://localhost:3000 \
-    NEXT_TELEMETRY_DISABLED=1 \
-    npm run build
+RUN GITHUB_ID=placeholder GITHUB_SECRET=placeholder NEXTAUTH_SECRET=placeholder npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
@@ -30,6 +25,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/config ./config
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/templates ./templates
 
 EXPOSE 3000-3009
 CMD ["npm", "run", "start:dynamic"]

@@ -101,8 +101,8 @@ export default function Header(props: HeaderProps = {}) {
                         <div className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 opacity-0 group-hover/icon:opacity-30 transition-opacity duration-300 motion-safe:animate-[spin_3s_linear_infinite] blur" />
                         <VigilIcon className={`h-6 w-6 text-indigo-300 group-hover/icon:text-indigo-200 transition-colors duration-200 relative z-10 ${syncing ? 'animate-spin drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' : 'motion-safe:animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_4px_rgba(168,85,247,0.4)]'}`} />
                     </div>
-                    {/* Sync all label on hover */}
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-slate-900 border border-indigo-500/30 rounded opacity-0 group-hover/icon:opacity-100 transition-opacity duration-200 whitespace-nowrap text-indigo-300">
+                    {/* Sync all label on hover/focus */}
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-slate-900 border border-indigo-500/30 rounded opacity-0 group-hover/icon:opacity-100 group-focus-visible/icon:opacity-100 transition-opacity duration-200 whitespace-nowrap text-indigo-300">
                         Sync All
                     </span>
                 </button>
@@ -505,26 +505,14 @@ export default function Header(props: HeaderProps = {}) {
             {/* Mobile-only right cluster */}
             <div className="flex md:hidden items-center gap-2">
                 {session && (
-                    <>
-                        {onSync && (
-                            <button
-                                onClick={onSync}
-                                disabled={syncing}
-                                className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-50"
-                                title="Sync repos"
-                            >
-                                <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-                            </button>
-                        )}
-                        <button
-                            onClick={() => setMobileMenuOpen(o => !o)}
-                            className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300"
-                            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-                            aria-expanded={mobileMenuOpen}
-                        >
-                            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                        </button>
-                    </>
+                    <button
+                        onClick={() => setMobileMenuOpen(o => !o)}
+                        className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300"
+                        aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                        aria-expanded={mobileMenuOpen}
+                    >
+                        {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                    </button>
                 )}
                 {!session && (
                     <button

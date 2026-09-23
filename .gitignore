@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# local cookie jars (curl -c, etc.) — never commit session credentials
+cookies*.txt
+
 # debug
 npm-debug.log*
 yarn-debug.log*
