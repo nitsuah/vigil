@@ -81,10 +81,14 @@ export function checkCommunityStandards(
         }
     });
 
+    const licenseInRepo = lowerFiles.includes('license.md') ||
+                          lowerFiles.includes('license') ||
+                          lowerFiles.includes('docs/license.md') ||
+                          lowerFiles.includes('docs/license');
     standards.push({
         type: 'license',
-        status: lowerFiles.includes('license.md') || lowerFiles.includes('license') ? 'healthy' : 'missing',
-        details: { exists: lowerFiles.includes('license.md') || lowerFiles.includes('license') }
+        status: licenseInRepo ? 'healthy' : 'missing',
+        details: { exists: licenseInRepo }
     });
 
     const changelogPath = lowerFiles.includes('changelog.md') ? 'CHANGELOG.md'

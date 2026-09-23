@@ -13,7 +13,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 COPY scripts ./scripts
-RUN npm run build
+RUN GITHUB_ID=placeholder GITHUB_SECRET=placeholder NEXTAUTH_SECRET=placeholder npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app

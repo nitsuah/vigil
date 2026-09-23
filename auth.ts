@@ -45,7 +45,7 @@ if (process.env.NEXTAUTH_URL) {
 export const { handlers, signIn, signOut, auth } = NextAuth({
     secret: process.env.NEXTAUTH_SECRET,
     basePath: '/api/auth',
-    debug: true, // Enable verbose logging to debug OAuth issue
+    debug: process.env.NODE_ENV !== 'production', // Verbose logging outside production only
     trustHost: true, // Required for Netlify preview deployments with dynamic URLs
     // Disable secure cookies for localhost HTTP (needed for local dev in production mode)
     useSecureCookies: process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_URL?.includes('localhost'),
