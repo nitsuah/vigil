@@ -2,8 +2,9 @@
  * Playwright E2E tests for Vigil dashboard.
  *
  * Auth notes:
- *  - proxy.ts middleware allows: /, /login, /api/auth/*, /api/repos*, /api/repo-details*, /api/seed-defaults
- *  - All other routes (including /api/mcp, /api/health, /api/context) redirect to /login
+ *  - proxy.ts middleware allows: /, /login, /api/auth/*, /api/health, /api/version,
+ *    /api/github-rate-limit, /api/repos*, /api/repo-details*, /api/seed-defaults
+ *  - All other routes (including /api/mcp, /api/context) redirect to /login
  *    for unauthenticated users. Those are tested as redirect behaviour here; their JSON
  *    contracts are covered by the Vitest unit test suite (tests/mcp.test.ts).
  */
@@ -190,11 +191,10 @@ test.describe('Login page', () => {
 // ─── Route protection (proxy.ts middleware) ───────────────────────────────────
 
 test.describe('Route protection', () => {
-  test('/api/health redirects to /login when unauthenticated', async ({ request }) => {
-    // The proxy.ts middleware redirects protected routes; don't follow the redirect
+  test('/api/health is public when unauthenticated', async ({ request }) => {
     const res = await request.get('/api/health', { maxRedirects: 0 });
-    expect([307, 308]).toContain(res.status());
-    expect(res.headers()['location']).toContain('/login');
+    expect([200, 503]).toContain(res.status());
+    expect(res.headers()['content-type']).toContain('application/json');
   });
 
   test('/api/mcp GET redirects to /login when unauthenticated', async ({ request }) => {

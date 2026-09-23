@@ -11,8 +11,29 @@ const PROVIDER_MODELS: Record<string, string> = {
   anthropic: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
 };
 
+// /api/health is unauthenticated; the probe branch below makes real outbound
+// requests to every configured provider, so cap how often it can run to keep
+// anonymous callers from burning provider quota.
+const PROBE_COOLDOWN_MS = 30_000;
+let lastProbeAt = 0;
+
 export async function GET(req: NextRequest) {
   const probe = req.nextUrl.searchParams.get('probe') === 'true';
+
+  if (probe) {
+    const now = Date.now();
+    if (now - lastProbeAt < PROBE_COOLDOWN_MS) {
+      return NextResponse.json(
+        {
+          status: 'rate_limited',
+          message: `Live provider probes are limited to 1 per ${PROBE_COOLDOWN_MS / 1000}s`,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 429 }
+      );
+    }
+    lastProbeAt = now;
+  }
 
   const available = getAvailableProviders();
   const configuredNames = new Set(available.map((p) => p.name));

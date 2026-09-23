@@ -2,6 +2,18 @@ import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import logger from './lib/log';
 
+// Exact-match check (not substring) so a host like "notlocalhost.example.com" doesn't
+// falsely qualify for the localhost HTTP exemption below.
+function isLocalhostHttpUrl(url: string | undefined): boolean {
+    if (!url) return false;
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'http:' && parsed.hostname === 'localhost';
+    } catch {
+        return false;
+    }
+}
+
 // Validate required environment variables
 if (!process.env.GITHUB_ID) {
     throw new Error('Missing required environment variable: GITHUB_ID');
@@ -47,8 +59,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     basePath: '/api/auth',
     debug: process.env.NODE_ENV !== 'production', // Verbose logging outside production only
     trustHost: true, // Required for Netlify preview deployments with dynamic URLs
-    // Disable secure cookies for localhost HTTP (needed for local dev in production mode)
-    useSecureCookies: process.env.NODE_ENV === 'production' && !process.env.NEXTAUTH_URL?.includes('localhost'),
+    // Disable secure cookies only for exact HTTP localhost (needed for local dev in production
+    // mode); substring matching on NEXTAUTH_URL would also match hosts like "notlocalhost.example.com"
+    useSecureCookies: process.env.NODE_ENV === 'production' && !isLocalhostHttpUrl(process.env.NEXTAUTH_URL),
     session: {
         strategy: 'jwt', // Explicitly use JWT strategy to persist accessToken
     },
