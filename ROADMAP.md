@@ -65,7 +65,7 @@ Next Review: 2026-10-24
 - [x] Cross-repo dependency graph (`/api/dependencies`)
 - [x] Token-density + comment-to-code ratio metrics (`lib/parsers/code-density.ts`)
 - [x] DB scaling assessment (`docs/db-scaling-assessment.md`)
-- [x] Velocity/tech-debt trending via `repo_snapshots` + trend endpoint + sparkline
+- [x] Velocity trending via `repo_snapshots` + trend endpoint + sparkline; technical-debt trending remains open (see TASKS.md)
 
 ## Notes
 
