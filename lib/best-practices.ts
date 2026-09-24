@@ -32,11 +32,30 @@ export async function checkBestPractices(
 ): Promise<BestPracticesResult> {
     const practices: BestPractice[] = [];
 
-    // 1. Branch Protection
+    // 1. Branch Protection - comprehensive check
     let branchProtection: BestPractice = {
         type: 'branch_protection',
         status: 'missing',
-        details: { exists: false, protected: false, requiresReviews: false }
+        details: { 
+            exists: false, 
+            protected: false, 
+            requiresReviews: false,
+            requiredApprovingReviews: 0,
+            dismissStaleReviews: false,
+            requireCodeOwnerReviews: false,
+            requiredStatusChecks: false,
+            strictStatusChecks: false,
+            requiredStatusCheckContexts: [] as string[],
+            requireSignedCommits: false,
+            requireLinearHistory: false,
+            allowForcePushes: false,
+            allowDeletions: false,
+            requiredConversationResolution: false,
+            lockBranch: false,
+            allowForkSyncing: false,
+            score: 0,
+            maxScore: 8
+        }
     };
     
     try {
@@ -47,15 +66,84 @@ export async function checkBestPractices(
         });
         
         if (branch.protected) {
-            const hasReviews = branch.protection?.required_pull_request_reviews !== undefined;
+            const protection = branch.protection;
+            const reviews = protection?.required_pull_request_reviews;
+            const statusChecks = protection?.required_status_checks;
+            
+            // Calculate score based on protection features
+            let score = 0;
+            const maxScore = 8;
+            
+            // 1. Basic protection exists
+            score += 1;
+            
+            // 2. Requires PR reviews
+            const hasReviews = reviews !== undefined;
+            if (hasReviews) score += 1;
+            
+            // 3. Requires minimum approving reviews (>= 1)
+            const requiredApprovingReviews = reviews?.required_approving_review_count ?? 0;
+            if (requiredApprovingReviews >= 1) score += 1;
+            
+            // 4. Dismisses stale reviews on new commits
+            const dismissStaleReviews = reviews?.dismiss_stale_reviews ?? false;
+            if (dismissStaleReviews) score += 1;
+            
+            // 5. Requires code owner reviews
+            const requireCodeOwnerReviews = reviews?.require_code_owner_reviews ?? false;
+            if (requireCodeOwnerReviews) score += 1;
+            
+            // 6. Requires status checks
+            const hasStatusChecks = statusChecks !== undefined;
+            if (hasStatusChecks) score += 1;
+            
+            // 7. Strict status checks (branches must be up to date)
+            const strictStatusChecks = statusChecks?.strict ?? false;
+            if (strictStatusChecks) score += 1;
+            
+            // 8. Requires signed commits
+            const requireSignedCommits = protection?.required_signatures?.enabled ?? false;
+            if (requireSignedCommits) score += 1;
+            
+            // 9. Requires linear history
+            const requireLinearHistory = protection?.required_linear_history?.enabled ?? false;
+            if (requireLinearHistory) score += 1;
+            
+            // 10. Required conversation resolution
+            const requiredConversationResolution = protection?.required_conversation_resolution?.enabled ?? false;
+            if (requiredConversationResolution) score += 1;
+            
+            // Cap at maxScore
+            score = Math.min(score, maxScore);
+            
+            // Determine status based on score
+            let status: HealthState = 'missing';
+            if (score >= 6) status = 'healthy';
+            else if (score >= 3) status = 'dormant';
+            else if (score >= 1) status = 'malformed';
+            
             branchProtection = {
                 type: 'branch_protection',
-                status: hasReviews ? 'healthy' : 'dormant',
+                status,
                 details: {
                     exists: true,
                     protected: true,
                     requiresReviews: hasReviews,
-                    requiredStatusChecks: branch.protection?.required_status_checks !== undefined
+                    requiredApprovingReviews,
+                    dismissStaleReviews,
+                    requireCodeOwnerReviews,
+                    requiredStatusChecks: hasStatusChecks,
+                    strictStatusChecks,
+                    requiredStatusCheckContexts: statusChecks?.contexts ?? [],
+                    requireSignedCommits,
+                    requireLinearHistory,
+                    allowForcePushes: protection?.allow_force_pushes?.enabled ?? false,
+                    allowDeletions: protection?.allow_deletions?.enabled ?? false,
+                    requiredConversationResolution,
+                    lockBranch: protection?.lock_branch?.enabled ?? false,
+                    allowForkSyncing: protection?.allow_fork_syncing?.enabled ?? false,
+                    score,
+                    maxScore
                 }
             };
         } else {

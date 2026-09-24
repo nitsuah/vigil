@@ -17,6 +17,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { resolveDocTargetPath } from '@/lib/doc-target-paths';
 import { detectRepoType, RepoType } from '@/lib/repo-type';
 import { byokPromptKey } from '@/lib/byok-prompt-key';
+import { ProgressToast } from '@/components/ProgressToast';
 import type { Repo } from '@/types/repo';
 
 export default function Dashboard() {
@@ -32,25 +33,20 @@ export default function Dashboard() {
   const [showAddRepo, setShowAddRepo] = useState(false);
   const [addRepoUrl, setAddRepoUrl] = useState('');
   const [addRepoType, setAddRepoType] = useState<RepoType>('unknown');
-  // Per-repo, not a single shared flag — otherwise expanding the health
-  // breakdown or docs panel on one row would expand it on every row in the
-  // list at once, since they all render from the same map() call.
-  const [expandedHealthRepos, setExpandedHealthRepos] = useState<Set<string>>(new Set());
-  const [expandedDocsRepos, setExpandedDocsRepos] = useState<Set<string>>(new Set());
-  const toggleHealthExpanded = (repoName: string) => {
-    setExpandedHealthRepos((prev) => {
-      const next = new Set(prev);
-      if (next.has(repoName)) next.delete(repoName); else next.add(repoName);
-      return next;
-    });
-  };
-  const toggleDocsExpanded = (repoName: string) => {
-    setExpandedDocsRepos((prev) => {
-      const next = new Set(prev);
-      if (next.has(repoName)) next.delete(repoName); else next.add(repoName);
-      return next;
-    });
-  };
+  // Progress toast state
+  const [syncProgress, setSyncProgress] = useState<{
+    sessionId: string;
+    progress: number;
+    currentRepo: string;
+    totalRepos: number;
+    completedRepos: number;
+  } | null>(null);
+  // Global expand/collapse for health and docs panels — toggling one
+  // expands/collapses all repos at once, saving clicks.
+  const [expandedHealth, setExpandedHealth] = useState(false);
+  const [expandedDocs, setExpandedDocs] = useState(false);
+  const toggleHealthExpanded = () => setExpandedHealth((v) => !v);
+  const toggleDocsExpanded = () => setExpandedDocs((v) => !v);
   const [showTour, setShowTour] = useState(false);
   const [chatRepoName, setChatRepoName] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -110,6 +106,18 @@ export default function Dashboard() {
       });
       if (res.ok) {
         const data = await res.json();
+        // Start progress tracking
+        if (data.sessionId) {
+          setSyncProgress({
+            sessionId: data.sessionId,
+            progress: 0,
+            currentRepo: 'Starting...',
+            totalRepos: data.totalRepos,
+            completedRepos: 0,
+          });
+          // Poll for progress
+          pollSyncProgress(data.sessionId);
+        }
         await refetch();
         // Re-fetch details for expanded repos in the background — don't clear first to avoid flash
         const expanded = Array.from(expandedRepos);
@@ -124,6 +132,35 @@ export default function Dashboard() {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const pollSyncProgress = async (sessionId: string) => {
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/sync-progress?sessionId=${sessionId}`);
+        if (res.ok) {
+          const progress = await res.json();
+          setSyncProgress(prev => prev ? {
+            ...prev,
+            progress: progress.progressPercentage ?? 0,
+            currentRepo: progress.currentRepo ?? 'Processing...',
+            totalRepos: progress.totalRepos ?? prev.totalRepos,
+            completedRepos: progress.completedRepos ?? 0,
+          } : null);
+          
+          if (progress.phase !== 'complete' && progress.phase !== 'error') {
+            setTimeout(poll, 1000);
+          } else {
+            // Sync complete, hide toast after delay
+            setTimeout(() => setSyncProgress(null), 2000);
+          }
+        }
+      } catch {
+        // Ignore polling errors
+        setTimeout(poll, 1000);
+      }
+    };
+    await poll();
   };
 
   const onAddRepoSubmit = async (e: React.FormEvent) => {
@@ -236,7 +273,7 @@ export default function Dashboard() {
                   syncingRepo={syncingRepo}
                   generatingSummary={generatingSummary}
                   isAuthenticated={!!session}
-                  onToggleHealth={() => toggleHealthExpanded(repo.name)}
+                  onToggleHealth={toggleHealthExpanded}
                   onToggleExpanded={() => handleToggleExpanded(repo.name)}
                   onRemove={() => handleRemoveRepo(repo.name)}
                   onFixAllDocs={() => handleFixAllDocs(repo.full_name)}
@@ -309,10 +346,10 @@ export default function Dashboard() {
                       syncingRepo={syncingRepo}
                       generatingSummary={generatingSummary}
                       isAuthenticated={!!session}
-                      expandedHealth={expandedHealthRepos.has(repo.name)}
-                      onToggleHealth={() => toggleHealthExpanded(repo.name)}
-                      expandedDocs={expandedDocsRepos.has(repo.name)}
-                      onToggleDocs={() => toggleDocsExpanded(repo.name)}
+                      expandedHealth={expandedHealth}
+                      onToggleHealth={toggleHealthExpanded}
+                      expandedDocs={expandedDocs}
+                      onToggleDocs={toggleDocsExpanded}
                       onToggleExpanded={() => handleToggleExpanded(repo.name)}
                       onRemove={() => handleRemoveRepo(repo.name)}
                       onFixAllDocs={() => handleFixAllDocs(repo.full_name)}
@@ -403,6 +440,16 @@ export default function Dashboard() {
       />
       {showTour && <GuidedTour onClose={() => setShowTour(false)} />}
       {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
+      {syncProgress && (
+        <ProgressToast
+          isVisible={true}
+          progress={syncProgress.progress}
+          currentRepo={syncProgress.currentRepo}
+          totalRepos={syncProgress.totalRepos}
+          completedRepos={syncProgress.completedRepos}
+          onClose={() => setSyncProgress(null)}
+        />
+      )}
       <PRPreviewModal
         isOpen={previewModalOpen}
         onClose={() => setPreviewModalOpen(false)}

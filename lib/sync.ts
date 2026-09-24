@@ -195,6 +195,20 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         console.warn(`Could not get PR stats for ${repo.name}:`, (e as Error).message);
     }
 
+    // Fetch issues
+    let openIssuesCountDetailed = 0;
+    let staleIssuesCount = 0;
+    let issueLabels: string[] = [];
+    try {
+        const issues = await github.getIssues(repo.name, owner, 'open', 100);
+        openIssuesCountDetailed = issues.length;
+        const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+        staleIssuesCount = issues.filter((issue) => new Date(issue.updatedAt).getTime() < ninetyDaysAgo).length;
+        issueLabels = [...new Set(issues.flatMap((issue) => issue.labels))];
+    } catch (e) {
+        console.warn(`Could not get issues for ${repo.name}:`, (e as Error).message);
+    }
+
     // Fetch security configuration
     let hasSecurityPolicy = false;
     let hasSecurityAdvisories = false;
@@ -663,6 +677,9 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             vulnCriticalCount,
             vulnHighCount,
             secretScanningAlertCount,
+            openIssuesCountDetailed,
+            staleIssuesCount,
+            issueLabels,
         });
 
         await db`

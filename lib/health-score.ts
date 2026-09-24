@@ -16,6 +16,10 @@ export interface HealthScoreInputs {
     vulnCriticalCount?: number;
     vulnHighCount?: number;
     secretScanningAlertCount?: number;
+    // Issue tracking
+    openIssuesCountDetailed?: number; // Total open issues (excluding PRs)
+    staleIssuesCount?: number; // Issues not updated in 90+ days
+    issueLabels?: string[]; // Labels on open issues (for categorization)
 }
 
 export interface HealthScoreBreakdown {
@@ -86,9 +90,15 @@ export function calculateHealthScore(inputs: HealthScoreInputs): HealthScoreBrea
         activityScore -= Math.min((inputs.lastCommitDays - 90) / 3, 40); // Up to -40 for being very stale
     }
 
-    // Deduct points for many open issues
-    if (inputs.openIssuesCount > 10) {
-        activityScore -= Math.min((inputs.openIssuesCount - 10) * 2, 20); // Up to -20 for many issues
+    // Deduct points for many open issues (using detailed count if available)
+    const effectiveOpenIssues = inputs.openIssuesCountDetailed ?? inputs.openIssuesCount;
+    if (effectiveOpenIssues > 10) {
+        activityScore -= Math.min((effectiveOpenIssues - 10) * 2, 20); // Up to -20 for many issues
+    }
+
+    // Deduct points for stale issues (not updated in 90+ days)
+    if ((inputs.staleIssuesCount ?? 0) > 5) {
+        activityScore -= Math.min((inputs.staleIssuesCount! - 5) * 2, 15); // Up to -15 for stale issues
     }
 
     // Deduct points for stale PRs

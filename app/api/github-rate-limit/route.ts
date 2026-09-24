@@ -21,18 +21,22 @@ export async function GET() {
             );
         }
 
+        // Calculate used if not provided by API (used = limit - remaining)
+        const coreUsed = data.resources.core.used ?? (data.resources.core.limit - data.resources.core.remaining);
+        const graphqlUsed = graphql.used ?? (graphql.limit - graphql.remaining);
+
         return NextResponse.json({
             core: {
                 limit: data.resources.core.limit,
                 remaining: data.resources.core.remaining,
                 reset: new Date(data.resources.core.reset * 1000).toISOString(),
-                used: data.resources.core.used,
+                used: coreUsed,
             },
             graphql: {
                 limit: graphql.limit,
                 remaining: graphql.remaining,
                 reset: new Date(graphql.reset * 1000).toISOString(),
-                used: graphql.used,
+                used: graphqlUsed,
             },
         });
     } catch (error: unknown) {
