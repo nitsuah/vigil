@@ -97,7 +97,7 @@
 
 - [ ] Remove or redirect the stale `docs/` copies of the planning docs.
   - Priority: P2 · Type: Docs · Confidence: High
-  - Context: found in the 2026-09-24 PMO audit. `docs/TASKS.md`, `docs/ROADMAP.md` and `docs/METRICS.md` were last changed 2026-06-30 and `docs/FEATURES.md` on 2026-08-23. The root copies are current (2026-09-18/19). `lib/sync.ts` reads the root file first and only falls back to `docs/`, so vigil ignores the `docs/` copies for itself. A reader browsing `docs/` still sees June data, for example `docs/METRICS.md` reporting 92.09% coverage and 255 tests from 2026-05-23.
+  - Context: found in the 2026-09-24 PMO audit. `docs/TASKS.md`, `docs/ROADMAP.md`, `docs/METRICS.md` and `docs/CHANGELOG.md` were last changed 2026-06-30. All five `docs/` copies were added in #159 (`docs-prep`), which built the `docs/` fallback, and the root originals were never removed and `docs/FEATURES.md` on 2026-08-23. The root copies are current (2026-09-18/19). `lib/sync.ts` reads the root file first and only falls back to `docs/`, so vigil ignores the `docs/` copies for itself. A reader browsing `docs/` still sees June data, for example `docs/METRICS.md` reporting 92.09% coverage and 255 tests from 2026-05-23.
   - Acceptance Criteria: each `docs/` duplicate is either deleted or replaced with a one-line pointer to the root file, and no doc or script links to the stale copies.
 
 ### DB & backend scaling
