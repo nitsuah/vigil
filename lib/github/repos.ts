@@ -323,3 +323,48 @@ export async function getWorkflowRuns(
     return { status: 'unknown', lastRun: null, workflowName: null };
   }
 }
+
+export interface IssueInfo {
+  number: number;
+  title: string;
+  state: 'open' | 'closed';
+  labels: string[];
+  createdAt: string;
+  updatedAt: string;
+  user: string;
+  isPullRequest: boolean;
+}
+
+export async function getIssues(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  state: 'open' | 'closed' | 'all' = 'open',
+  perPage: number = 100
+): Promise<IssueInfo[]> {
+  try {
+    const { data } = await octokit.issues.listForRepo({
+      owner,
+      repo,
+      state,
+      per_page: perPage,
+    });
+    return data
+      .filter((issue) => !issue.pull_request) // Filter out PRs
+      .map((issue) => ({
+        number: issue.number,
+        title: issue.title,
+        state: issue.state as 'open' | 'closed',
+        labels: issue.labels
+          .map((l) => (typeof l === 'string' ? l : l.name))
+          .filter((l): l is string => l !== undefined),
+        createdAt: issue.created_at,
+        updatedAt: issue.updated_at,
+        user: issue.user?.login || 'unknown',
+        isPullRequest: false,
+      }));
+  } catch (error) {
+    logger.warn(`[GitHub] Failed to fetch issues for ${owner}/${repo}:`, error);
+    return [];
+  }
+}

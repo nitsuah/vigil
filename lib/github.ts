@@ -72,6 +72,10 @@ export class GitHubClient {
     return Repos.getWorkflowRuns(this.octokit, owner || this.owner, repo);
   }
 
+  getIssues(repo: string, owner?: string, state?: 'open' | 'closed' | 'all', perPage?: number): Promise<Repos.IssueInfo[]> {
+    return Repos.getIssues(this.octokit, owner || this.owner, repo, state, perPage);
+  }
+
   // PR operations
   getPullRequests(repo: string, owner?: string): Promise<PullRequestInfo[]> {
     return PRs.getPullRequests(this.octokit, owner || this.owner, repo);

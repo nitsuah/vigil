@@ -56,7 +56,6 @@ export default function Header(props: HeaderProps = {}) {
         addingRepo,
         showFilters,
         syncing,
-        isAuthenticated,
         filterType,
         filterLanguage,
         filterFork,
