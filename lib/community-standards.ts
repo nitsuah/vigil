@@ -27,11 +27,14 @@ export function checkCommunityStandards(
     const fallbackSet = new Set(fallbackFiles);
     const standards: CommunityStandard[] = [];
 
-    // CODE_OF_CONDUCT — root, .github/, or docs/ in repo; root in org .github fallback
+    // CODE_OF_CONDUCT — root, .github/, docs/, docs/.github/ in repo; root in org .github fallback
     const codeOfConductInRepo = lowerFiles.includes('code_of_conduct.md') ||
                                  lowerFiles.includes('.github/code_of_conduct.md') ||
-                                 lowerFiles.includes('docs/code_of_conduct.md');
-    const codeOfConductInFallback = fallbackSet.has('code_of_conduct.md');
+                                 lowerFiles.includes('docs/code_of_conduct.md') ||
+                                 lowerFiles.includes('docs/.github/code_of_conduct.md');
+    const codeOfConductInFallback = fallbackSet.has('code_of_conduct.md') ||
+                                     fallbackSet.has('.github/code_of_conduct.md') ||
+                                     fallbackSet.has('docs/.github/code_of_conduct.md');
     const contributingInRepo = lowerFiles.includes('contributing.md') ||
                                lowerFiles.includes('.github/contributing.md') ||
                                lowerFiles.includes('docs/contributing.md');
@@ -169,12 +172,14 @@ export function checkCommunityStandards(
         }
     });
 
-    // CODEOWNERS — check .github/, root, docs/ in repo; then org .github fallback
+    // CODEOWNERS — check .github/, root, docs/, docs/.github/ in repo; then org .github fallback
     const hasCodeownersInRepo = lowerFiles.includes('.github/codeowners') ||
                                  lowerFiles.includes('codeowners') ||
-                                 lowerFiles.includes('docs/codeowners');
+                                 lowerFiles.includes('docs/codeowners') ||
+                                 lowerFiles.includes('docs/.github/codeowners');
     const hasCodeownersInFallback = fallbackSet.has('codeowners') ||
-                                     fallbackSet.has('.github/codeowners');
+                                     fallbackSet.has('.github/codeowners') ||
+                                     fallbackSet.has('docs/.github/codeowners');
     standards.push({
         type: 'codeowners',
         status: hasCodeownersInRepo || hasCodeownersInFallback ? 'healthy' : 'missing',
