@@ -1,8 +1,8 @@
 # 🗺️ Vigil Roadmap
 
-## updated: 2026-09-03
+## updated: 2026-09-24
 
-Next Review: 2026-09-15
+Next Review: 2026-10-24
 
 ## Q4 2025 – Q1 2026 ✅
 
@@ -42,7 +42,7 @@ Next Review: 2026-09-15
 - [ ] Autonomous plan execution: agents read ROADMAP.md and TASKS.md, open PRs, and close items end to end
 - [ ] Portfolio intelligence dashboard: cross-repo health roll-up, trend lines, and strategic signal view
 - [ ] Evaluate enterprise auth, team collaboration, and org-wide governance workflows
-- [x] Evaluate token-density, comment-to-code ratio, and maintenance-mode metrics as first-class signals — all three now computed and surfaced in expanded repo stats (maintenance-mode PR #200; token-density/comment-to-code this branch)
+- [x] Evaluate token-density, comment-to-code ratio, and maintenance-mode metrics as first-class signals — all three now computed and surfaced in expanded repo stats (maintenance-mode PR #200; token-density/comment-to-code PR #204)
 - [ ] Add mobile-responsive adjustments and lightweight PWA packaging
 - [ ] **Repo "mood" signal** — lightweight sentiment computed from recent PR descriptions, commit messages, and TASKS.md tone; surfaces whether a repo is in grind mode, cleanup mode, or blocked, giving PMO quick directional intuition without reading every PR.
 - [ ] **AI PR pairing suggestions** — when promoting a ROADMAP/TASKS item to a PR, Vigil surfaces related items from other repos that should co-land; reduces cross-repo integration surprises by exposing dependency coupling before merge.
@@ -65,7 +65,7 @@ Next Review: 2026-09-15
 - [x] Cross-repo dependency graph (`/api/dependencies`)
 - [x] Token-density + comment-to-code ratio metrics (`lib/parsers/code-density.ts`)
 - [x] DB scaling assessment (`docs/db-scaling-assessment.md`)
-- [x] Velocity/tech-debt trending via `repo_snapshots` + trend endpoint + sparkline
+- [x] Velocity trending via `repo_snapshots` + trend endpoint + sparkline; technical-debt trending remains open (see TASKS.md)
 
 ## Notes
 
