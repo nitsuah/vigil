@@ -14,6 +14,8 @@ Next Review: 2026-10-24
 
 ## 2027 Q1: PMO Intelligence & Autonomy (Planned) 🏗️
 
+> _Committed_ / _Exploratory_ describe quarter-planning status; P0–P3 in [TASKS](./TASKS.md) describe task priority. An item can be committed for 2027 Q1 and still be P3.
+
 ### Committed _(carried from 2026 Q3)_
 
 - [ ] **Chat-driven doc management, stage 3** — check items off in TASKS.md / move shipped items to FEATURES.md directly from chat (proposal/apply/dismiss already shipped).
