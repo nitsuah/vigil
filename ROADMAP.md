@@ -1,71 +1,37 @@
 # 🗺️ Vigil Roadmap
 
-## updated: 2026-09-24
+> 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · **Roadmap** · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
+
+updated: 2026-09-24
 
 Next Review: 2026-10-24
 
-## Q4 2025 – Q1 2026 ✅
+> 2027 planning reset (2026-09-24): Q4 2025–Q1 2026, Q2 2026 (AI & Orchestration), the v2 launch (#200), the
+> Portfolio Intelligence batch (#204), and every shipped 2026 Q3/Q4 item (PMO mode, DEV-flow handoff, chat foundation,
+> velocity trending, 7-tool MCP + `/api/context`, 2D dependency graph, maintenance/token-density/comment-ratio signals,
+> stale-review detector) were removed from this file — see [FEATURES](./FEATURES.md) / [CHANGELOG](./CHANGELOG.md).
+> Every open 2026 Q3/Q4 item was carried into 2027 Q1 below.
 
-> Completed. Foundation, UX baseline, PR preview, AI enrichment, repo intelligence, auto-fix flows, Agent Task Queue API, Docker smoke CI, and BYOK/provider-order AI routing all shipped.
+## 2027 Q1: PMO Intelligence & Autonomy (Planned) 🏗️
 
-## Q2 2026: AI & Orchestration ✅
+> _Committed_ / _Exploratory_ describe quarter-planning status; P0–P3 in [TASKS](./TASKS.md) describe task priority. An item can be committed for 2027 Q1 and still be P3.
 
-- [x] Add FLOW-TASKS and HANDOFF agent prompt templates to the community-standards template set
-- [x] Add per-repo plan-execution tracking: surface each repo's Q2 roadmap progress in the dashboard
-- [x] Add PMO/DEV flow tracking: surface branch and PR readiness for all managed repos in the dashboard
-- [x] Add .github repo awareness: resolve community health files from owner/.github before flagging per-repo absence in health scoring and standards auto-fix
-- [x] Add security inputs to the health score (Dependabot severity weighting, secret-scanning signal)
-- [x] Add AI feature suggestion button to the Features panel with optional prompt input (PR #132)
-- [x] Add AI doc-improvement controls: inline compare-and-accept flow for existing documentation (PR #133)
-- [x] Add workflow visualization for multi-step execution paths: pipeline stage bar (Planned → In Progress → In Review → Done) per roadmap item (PR #131)
-- [x] Add real-time webhook-driven sync: HMAC-validated GitHub push webhook triggers background sync (PR #134)
-- [x] Batch per-repo detail queries into a single db.transaction() call to reduce Neon round trips (PR #128)
-- [x] Keep Gemini failover and model evolution resilient (PR #137)
-- [x] Add DEV-flow handoff support so PMO roadmap items can be promoted into implementation queues cleanly (PR #136)
+### Committed _(carried from 2026 Q3)_
 
-## Q3 2026: PMO Mode 🏗️
+- [ ] **Chat-driven doc management, stage 3** — check items off in TASKS.md / move shipped items to FEATURES.md directly from chat (proposal/apply/dismiss already shipped).
+- [ ] **AI-assisted roadmap management** — auto-suggest items from repo health signals and auto-update progress from linked PR/issue state.
+- [ ] **Technical-debt trending + zombie-branch detection** — velocity trending shipped (`repo_snapshots`); debt signals and a stale-branch cleanup view remain.
+- [ ] **3D / click-to-detail cross-repo dependency graph** — upgrade of the shipped 2D SVG `DependencyGraph`.
 
-- [x] Add PMO mode to the dashboard: portfolio-wide roadmap progress, plan execution status, and handoff management view (PR #136)
-- [ ] Add AI-assisted roadmap management: auto-suggest items from repo health signals and auto-update progress from linked PR/issue state
-- [x] Add DEV-flow handoff UI: promote in-progress roadmap items into the agent task queue with pre-filled context (PR #136)
-- [x] Allow easy management of TASKS, ROADMAP, FEATURES via a chat-driven interface in the dashboard — proposal/apply/dismiss flow shipped; direct check-off/move-to-FEATURES from chat still open (see TASKS.md)
-
-## Q3 2026: Analytics & MCP 🤖
-
-- [x] Add the conversational interface foundation: one or two chat-driven repo-hygiene workflows end-to-end (PR #196 — per-repo chat panel, "summarize my stale docs" / "what should I work on next?")
-- [x] Add advanced analytics: velocity scoring — `repo_snapshots` time-series + trend endpoint + sparkline (commit frequency, PR merge time, health score, open PRs, total LOC); technical-debt trending and zombie-branch detection still open (see TASKS.md)
-- [x] Expand MCP tooling surface: 7 tools now ship (`get_repo_health`, `list_repos`, `get_repo_details`, `get_portfolio_overview`, `search_repos`, `list_tasks`, `get_security_summary`) + `/api/context` LLM context endpoint (PR #181)
-- [x] Add cross-repo dependency mapping to surface shared-stack connections (e.g., agent-board ↔ bb-mcp ↔ vigil) — `GET /api/dependencies` + `DependencyGraph.tsx`; 2D SVG rather than the originally-scoped 3D graph
-
-## Q4 2026: Portfolio Intelligence (Exploratory) 🧪
+### Exploratory _(carried from 2026 Q4)_
 
 - [ ] Autonomous plan execution: agents read ROADMAP.md and TASKS.md, open PRs, and close items end to end
 - [ ] Portfolio intelligence dashboard: cross-repo health roll-up, trend lines, and strategic signal view
 - [ ] Evaluate enterprise auth, team collaboration, and org-wide governance workflows
-- [x] Evaluate token-density, comment-to-code ratio, and maintenance-mode metrics as first-class signals — all three now computed and surfaced in expanded repo stats (maintenance-mode PR #200; token-density/comment-to-code PR #204)
 - [ ] Add mobile-responsive adjustments and lightweight PWA packaging
-- [ ] **Repo "mood" signal** — lightweight sentiment computed from recent PR descriptions, commit messages, and TASKS.md tone; surfaces whether a repo is in grind mode, cleanup mode, or blocked, giving PMO quick directional intuition without reading every PR.
-- [ ] **AI PR pairing suggestions** — when promoting a ROADMAP/TASKS item to a PR, Vigil surfaces related items from other repos that should co-land; reduces cross-repo integration surprises by exposing dependency coupling before merge.
-- [x] **Stale-review detector** — surface PRs whose formal review decision (`CHANGES_REQUESTED`) is out of sync with their actual thread-resolution state (all threads resolved, CI green, but the bot never re-approved). Observed repeatedly across the portfolio this session: CodeRabbit correctly resolves every finding but its top-level review verdict never flips, silently blocking branch-protection-gated merges until a human notices and merges manually or overrides. See FEATURES.md for implementation detail.
-- [ ] **Agent session receipts** — a lightweight per-repo log (surfaced in the chat panel and PMO view) of what an AI coding session actually did: commits made, PRs opened/merged, files touched, findings fixed vs. skipped-with-reason. Distinct from AI Summaries (which describe the _repo_); this describes _recent agent activity on it_, so a human picking up mid-portfolio work can see what changed without reconstructing it from commit messages.
-
-## v2 Launch (2026-09-01) ✅
-
-> Shipped on PR #200. Sync button now force-refreshes all displayed (filtered) repos with full data; repo activity signals added.
-
-- [x] Sync button refreshes all displayed (filtered) repos with full data, not just new repos (PR #200)
-- [x] Maintenance-mode detection: repos with 90+ days no commits flagged with a badge (desktop + mobile)
-- [x] Velocity score: 0-100 from commit frequency + PR merge time, surfaced in expanded stats
-
-## Portfolio Intelligence Batch (2026-09-03)
-
-> Shipped on the `feat/v2-portfolio-intelligence` branch (PR #204). Chat-driven doc editing (proposal/apply/dismiss), cross-repo dependency mapping, token-density + comment-to-code ratio metrics, a DB scaling assessment, and velocity trending all landed together. Technical-debt trending and zombie-branch detection are still open (see TASKS.md).
-
-- [x] Chat-driven doc-edit proposals: propose → inline diff card → apply via the existing PR flow (stages 1, 2, 4 of the TASKS.md item)
-- [x] Cross-repo dependency graph (`/api/dependencies`)
-- [x] Token-density + comment-to-code ratio metrics (`lib/parsers/code-density.ts`)
-- [x] DB scaling assessment (`docs/db-scaling-assessment.md`)
-- [x] Velocity trending via `repo_snapshots` + trend endpoint + sparkline; technical-debt trending remains open (see TASKS.md)
+- [ ] **Repo "mood" signal** — lightweight sentiment from recent PR descriptions, commit messages, and TASKS.md tone (grind / cleanup / blocked).
+- [ ] **AI PR pairing suggestions** — when promoting a ROADMAP/TASKS item to a PR, surface related items in other repos that should co-land.
+- [ ] **Agent session receipts** — per-repo log (chat panel + PMO view) of what an AI session actually did: commits, PRs, files touched, findings fixed vs. skipped-with-reason.
 
 ## Notes
 
@@ -73,3 +39,4 @@ Next Review: 2026-10-24
 - Cross-repo orchestration and autonomous plan execution are the long-term product direction.
 - Per-repo detailed execution stays in each repo's own TASKS.md; Vigil tracks aggregate state.
 - Detailed execution work for vigil itself stays in TASKS.md.
+- When an item ships, remove it here and condense it into FEATURES.md / CHANGELOG.md.

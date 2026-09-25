@@ -1,5 +1,7 @@
 # Metrics
 
+> 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · **Metrics** <!-- nav -->
+
 Last Validated: 2026-09-24 (PMO audit — Docker: `docker compose -f config/docker-compose.test.yml run --rm coverage`)
 Health Score: 95/100
 Compliance: Vigil/PM core metrics and health scoring validated for Q3 2026

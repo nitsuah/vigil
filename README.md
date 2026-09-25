@@ -1,5 +1,7 @@
 # Vigil
 
+> 🧭 **vigil** · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
+
 ---
 
 ## **Last Updated:** 2026-08-09
@@ -84,7 +86,7 @@ npm run dev
 
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. Please:
+We welcome contributions! See [CONTRIBUTING.md](https://github.com/nitsuah/.github/blob/main/CONTRIBUTING.md) for guidelines. Please:
 
 - Fork the repo and create a feature branch
 - Add or improve tests for new features
@@ -93,7 +95,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-**For detailed setup instructions, see [CONTRIBUTING.md](./CONTRIBUTING.md)**
+**For detailed setup instructions, see [CONTRIBUTING.md](https://github.com/nitsuah/.github/blob/main/CONTRIBUTING.md)**
 
 ### Docker Validation
 
@@ -302,6 +304,34 @@ npm install -g netlify-cli
 # Deploy
 netlify deploy --prod
 ```
+
+<!-- docs-index:start -->
+
+## Docs Index
+
+Every doc at the repo root and under `docs/` (the files mirrored into the Obsidian vault), so none of them is orphaned.
+
+- [Agent Task Queue API](./docs/AGENT_TASK_QUEUE_API.md) — `docs/AGENT_TASK_QUEUE_API.md`
+- [Overseer Feature Audit](./docs/AUDIT.md) — `docs/AUDIT.md`
+- [Testing Improvement Strategy Prompt](./docs/TESTING_STRATEGY_PROMPT.md) — `docs/TESTING_STRATEGY_PROMPT.md`
+- [DB Scaling Assessment](./docs/db-scaling-assessment.md) — `docs/db-scaling-assessment.md`
+
+**`docs/archive/`**
+
+- [Handoff: Agent Task Queue Execution (2026-04-03)](./docs/archive/HANDOFF-agent-task-queue-execution-20260403.md) — `docs/archive/HANDOFF-agent-task-queue-execution-20260403.md`
+- [HANDOFF-byok-quota-provider-fallback-20260411](./docs/archive/HANDOFF-byok-quota-provider-fallback-20260411.md) — `docs/archive/HANDOFF-byok-quota-provider-fallback-20260411.md`
+
+**`repo root`**
+
+- [Vigil Features](./FEATURES.md) — `FEATURES.md`
+- [🗺️ Vigil Roadmap](./ROADMAP.md) — `ROADMAP.md`
+- [Tasks](./TASKS.md) — `TASKS.md`
+- [Changelog](./CHANGELOG.md) — `CHANGELOG.md`
+- [Metrics](./METRICS.md) — `METRICS.md`
+- [This is NOT the Next.js you know](./AGENTS.md) — `AGENTS.md`
+- [CLAUDE](./CLAUDE.md) — `CLAUDE.md`
+
+<!-- docs-index:end -->
 
 ## License
 
