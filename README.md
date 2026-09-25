@@ -321,7 +321,7 @@ Every tracked doc in this repo, so nothing is orphaned (also used by the Obsidia
 - [Handoff: Agent Task Queue Execution (2026-04-03)](./docs/archive/HANDOFF-agent-task-queue-execution-20260403.md) — `docs/archive/HANDOFF-agent-task-queue-execution-20260403.md`
 - [HANDOFF-byok-quota-provider-fallback-20260411](./docs/archive/HANDOFF-byok-quota-provider-fallback-20260411.md) — `docs/archive/HANDOFF-byok-quota-provider-fallback-20260411.md`
 
-**`docs/None/`**
+**`repo root`**
 
 - [Vigil Features](./FEATURES.md) — `FEATURES.md`
 - [🗺️ Vigil Roadmap](./ROADMAP.md) — `ROADMAP.md`
