@@ -63,6 +63,7 @@ export interface SecurityConfig {
 }
 
 export interface Repo {
+  health_profile?: 'starter' | 'production' | 'enterprise';
   id: string;
   name: string;
   full_name: string;
