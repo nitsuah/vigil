@@ -1,5 +1,7 @@
 # DB Scaling Assessment
 
+> 🧭 [vigil](../README.md) · [Features](../FEATURES.md) · [Roadmap](../ROADMAP.md) · [Tasks](../TASKS.md) · [Changelog](../CHANGELOG.md) · [Metrics](../METRICS.md) <!-- nav -->
+
 **Date:** 2026-09-01
 **Scope:** Neon serverless Postgres schema + query patterns at 100+ repos / growing user count.
 **Status:** Assessment only — no schema changes required before Q3 feature work.

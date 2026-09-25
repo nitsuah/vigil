@@ -1,5 +1,7 @@
 # Testing Improvement Strategy Prompt
 
+> 🧭 [vigil](../README.md) · [Features](../FEATURES.md) · [Roadmap](../ROADMAP.md) · [Tasks](../TASKS.md) · [Changelog](../CHANGELOG.md) · [Metrics](../METRICS.md) <!-- nav -->
+
 **Role**: Senior SDET / Engineering Lead
 **Objective**: Systematically increase code coverage from ~0% to >50% for the target repository, following a "Start Small, Iterate Up" approach.
 

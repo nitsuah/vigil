@@ -1,11 +1,25 @@
 # Changelog
 
+> 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · [Tasks](./TASKS.md) · **Changelog** · [Metrics](./METRICS.md) <!-- nav -->
+
 All notable changes to Vigil (formerly Overseer) will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### 2026-09-18 → 2026-09-24 (PRs #221–#233)
+
+- **Fixed (P0):** expanding any repo row crashed the dashboard — Postgres NUMERIC fields (`token_density`, `comment_to_code_ratio`) reached the client as strings; coerced via `toFiniteNumber()` with a regression test (#225).
+- **Added (P0):** `RowErrorBoundary` around expanded row details (desktop + mobile) so a render error degrades one row instead of the page; `lib/numeric.ts` normalizes every NUMERIC-backed field at the API boundary (#226).
+- **Security (P0, CWE-639):** `GET /api/repos` and every by-name route are scoped by repo access (default, verified-public, or `repo_access` grant); a `visibility_verified` column fails closed for repos synced before #221 until re-synced (#226). Repo chat requires auth (#221).
+- **Added (P1):** DB-free mocked Playwright suite (`e2e/mocked/ui.spec.ts`) runs in CI; `.github/workflows/smoke.yml` smoke-tests production after each merge once `/api/version` reports the merged commit (#226).
+- **Changed (P1):** Overseer → Vigil rebrand finished and the GitHub repo renamed to `nitsuah/vigil` with an idempotent DB row migration (#221, #226); Netlify site intentionally kept at `ghoverseer.netlify.app`.
+- **Fixed (P2):** agent task receipts are awaited and failures surfaced instead of fire-and-forget; `reviewThreads`/`refs` GraphQL connections paginate (refs capped at 20 pages) and fail closed on incomplete fetches; mobile repo card no longer nests links inside a `role="button"` wrapper; shared-key rate limiter moved to a Neon table and quota reserved before personal-key fallback calls (#204, #216).
+- **Added:** `docs/` folder support for core docs and community standards, incl. `docs/.github/` (#229, #230); navbar refactor — single sync, DependencyGraph moved to PMO, Hidden filter toggle (#228); user-feedback improvements (#232).
+- **Removed:** stale `docs/` copies of TASKS/ROADMAP/METRICS/FEATURES (#233) and, in the 2027 planning reset (`pmo-ff`), `docs/CHANGELOG.md` after merging its two root-missing entries (AI failover integration, test model candidates) into this file.
+- **Docs:** planning docs reset for 2027 (`pmo-ff`) — completed ROADMAP/TASKS items condensed into FEATURES/CHANGELOG, open 2026 Q3/Q4 items carried into 2027 Q1, breadcrumb navigation + README docs index added.
 
 ### Added
 
@@ -31,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Header mobile input `aria-label`:** Added `aria-label="Repository URL (owner/repo)"` to the mobile add-repo input (PR #181)
 - **Repo-detail query batching:** `GET /api/repo-details/[name]` fetches all seven per-repo detail tables in a single `db.transaction([...])` call instead of seven sequential round trips
 - **Default Model Updated:** Changed from deprecated `models/gemini-2.0-flash-exp` to `models/gemini-2.5-flash`
+- **AI Failover Integration:** Integrated the model discovery system with the existing failover logic (merged from the retired `docs/CHANGELOG.md`)
+- **Test Model Candidates:** Updated `test-model-names.mjs` with future-proof version 3 model names (merged from the retired `docs/CHANGELOG.md`)
 - **Model Configuration:** All files now import from centralized `gemini-model-discovery` instead of hardcoding strings
 
 ### Fixed

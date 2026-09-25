@@ -1,5 +1,7 @@
 # Vigil Features
 
+> 🧭 [vigil](./README.md) · **Features** · [Roadmap](./ROADMAP.md) · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
+
 Status guide: features listed here are shipped unless explicitly marked as planned in ROADMAP.md or TASKS.md.
 
 ## 🎯 Core Capabilities
@@ -162,6 +164,10 @@ Status guide: features listed here are shipped unless explicitly marked as plann
 - **Event Isolation**: Button clicks use `stopPropagation` to prevent unintended interactions
 - **Custom Component Renderers**: Tailwind-styled markdown elements with consistent slate color scheme
 - **Dependency Hygiene**: Removed unused `baseline-browser-mapping` to reduce attack surface
+- **Repo Access Scoping (CWE-639)**: Repo list and every by-name API route return only default, verified-public, or explicitly granted repos; unverified visibility fails closed until re-synced
+- **Authenticated Repo Chat**: Per-repo chat requires sign-in; shared-key usage is rate-limited in a shared Neon store with quota reserved before any personal-key fallback call
+- **Row Error Boundary**: A render error in one expanded repo row degrades only that row (with Retry); NUMERIC fields are normalized to numbers at the API boundary
+- **Production Smoke Tests**: CI runs a DB-free mocked Playwright suite, and a post-merge workflow smoke-tests the deployed app once it reports the merged commit
 
 ### 🔄 Synchronization
 
@@ -184,13 +190,12 @@ These ensure the dashboard always has content, even for non-authenticated visito
 
 ## 🆕 Planned & Upcoming Features
 
-- **AI-Assisted Roadmap Management**: Auto-suggest roadmap items from repo health signals; auto-update progress from linked PR/issue state (Q3 2026)
-- **3D Cross-Repo Dependency Graph**: Upgrade the shipped 2D SVG dependency graph to an interactive 3D visualization with click-to-detail (Q3 2026)
-- **Agent Dispatch Bridge v0**: Route queued vigil agent tasks to agent-board's local model runtime and report completion back to the queue (Q3 2026)
-- **Zombie-Branch Detection**: Flag stale long-lived branches with a bulk-cleanup dialog (Q3 2026)
-- **Autonomous Plan Execution**: Agents read ROADMAP.md and TASKS.md, open PRs, and close items end to end (Q4 2026)
-- **Portfolio Intelligence Dashboard**: Cross-repo health roll-up, trend lines, and strategic signal view (Q4 2026)
-- **Mobile-Responsive PWA**: Lightweight PWA packaging (Q4 2026) — responsive mobile card layout already shipped (PR #180)
+- **AI-Assisted Roadmap Management**: Auto-suggest roadmap items from repo health signals; auto-update progress from linked PR/issue state (2027 Q1)
+- **3D Cross-Repo Dependency Graph**: Upgrade the shipped 2D SVG dependency graph to an interactive 3D visualization with click-to-detail (2027 Q1)
+- **Zombie-Branch Detection**: Flag stale long-lived branches with a bulk-cleanup dialog (2027 Q1)
+- **Autonomous Plan Execution**: Agents read ROADMAP.md and TASKS.md, open PRs, and close items end to end (2027 Q1)
+- **Portfolio Intelligence Dashboard**: Cross-repo health roll-up, trend lines, and strategic signal view (2027 Q1)
+- **Mobile-Responsive PWA**: Lightweight PWA packaging (2027 Q1) — responsive mobile card layout already shipped (PR #180)
 
 ## 🤖 AI/ML & Market Trends
 
@@ -301,6 +306,8 @@ Health scores are displayed as letter grades (A-F) with detailed component break
 - **Scheduled Jobs**: Netlify scheduled functions for auto-sync
 
 ## 📅 Last Updated
+
+2026-09-24 - 2027 planning reset: P0 hardening (row error boundary, NUMERIC normalization, repo-access scoping), mocked e2e + prod smoke CI, and shared-store rate limiting added to Security; shipped dispatch bridge removed from Planned; remaining Planned items retargeted to 2027 Q1
 
 2026-09-03 - Portfolio Intelligence batch (PR #204): chat-driven doc-edit proposals (propose/apply/dismiss), cross-repo dependency graph, token-density + comment-to-code ratio metrics, DB scaling assessment doc, and velocity/health-score trending all shipped; Planned section updated to reflect remaining work (3D dependency graph, dispatch bridge v0, zombie-branch detection)
 
