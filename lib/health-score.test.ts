@@ -19,6 +19,11 @@ describe('health-score', () => {
         vulnCriticalCount: 0,
         vulnHighCount: 0,
         secretScanningAlertCount: 0,
+        hasSecurityPolicy: true,
+        privateVulnerabilityReportingEnabled: true,
+        dependabotAlertsEnabled: true,
+        codeScanningEnabled: true,
+        secretScanningEnabled: true,
       };
 
       const result = calculateHealthScore(inputs);
@@ -29,7 +34,7 @@ describe('health-score', () => {
       expect(result.bestPractices).toBe(100);
       expect(result.community).toBe(100);
       expect(result.activity).toBe(100);
-      expect(result.security).toBe(40);
+      expect(result.security).toBe(100);
     });
 
     it('should calculate weighted health score for minimal inputs', () => {
@@ -260,7 +265,7 @@ describe('health-score', () => {
 
       const result = calculateHealthScore(inputs);
 
-      expect(result.security).toBe(100);
+      expect(result.security).toBe(40);
     });
 
     it('should penalize for critical Dependabot alerts', () => {
