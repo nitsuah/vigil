@@ -35,10 +35,10 @@ function mockOctokitWithBranchError(): Octokit {
 test('detects healthy branch protection with reviews', async () => {
   const octokit = mockOctokitWithBranch(true, true);
   const result = await checkBestPractices('owner', 'repo', octokit, []);
-  
+
   const branchProt = result.practices.find((p) => p.type === 'branch_protection');
   // With basic protection + reviews + status checks, score = 5 (dormant)
-  // Need more features for healthy (>=6)
+  // Need more features for healthy (>=7)
   expect(branchProt?.status).toBe('dormant');
   expect(branchProt?.details.protected).toBe(true);
   expect(branchProt?.details.requiresReviews).toBe(true);
@@ -46,20 +46,20 @@ test('detects healthy branch protection with reviews', async () => {
   expect(branchProt?.details.requiredStatusChecks).toBe(true);
   expect(branchProt?.details.strictStatusChecks).toBe(true);
   expect(branchProt?.details.score).toBe(5);
-  expect(branchProt?.details.maxScore).toBe(8);
+  expect(branchProt?.details.maxScore).toBe(10);
 });
 
 test('detects dormant branch protection without reviews', async () => {
   const octokit = mockOctokitWithBranch(true, false);
   const result = await checkBestPractices('owner', 'repo', octokit, []);
-  
+
   const branchProt = result.practices.find((p) => p.type === 'branch_protection');
   // Basic protection only, score = 1 (malformed)
   expect(branchProt?.status).toBe('malformed');
   expect(branchProt?.details.protected).toBe(true);
   expect(branchProt?.details.requiresReviews).toBe(false);
   expect(branchProt?.details.score).toBe(1);
-  expect(branchProt?.details.maxScore).toBe(8);
+  expect(branchProt?.details.maxScore).toBe(10);
 });
 
 test('detects missing branch protection when not protected', async () => {

@@ -207,6 +207,20 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )`,
 
+    // sync_progress: persistent tracking for background sync operations
+    // Replaces the in-memory Map that was lost across serverless invocations.
+    `CREATE TABLE IF NOT EXISTS sync_progress (
+      session_id TEXT PRIMARY KEY,
+      github_user_id TEXT NOT NULL,
+      total_repos INTEGER NOT NULL DEFAULT 0,
+      completed_repos INTEGER NOT NULL DEFAULT 0,
+      current_repo TEXT NOT NULL DEFAULT '',
+      phase TEXT NOT NULL DEFAULT 'metadata',
+      started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_sync_progress_github_user ON sync_progress(github_user_id)`,
+
     // repo_access: which signed-in GitHub users have confirmed access to a
     // given (private) repo, as of their last sync/add. See lib/repo-access.ts
     // and database/schema.sql for the full rationale -- `repos` is a single
