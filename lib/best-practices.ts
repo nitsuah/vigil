@@ -36,9 +36,9 @@ export async function checkBestPractices(
     let branchProtection: BestPractice = {
         type: 'branch_protection',
         status: 'missing',
-        details: { 
-            exists: false, 
-            protected: false, 
+        details: {
+            exists: false,
+            protected: false,
             requiresReviews: false,
             requiredApprovingReviews: 0,
             dismissStaleReviews: false,
@@ -54,7 +54,7 @@ export async function checkBestPractices(
             lockBranch: false,
             allowForkSyncing: false,
             score: 0,
-            maxScore: 8
+            maxScore: 10
         }
     };
     
@@ -70,56 +70,54 @@ export async function checkBestPractices(
             const reviews = protection?.required_pull_request_reviews;
             const statusChecks = protection?.required_status_checks;
             
-            // Calculate score based on protection features
+            // Calculate score based on protection features (10 conditions, maxScore=10)
             let score = 0;
-            const maxScore = 8;
-            
+            const maxScore = 10;
+
             // 1. Basic protection exists
             score += 1;
-            
+
             // 2. Requires PR reviews
             const hasReviews = reviews !== undefined;
             if (hasReviews) score += 1;
-            
+
             // 3. Requires minimum approving reviews (>= 1)
             const requiredApprovingReviews = reviews?.required_approving_review_count ?? 0;
             if (requiredApprovingReviews >= 1) score += 1;
-            
+
             // 4. Dismisses stale reviews on new commits
             const dismissStaleReviews = reviews?.dismiss_stale_reviews ?? false;
             if (dismissStaleReviews) score += 1;
-            
+
             // 5. Requires code owner reviews
             const requireCodeOwnerReviews = reviews?.require_code_owner_reviews ?? false;
             if (requireCodeOwnerReviews) score += 1;
-            
+
             // 6. Requires status checks
             const hasStatusChecks = statusChecks !== undefined;
             if (hasStatusChecks) score += 1;
-            
+
             // 7. Strict status checks (branches must be up to date)
             const strictStatusChecks = statusChecks?.strict ?? false;
             if (strictStatusChecks) score += 1;
-            
+
             // 8. Requires signed commits
             const requireSignedCommits = protection?.required_signatures?.enabled ?? false;
             if (requireSignedCommits) score += 1;
-            
+
             // 9. Requires linear history
             const requireLinearHistory = protection?.required_linear_history?.enabled ?? false;
             if (requireLinearHistory) score += 1;
-            
+
             // 10. Required conversation resolution
             const requiredConversationResolution = protection?.required_conversation_resolution?.enabled ?? false;
             if (requiredConversationResolution) score += 1;
             
-            // Cap at maxScore
-            score = Math.min(score, maxScore);
-            
-            // Determine status based on score
+            // Determine status based on score (out of 10)
+            // >= 7 healthy, >= 4 dormant, >= 1 malformed
             let status: HealthState = 'missing';
-            if (score >= 6) status = 'healthy';
-            else if (score >= 3) status = 'dormant';
+            if (score >= 7) status = 'healthy';
+            else if (score >= 4) status = 'dormant';
             else if (score >= 1) status = 'malformed';
             
             branchProtection = {

@@ -24,10 +24,11 @@ interface RateLimitState {
   error: string | null;
 }
 
-export function useRateLimit(enabled: boolean = true): RateLimitState {
+export function useRateLimit(enabled: boolean = true): RateLimitState & { refresh: () => void } {
   const [rateLimit, setRateLimit] = useState<RateLimitData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (!enabled) return;
@@ -57,14 +58,24 @@ export function useRateLimit(enabled: boolean = true): RateLimitState {
 
     fetchRateLimit();
     const interval = setInterval(fetchRateLimit, 60000);
+
+    // Listen for manual refresh triggers
+    const handleRefresh = () => {
+      if (!aborted) setRefreshTrigger(v => v + 1);
+    };
+    window.addEventListener('rate-limit-refresh', handleRefresh);
+
     return () => {
       aborted = true;
       controller.abort();
       clearInterval(interval);
+      window.removeEventListener('rate-limit-refresh', handleRefresh);
     };
-  }, [enabled]);
+  }, [enabled, refreshTrigger]);
 
-  return { rateLimit, loading, error };
+  const refresh = () => setRefreshTrigger(v => v + 1);
+
+  return { rateLimit, loading, error, refresh };
 }
 
 export function RateLimitDisplay({ rateLimit, loading, error }: RateLimitState): React.JSX.Element | null {
@@ -118,4 +129,14 @@ export function RateLimitDisplay({ rateLimit, loading, error }: RateLimitState):
 export function RateLimitIndicator(): React.JSX.Element | null {
   const state = useRateLimit();
   return <RateLimitDisplay {...state} />;
+}
+
+// Hook for components that need to trigger rate limit refresh
+export function useRateLimitRefresh(): () => void {
+  // Use a custom event to communicate across component tree
+  return () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
+    }
+  };
 }
