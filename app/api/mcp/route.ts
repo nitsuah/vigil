@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getNeonClient } from '@/lib/db';
+import { getNeonClient, ensureSchema } from '@/lib/db';
 import logger from '@/lib/log';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
 import { loadOpenTasks, parseOpenTaskFilters, rollupOpenTasks, DEFAULT_ROLLUP_LIMIT, MAX_ROLLUP_LIMIT } from '@/lib/task-rollup';
@@ -596,8 +596,11 @@ async function getSecuritySummary(args: Row): Promise<string> {
 
 async function getOpenTasks(args: Row): Promise<string> {
   const filters = parseOpenTaskFilters(args);
+  const db = getNeonClient();
+  // tasks.priority/owner are added by a migration; don't depend on another route having run it.
+  await ensureSchema(db);
   // Bearer key = portfolio admin, so no per-user repo scoping here.
-  const rollup = rollupOpenTasks(await loadOpenTasks(getNeonClient()), filters);
+  const rollup = rollupOpenTasks(await loadOpenTasks(db), filters);
   return JSON.stringify({
     ...rollup,
     count: rollup.tasks.length,

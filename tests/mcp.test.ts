@@ -8,6 +8,7 @@ vi.mock('@/lib/db', () => ({
     );
     return tag;
   },
+  ensureSchema: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/log', () => ({
