@@ -309,7 +309,7 @@ netlify deploy --prod
 
 ## Docs Index
 
-Every committed doc in this repo (other than this README, `.github/` and `templates/`), the same set mirrored into the Obsidian vault, so none of them is orphaned.
+Every committed Markdown doc in this repo (other than this README, `.github/` and `templates/`), the same set mirrored into the Obsidian vault, so none of them is orphaned.
 
 - [Agent Task Queue API](./docs/AGENT_TASK_QUEUE_API.md) — `docs/AGENT_TASK_QUEUE_API.md`
 - [Overseer Feature Audit](./docs/AUDIT.md) — `docs/AUDIT.md`
