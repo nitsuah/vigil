@@ -191,7 +191,7 @@ async function getRepoHealth(args: Row): Promise<string> {
 
   const db = getNeonClient();
   const rows = await db`
-    SELECT name, full_name, url, health_score, ci_status, language,
+    SELECT name, full_name, url, health_score, health_profile, ci_status, language,
            open_prs, last_commit_date,
            vuln_alert_count, vuln_critical_count, vuln_high_count
     FROM repos
@@ -209,6 +209,7 @@ async function getRepoHealth(args: Row): Promise<string> {
     full_name:           r.full_name,
     url:                 r.url,
     health_score:        r.health_score,
+    health_profile:      r.health_profile ?? 'production',
     health_grade:        healthGrade(r.health_score ?? 0),
     ci_status:           r.ci_status,
     language:            r.language,
