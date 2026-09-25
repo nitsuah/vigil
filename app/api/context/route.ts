@@ -122,11 +122,19 @@ export async function GET(req: NextRequest) {
         },
         health: {
           score:  repo.health_score ?? null,
+          profile: repo.health_profile ?? 'production',
           grade:  healthGrade(repo.health_score ?? 0),
           security: {
             vuln_critical:  repo.vuln_critical_count  ?? 0,
             vuln_high:      repo.vuln_high_count      ?? 0,
             secret_alerts:  repo.secret_scanning_alert_count ?? 0,
+            controls: {
+              security_policy: repo.has_security_policy ?? false,
+              private_vulnerability_reporting: repo.private_vuln_reporting_enabled ?? false,
+              dependabot_alerts: repo.dependabot_alerts_enabled ?? false,
+              code_scanning: repo.code_scanning_enabled ?? false,
+              secret_scanning: repo.secret_scanning_enabled ?? false,
+            },
           },
           testing: {
             status:   repo.testing_status,
