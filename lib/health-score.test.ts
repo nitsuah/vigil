@@ -65,7 +65,7 @@ describe('health-score', () => {
       expect(result.bestPractices).toBe(0);
       expect(result.community).toBe(0);
       expect(result.activity).toBeLessThanOrEqual(20); // Not fully penalized
-      expect(result.security).toBe(100);
+      expect(result.security).toBe(40);
     });
 
     it('should calculate testing score correctly without coverage', () => {

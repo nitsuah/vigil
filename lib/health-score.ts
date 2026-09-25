@@ -1,5 +1,7 @@
 // lib/health-score.ts
 
+import { getHealthProfile, type HealthProfileId } from './health-profiles';
+
 export interface HealthScoreInputs {
     docHealth: number; // 0-100 from doc-health calculation
     hasTests: boolean;
@@ -108,7 +110,7 @@ export function calculateHealthScore(inputs: HealthScoreInputs): HealthScoreBrea
         secretScanning: inputs.secretScanningEnabled ?? false,
     };
     const requiredControls = profile.requiredSecurityControls;
-    const enabledRequiredControls = requiredControls.filter((control) => securityControls[control]).length;
+    const enabledRequiredControls = requiredControls.filter((control: string) => securityControls[control]).length;
     const securityPosture = requiredControls.length > 0
         ? (enabledRequiredControls / requiredControls.length) * 100
         : 100;

@@ -61,7 +61,10 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
 
     // repos: health maturity profile
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS health_profile TEXT DEFAULT 'production'`,
-    `DO $ BEGIN\n      ALTER TABLE repos ADD CONSTRAINT repos_health_profile_check CHECK (health_profile IN ('starter', 'production', 'enterprise'));\n    EXCEPTION WHEN duplicate_object THEN NULL;\n    END $`,
+    `DO $$ BEGIN
+      ALTER TABLE repos ADD CONSTRAINT repos_health_profile_check CHECK (health_profile IN ('starter', 'production', 'enterprise'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$`,
 
     // repos: security configuration
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS has_security_policy BOOLEAN DEFAULT FALSE`,

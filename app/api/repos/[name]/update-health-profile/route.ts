@@ -44,12 +44,16 @@ export async function PATCH(
       WHERE id = ${repo.id}
     `;
 
-    const [docStatuses, bestPractices, communityStandards, metrics] = await Promise.all([
+    const [docStatusRows, bestPracticeRows, communityStandardRows, metricRows] = await Promise.all([
       db`SELECT * FROM doc_status WHERE repo_id = ${repo.id}`,
       db`SELECT * FROM best_practices WHERE repo_id = ${repo.id}`,
       db`SELECT * FROM community_standards WHERE repo_id = ${repo.id}`,
       db`SELECT * FROM metrics WHERE repo_id = ${repo.id}`,
     ]);
+    const docStatuses = docStatusRows as Array<{ doc_type: string; exists: boolean }>;
+    const bestPractices = bestPracticeRows as Array<{ practice_type: string; status: string }>;
+    const communityStandards = communityStandardRows as Array<{ status: string }>;
+    const metrics = metricRows as Array<{ metric_name?: string; value?: number }>;
 
     const docHealth = calculateDocHealth(docStatuses, repo.repo_type || 'tool');
     const coverage = metrics.find((m: { metric_name?: string }) =>
