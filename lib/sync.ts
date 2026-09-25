@@ -661,7 +661,12 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             ? Math.floor((Date.now() - new Date(lastCommitDate).getTime()) / (1000 * 60 * 60 * 24))
             : 365;
 
+        const [healthProfileRow] = await db`
+            SELECT health_profile FROM repos WHERE id = ${repoId} LIMIT 1
+        `;
+
         const healthScore = calculateHealthScore({
+            healthProfile: healthProfileRow?.health_profile,
             docHealth: docHealth.score,
             hasTests,
             codeCoverage: coverage?.value,
@@ -676,7 +681,14 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             openPRsCount: openPrs,
             vulnCriticalCount,
             vulnHighCount,
+            codeScanningAlertCount,
             secretScanningAlertCount,
+            hasSecurityPolicy,
+            hasSecurityAdvisories,
+            privateVulnerabilityReportingEnabled: privateVulnReportingEnabled,
+            dependabotAlertsEnabled,
+            codeScanningEnabled,
+            secretScanningEnabled,
             openIssuesCountDetailed,
             staleIssuesCount,
             issueLabels,
