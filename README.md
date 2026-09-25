@@ -309,7 +309,7 @@ netlify deploy --prod
 
 ## Docs Index
 
-Every tracked doc in this repo, so nothing is orphaned (also used by the Obsidian vault mirror).
+Every doc at the repo root and under `docs/` (the files mirrored into the Obsidian vault), so none of them is orphaned.
 
 - [Agent Task Queue API](./docs/AGENT_TASK_QUEUE_API.md) — `docs/AGENT_TASK_QUEUE_API.md`
 - [Overseer Feature Audit](./docs/AUDIT.md) — `docs/AUDIT.md`
