@@ -197,18 +197,24 @@ See `/templates` for examples with AI agent instructions.
 
 ## Health Score
 
-Vigil calculates a composite 0–100 score across 6 weighted components:
+Vigil calculates a composite 0–100 score against a selectable repository maturity profile:
 
-| Component             | Weight | What It Measures                                                        |
-| --------------------- | ------ | ----------------------------------------------------------------------- |
-| Best Practices        | 30%    | CI/CD, pre-commit, linting, branch protection, Docker, Dependabot, etc. |
-| Security              | 30%    | Dependabot vulnerability alerts and secret-scanning alerts              |
-| Documentation Health  | 15%    | Presence and health of the 8 tracked doc files                          |
-| Testing & Quality     | 15%    | Test coverage percentage, framework detection, CI pass/fail             |
-| Community Standards   | 5%     | 12 community health files (CODE_OF_CONDUCT, CONTRIBUTING, etc.)         |
-| Activity & Engagement | 5%     | Commit frequency, PR/issue counts, contributor activity                 |
+- **Starter** — core hygiene for personal projects, prototypes, and small open-source repos.
+- **Production** — balanced expectations for actively deployed or maintained software.
+- **Enterprise** — stricter security, governance, testing, and engineering expectations.
 
-Scores are displayed as letter grades (A–F) with per-component breakdowns in the detail panel. See [FEATURES.md](FEATURES.md) for full details.
+The default profile is **Production**. The profile changes the relative weight of each component rather than inventing arbitrary penalties, while security now measures both control enablement and open findings. A repository with zero reported alerts does not receive a perfect security score when its detection controls are disabled.
+
+| Component             | Starter | Production | Enterprise | What It Measures |
+| --------------------- | ------- | ---------- | ---------- | ---------------- |
+| Security              | 15%     | 25%        | 30%        | Security controls plus critical/high/code-scanning/secret findings |
+| Testing & Quality     | 15%     | 20%        | 20%        | Test framework, coverage, and CI state |
+| Best Practices        | 20%     | 20%        | 20%        | CI/CD, pre-commit, linting, branch protection, Docker, Dependabot, etc. |
+| Documentation Health  | 25%     | 15%        | 10%        | Presence and health of tracked project docs |
+| Community Standards   | 5%      | 10%        | 15%        | Community and contribution standards |
+| Activity & Engagement | 20%     | 10%        | 5%         | Maintenance cadence, open issues, and PR backlog |
+
+The health breakdown includes a **Starter / Production / Enterprise picker**. Changing the profile persists it for the repository and immediately recalculates the score. Scores are displayed as letter grades (A–F) with per-component breakdowns in the detail panel. See [FEATURES.md](FEATURES.md) for full details.
 
 ## API Endpoints
 
