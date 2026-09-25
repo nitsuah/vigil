@@ -6,7 +6,8 @@
  *
  * Query params:
  *   ?repo=<name>   Single-repo context (name or owner/repo)
- *   (none)         Full portfolio context
+ *   (none)         Full portfolio context, incl. `open_work` (P0/P1 tasks across repos;
+ *                  use the get_open_tasks MCP tool for the full filterable list)
  *
  * Auth (checked in order):
  *   1. Authorization: Bearer <MCP_API_KEY>  →  full portfolio access
@@ -21,6 +22,7 @@ import { DEFAULT_REPOS } from '@/lib/default-repos';
 import { canAccessRepo, getAccessibleRepoIds } from '@/lib/repo-access';
 import logger from '@/lib/log';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
+import { loadOpenTasks, rollupOpenTasks } from '@/lib/task-rollup';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -88,7 +90,7 @@ export async function GET(req: NextRequest) {
 
       const [tasks, roadmapItems, docStatuses, bestPractices, communityStandards] =
         await db.transaction([
-          db`SELECT title, status, section FROM tasks WHERE repo_id = ${repo.id} ORDER BY created_at DESC LIMIT 50`,
+          db`SELECT title, status, priority, owner, section FROM tasks WHERE repo_id = ${repo.id} ORDER BY created_at DESC LIMIT 50`,
           db`SELECT title, quarter, status FROM roadmap_items WHERE repo_id = ${repo.id} ORDER BY created_at DESC LIMIT 30`,
           db`SELECT doc_type, "exists", health_state FROM doc_status WHERE repo_id = ${repo.id}`,
           db`SELECT practice_type, status FROM best_practices WHERE repo_id = ${repo.id}`,
@@ -187,6 +189,12 @@ export async function GET(req: NextRequest) {
         ? allRows.filter(r => accessibleIds.has((r as unknown as { id: string }).id))
         : allRows.filter(r => defaultNames.includes(r.name));
 
+    // Open work across the same repos this caller can see.
+    const visibleIds = new Set(repos.map(r => (r as unknown as { id: string }).id));
+    const openTasks = await loadOpenTasks(db, visibleIds);
+    const urgent  = rollupOpenTasks(openTasks, { priorities: ['P0', 'P1'], limit: 25 });
+    const allOpen = rollupOpenTasks(openTasks, { limit: 1 });
+
     const avgHealth = repos.length
       ? Math.round(repos.reduce((s, r) => s + (r.health_score ?? 0), 0) / repos.length)
       : 0;
@@ -247,6 +255,16 @@ export async function GET(req: NextRequest) {
       ci_failing: repos
         .filter(r => r.ci_status && r.ci_status !== 'passing' && r.ci_status !== 'unknown')
         .map(r => ({ name: r.name, ci_status: r.ci_status })),
+      open_work: {
+        summary:      `${allOpen.total} open tasks · ${allOpen.by_priority.P0} P0 · ${allOpen.by_priority.P1} P1 · ${allOpen.by_priority.P2} P2 · ${allOpen.by_priority.P3} P3 · ${allOpen.by_priority.none} unprioritized`,
+        by_priority:  allOpen.by_priority,
+        by_repo:      allOpen.by_repo,
+        p0_p1:        urgent.tasks.map(t => ({
+          repo: t.repo, title: t.title, status: t.status, priority: t.priority, owner: t.owner,
+        })),
+        p0_p1_truncated: urgent.truncated,
+        more:         'Call the get_open_tasks MCP tool for P2/P3 and repo/owner/status filters.',
+      },
     });
   } catch (error) {
     logger.error('[context] Failed to generate context:', error);

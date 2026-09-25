@@ -31,7 +31,7 @@ Vigil bridges human intent and AI execution through enforced documentation stand
 - 🎯 **Interactive Onboarding** - 16-step guided tour with spotlight highlighting
 - 🔗 **GitHub Integration** - OAuth auth, full metadata sync, rate limit monitoring, custom repo paths
 - 📈 **Composite Metrics** - Testing (60%+ coverage), vulnerabilities, contributor analytics
-- 🤝 **MCP Server** - JSON-RPC 2.0 endpoint exposing 7 tools for agent clients (`get_repo_health`, `list_repos`, `get_repo_details`, `get_portfolio_overview`, `search_repos`, `list_tasks`, `get_security_summary`)
+- 🤝 **MCP Server** - JSON-RPC 2.0 endpoint exposing 8 tools for agent clients (`get_open_tasks`, `get_repo_health`, `list_repos`, `get_repo_details`, `get_portfolio_overview`, `search_repos`, `list_tasks`, `get_security_summary`); connect Claude Code via [docs/MCP.md](./docs/MCP.md)
 - 📱 **Mobile Dashboard** - Responsive card layout for all screen sizes
 - 🗂️ **PMO Mode** - Portfolio-wide roadmap progress, plan execution, and DEV-flow handoff at `/pmo`
 
@@ -205,14 +205,14 @@ Vigil calculates a composite 0–100 score against a selectable repository matur
 
 The default profile is **Production**. The profile changes the relative weight of each component rather than inventing arbitrary penalties, while security now measures both control enablement and open findings. A repository with zero reported alerts does not receive a perfect security score when its detection controls are disabled.
 
-| Component             | Starter | Production | Enterprise | What It Measures |
-| --------------------- | ------- | ---------- | ---------- | ---------------- |
-| Security              | 15%     | 25%        | 30%        | Security controls plus critical/high/code-scanning/secret findings |
-| Testing & Quality     | 15%     | 20%        | 20%        | Test framework, coverage, and CI state |
+| Component             | Starter | Production | Enterprise | What It Measures                                                        |
+| --------------------- | ------- | ---------- | ---------- | ----------------------------------------------------------------------- |
+| Security              | 15%     | 25%        | 30%        | Security controls plus critical/high/code-scanning/secret findings      |
+| Testing & Quality     | 15%     | 20%        | 20%        | Test framework, coverage, and CI state                                  |
 | Best Practices        | 20%     | 20%        | 20%        | CI/CD, pre-commit, linting, branch protection, Docker, Dependabot, etc. |
-| Documentation Health  | 25%     | 15%        | 10%        | Presence and health of tracked project docs |
-| Community Standards   | 5%      | 10%        | 15%        | Community and contribution standards |
-| Activity & Engagement | 20%     | 10%        | 5%         | Maintenance cadence, open issues, and PR backlog |
+| Documentation Health  | 25%     | 15%        | 10%        | Presence and health of tracked project docs                             |
+| Community Standards   | 5%      | 10%        | 15%        | Community and contribution standards                                    |
+| Activity & Engagement | 20%     | 10%        | 5%         | Maintenance cadence, open issues, and PR backlog                        |
 
 The health breakdown includes a **Starter / Production / Enterprise picker**. Changing the profile persists it for the repository and immediately recalculates the score. Scores are displayed as letter grades (A–F) with per-component breakdowns in the detail panel. See [FEATURES.md](FEATURES.md) for full details.
 

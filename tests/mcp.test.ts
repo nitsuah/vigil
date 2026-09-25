@@ -42,7 +42,15 @@ describe('GET /api/mcp', () => {
       'get_portfolio_overview',
       'search_repos',
       'get_security_summary',
+      'get_open_tasks',
     ]);
+  });
+
+  it('returns 405 to a Streamable HTTP client asking for an SSE stream', async () => {
+    const req = new Request('http://localhost/api/mcp', { headers: { Accept: 'text/event-stream' } }) as never;
+    const res = await GET(req);
+    expect(res.status).toBe(405);
+    expect(res.headers.get('allow')).toBe('POST');
   });
 });
 
@@ -259,5 +267,54 @@ describe('tools/call — get_security_summary', () => {
     const data = await callResult('get_security_summary', { name: 'no-such-repo' });
     expect(data).toHaveProperty('error');
     expect(String(data.error)).toContain('no-such-repo');
+  });
+});
+
+describe('Streamable HTTP handshake', () => {
+  it('initialize echoes a supported client protocol version', async () => {
+    const res = await POST(post({ jsonrpc: '2.0', method: 'initialize', id: 1, params: { protocolVersion: '2025-06-18' } }));
+    expect((await res.json()).result.protocolVersion).toBe('2025-06-18');
+  });
+
+  it('initialize falls back to 2024-11-05 for an unknown version', async () => {
+    const res = await POST(post({ jsonrpc: '2.0', method: 'initialize', id: 1, params: { protocolVersion: '1999-01-01' } }));
+    expect((await res.json()).result.protocolVersion).toBe('2024-11-05');
+  });
+
+  it('acknowledges notifications/initialized with 202 and no body', async () => {
+    const res = await POST(post({ jsonrpc: '2.0', method: 'notifications/initialized' }));
+    expect(res.status).toBe(202);
+    expect(await res.text()).toBe('');
+  });
+
+  it('answers ping with an empty result', async () => {
+    const res = await POST(post({ jsonrpc: '2.0', method: 'ping', id: 7 }));
+    expect((await res.json()).result).toEqual({});
+  });
+});
+
+describe('tools/call — get_open_tasks', () => {
+  it('returns an empty rollup with zeroed counts when db is empty', async () => {
+    const res = await POST(post({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: { name: 'get_open_tasks', arguments: {} } }));
+    const data = JSON.parse((await res.json()).result.content[0].text);
+    expect(data.tasks).toEqual([]);
+    expect(data.total).toBe(0);
+    expect(data.by_priority).toEqual({ P0: 0, P1: 0, P2: 0, P3: 0, none: 0 });
+    expect(data.filters_applied).toEqual({ repos: null, priority: null, status: null, owner: null });
+  });
+
+  it('echoes filters', async () => {
+    const res = await POST(post({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: {
+      name: 'get_open_tasks', arguments: { repos: ['vigil'], priority: ['P0', 'P1'], status: 'todo' },
+    } }));
+    const data = JSON.parse((await res.json()).result.content[0].text);
+    expect(data.filters_applied).toMatchObject({ repos: ['vigil'], priority: ['P0', 'P1'], status: 'todo' });
+  });
+
+  it('rejects an unknown priority with -32603', async () => {
+    const res = await POST(post({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: {
+      name: 'get_open_tasks', arguments: { priority: ['P9'] },
+    } }));
+    expect((await res.json()).error.code).toBe(-32603);
   });
 });
