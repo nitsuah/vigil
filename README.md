@@ -309,7 +309,9 @@ netlify deploy --prod
 
 ## Docs Index
 
-Every doc at the repo root and under `docs/` (the files mirrored into the Obsidian vault), so none of them is orphaned.
+Every committed Markdown doc in this repo (other than this README, `.github/` and `templates/`), the same set mirrored into the Obsidian vault, so none of them is orphaned.
+
+**`docs/`**
 
 - [Agent Task Queue API](./docs/AGENT_TASK_QUEUE_API.md) — `docs/AGENT_TASK_QUEUE_API.md`
 - [Overseer Feature Audit](./docs/AUDIT.md) — `docs/AUDIT.md`
@@ -330,6 +332,10 @@ Every doc at the repo root and under `docs/` (the files mirrored into the Obsidi
 - [Metrics](./METRICS.md) — `METRICS.md`
 - [This is NOT the Next.js you know](./AGENTS.md) — `AGENTS.md`
 - [CLAUDE](./CLAUDE.md) — `CLAUDE.md`
+
+**`database/migrations/`**
+
+- [Migration history (frozen)](./database/migrations/README.md) — `database/migrations/README.md`
 
 <!-- docs-index:end -->
 
