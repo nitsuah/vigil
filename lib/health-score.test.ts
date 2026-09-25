@@ -19,6 +19,11 @@ describe('health-score', () => {
         vulnCriticalCount: 0,
         vulnHighCount: 0,
         secretScanningAlertCount: 0,
+        hasSecurityPolicy: true,
+        privateVulnerabilityReportingEnabled: true,
+        dependabotAlertsEnabled: true,
+        codeScanningEnabled: true,
+        secretScanningEnabled: true,
       };
 
       const result = calculateHealthScore(inputs);
@@ -50,15 +55,17 @@ describe('health-score', () => {
       const result = calculateHealthScore(inputs);
 
       // Activity: 100 - 40 (staleness) - 20 (issues) - 20 (PRs) = 20
-      // Security defaults to 100 with no vuln/secret-scanning inputs.
-      // Total weighted: 0*0.15 + 0*0.15 + 0*0.30 + 0*0.05 + 20*0.05 + 100*0.30 = 31
-      expect(result.total).toBe(31);
+      // Production weights: docs 15%, testing 20%, best practices 20%,
+      // community 10%, activity 10%, security 25%.
+      // No security controls enabled => posture 0, no findings => finding score 100,
+      // so security is 40. Total = 20*0.10 + 40*0.25 = 12.
+      expect(result.total).toBe(12);
       expect(result.documentation).toBe(0);
       expect(result.testing).toBe(0);
       expect(result.bestPractices).toBe(0);
       expect(result.community).toBe(0);
       expect(result.activity).toBeLessThanOrEqual(20); // Not fully penalized
-      expect(result.security).toBe(100);
+      expect(result.security).toBe(40);
     });
 
     it('should calculate testing score correctly without coverage', () => {
@@ -258,7 +265,7 @@ describe('health-score', () => {
 
       const result = calculateHealthScore(inputs);
 
-      expect(result.security).toBe(100);
+      expect(result.security).toBe(40);
     });
 
     it('should penalize for critical Dependabot alerts', () => {
@@ -278,7 +285,7 @@ describe('health-score', () => {
 
       const result = calculateHealthScore({ ...base, vulnCriticalCount: 2 });
 
-      expect(result.security).toBe(60); // 100 - 2*20
+      expect(result.security).toBe(24); // 40% finding score after posture=0
       expect(result.total).toBeLessThan(100);
     });
 
@@ -299,7 +306,7 @@ describe('health-score', () => {
 
       const result = calculateHealthScore({ ...base, vulnHighCount: 3 });
 
-      expect(result.security).toBe(70); // 100 - 3*10
+      expect(result.security).toBe(28); // 40% of 70 finding score
     });
 
     it('should penalize heavily for open secret-scanning alerts', () => {
@@ -319,7 +326,7 @@ describe('health-score', () => {
 
       const result = calculateHealthScore({ ...base, secretScanningAlertCount: 1 });
 
-      expect(result.security).toBe(80); // 100 - 1*20
+      expect(result.security).toBe(32); // 40% of 80 finding score
       expect(result.total).toBeLessThan(100);
     });
 
@@ -424,5 +431,62 @@ describe('health-score', () => {
       expect(result.security).toBe(0);
       expect(result.total).toBeGreaterThanOrEqual(0);
     });
+
+    it('should reward enabled security controls instead of treating zero findings as perfect posture', () => {
+      const base: HealthScoreInputs = {
+        docHealth: 100,
+        hasTests: true,
+        codeCoverage: 100,
+        bestPracticesCount: 10,
+        bestPracticesHealthy: 10,
+        communityStandardsCount: 5,
+        communityStandardsHealthy: 5,
+        hasCI: true,
+        lastCommitDays: 1,
+        openIssuesCount: 0,
+        openPRsCount: 0,
+        hasSecurityPolicy: true,
+        privateVulnerabilityReportingEnabled: true,
+        dependabotAlertsEnabled: true,
+        codeScanningEnabled: true,
+        secretScanningEnabled: true,
+      };
+
+      const result = calculateHealthScore(base);
+
+      expect(result.securityPosture).toBe(100);
+      expect(result.security).toBe(100);
+      expect(result.healthProfile).toBe('production');
+      expect(result.total).toBe(100);
+    });
+
+    it('should use stricter weighting for enterprise repositories', () => {
+      const base: HealthScoreInputs = {
+        docHealth: 100,
+        hasTests: true,
+        codeCoverage: 100,
+        bestPracticesCount: 10,
+        bestPracticesHealthy: 10,
+        communityStandardsCount: 10,
+        communityStandardsHealthy: 5,
+        hasCI: true,
+        lastCommitDays: 1,
+        openIssuesCount: 0,
+        openPRsCount: 0,
+        hasSecurityPolicy: true,
+        privateVulnerabilityReportingEnabled: true,
+        dependabotAlertsEnabled: true,
+        codeScanningEnabled: true,
+        secretScanningEnabled: true,
+      };
+
+      const starter = calculateHealthScore({ ...base, healthProfile: 'starter' });
+      const enterprise = calculateHealthScore({ ...base, healthProfile: 'enterprise' });
+
+      expect(starter.healthProfile).toBe('starter');
+      expect(enterprise.healthProfile).toBe('enterprise');
+      expect(starter.total).toBeGreaterThan(enterprise.total);
+    });
+
   });
 });

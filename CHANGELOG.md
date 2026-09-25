@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Health scoring profiles
+
+- **Added:** Repository health maturity profiles: Starter, Production, and Enterprise, with persisted per-repo selection and profile-specific component weights.
+- **Changed:** Security scoring now measures both security-control coverage and open findings, so zero reported alerts no longer implies a fully enabled security posture.
+- **Added:** Health breakdown profile picker with immediate score recalculation.
+
+
 ### 2026-09-18 → 2026-09-24 (PRs #221–#233)
 
 - **Fixed (P0):** expanding any repo row crashed the dashboard — Postgres NUMERIC fields (`token_density`, `comment_to_code_ratio`) reached the client as strings; coerced via `toFiniteNumber()` with a regression test (#225).

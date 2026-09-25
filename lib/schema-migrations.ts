@@ -58,6 +58,16 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS avg_pr_merge_time_hours NUMERIC`,
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS contributors_last_checked TIMESTAMP WITH TIME ZONE`,
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS open_issues_count INTEGER DEFAULT 0`,
+    `ALTER TABLE repos ADD COLUMN IF NOT EXISTS stale_issues_count INTEGER`,
+
+    // repos: health maturity profile
+    `ALTER TABLE repos ADD COLUMN IF NOT EXISTS health_profile TEXT DEFAULT 'production'`,
+    `UPDATE repos SET health_profile = 'production' WHERE health_profile IS NULL`,
+    `ALTER TABLE repos ALTER COLUMN health_profile SET NOT NULL`,
+    `DO $$ BEGIN
+      ALTER TABLE repos ADD CONSTRAINT repos_health_profile_check CHECK (health_profile IN ('starter', 'production', 'enterprise'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$`,
 
     // repos: security configuration
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS has_security_policy BOOLEAN DEFAULT FALSE`,

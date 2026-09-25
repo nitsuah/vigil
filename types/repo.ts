@@ -63,6 +63,7 @@ export interface SecurityConfig {
 }
 
 export interface Repo {
+  health_profile?: 'starter' | 'production' | 'enterprise';
   id: string;
   name: string;
   full_name: string;
@@ -90,7 +91,9 @@ export interface Repo {
   zombie_branch_count?: number;
   token_density?: number | null;
   comment_to_code_ratio?: number | null;
-  open_issues_count?: number;
+  open_issues?: number;
+  open_issues_count?: number | null;
+  stale_issues_count?: number | null;
   readme_last_updated?: string | null;
   total_loc?: number;
   loc_language_breakdown?: Record<string, number>;

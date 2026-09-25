@@ -1,5 +1,7 @@
 // lib/health-score.ts
 
+import { getHealthProfile, type HealthProfileId } from './health-profiles';
+
 export interface HealthScoreInputs {
     docHealth: number; // 0-100 from doc-health calculation
     hasTests: boolean;
@@ -20,6 +22,14 @@ export interface HealthScoreInputs {
     openIssuesCountDetailed?: number; // Total open issues (excluding PRs)
     staleIssuesCount?: number; // Issues not updated in 90+ days
     issueLabels?: string[]; // Labels on open issues (for categorization)
+    healthProfile?: HealthProfileId;
+    hasSecurityPolicy?: boolean;
+    hasSecurityAdvisories?: boolean;
+    privateVulnerabilityReportingEnabled?: boolean;
+    dependabotAlertsEnabled?: boolean;
+    codeScanningEnabled?: boolean;
+    codeScanningAlertCount?: number;
+    secretScanningEnabled?: boolean;
 }
 
 export interface HealthScoreBreakdown {
@@ -30,103 +40,97 @@ export interface HealthScoreBreakdown {
     community: number;
     activity: number;
     security: number;
+    securityPosture: number;
+    healthProfile: HealthProfileId;
 }
 
 /**
- * Calculate overall repository health score (0-100)
+ * Calculate overall repository health score (0-100).
  *
- * Weights:
- * - Security: 30%
- * - Testing: 25%  (elevated: coverage + CI state are strong quality signals)
- * - Best Practices: 25%
- * - Documentation: 10%
- * - Community Standards: 5%
- * - Activity: 5%
+ * The selected maturity profile changes the relative importance of each
+ * component. Security also measures control enablement, not only findings,
+ * so a repository with zero known alerts cannot receive a perfect security
+ * score while its detection controls are disabled.
  */
 export function calculateHealthScore(inputs: HealthScoreInputs): HealthScoreBreakdown {
-    // Documentation Score (0-100)
-    const docScore = inputs.docHealth; // Already 0-100
+    const profile = getHealthProfile(inputs.healthProfile);
+    const docScore = inputs.docHealth;
 
-    // Testing Score (0-100)
-    // Coverage carries more weight here because low coverage is a reliable
-    // predictor of latent bugs. A failing CI build is treated as a test
-    // failure and penalizes the score directly.
     let testScore = 0;
     if (inputs.hasTests) {
-        testScore = 40; // Base for having tests
+        testScore = 40;
         if (inputs.codeCoverage !== undefined) {
-            testScore += Math.min(inputs.codeCoverage * 0.6, 60); // Up to 60 points for coverage
+            testScore += Math.min(inputs.codeCoverage * 0.6, 60);
         }
     }
-    // A CI build that is actively failing is a broken test suite
     if (inputs.ciPassing === false) {
         testScore = Math.max(testScore - 25, 0);
     }
 
-    // Best Practices Score (0-100)
     let bestPracticesScore = 0;
     if (inputs.bestPracticesCount > 0) {
         const ratio = inputs.bestPracticesHealthy / inputs.bestPracticesCount;
         bestPracticesScore = ratio * 100;
-
-        // Bonus for CI/CD
         if (inputs.hasCI) {
             bestPracticesScore = Math.min(bestPracticesScore + 10, 100);
         }
     }
 
-    // Community Standards Score (0-100)
     let communityScore = 0;
     if (inputs.communityStandardsCount > 0) {
         const ratio = inputs.communityStandardsHealthy / inputs.communityStandardsCount;
         communityScore = ratio * 100;
     }
 
-    // Activity Score (0-100)
     let activityScore = 100;
-
-    // Deduct points for staleness
     if (inputs.lastCommitDays > 90) {
-        activityScore -= Math.min((inputs.lastCommitDays - 90) / 3, 40); // Up to -40 for being very stale
+        activityScore -= Math.min((inputs.lastCommitDays - 90) / 3, 40);
     }
 
-    // Deduct points for many open issues (using detailed count if available)
     const effectiveOpenIssues = inputs.openIssuesCountDetailed ?? inputs.openIssuesCount;
     if (effectiveOpenIssues > 10) {
-        activityScore -= Math.min((effectiveOpenIssues - 10) * 2, 20); // Up to -20 for many issues
+        activityScore -= Math.min((effectiveOpenIssues - 10) * 2, 20);
     }
 
-    // Deduct points for stale issues (not updated in 90+ days)
     if ((inputs.staleIssuesCount ?? 0) > 5) {
-        activityScore -= Math.min((inputs.staleIssuesCount! - 5) * 2, 15); // Up to -15 for stale issues
+        activityScore -= Math.min((inputs.staleIssuesCount! - 5) * 2, 15);
     }
 
-    // Deduct points for stale PRs
     if (inputs.openPRsCount > 5) {
-        activityScore -= Math.min((inputs.openPRsCount - 5) * 3, 20); // Up to -20 for many open PRs
+        activityScore -= Math.min((inputs.openPRsCount - 5) * 3, 20);
     }
 
     activityScore = Math.max(activityScore, 0);
 
-    // Security Score (0-100)
-    // Critical/high Dependabot vulnerability alerts and open secret-scanning
-    // alerts each reduce the score, with secrets weighted heaviest since an
-    // exposed credential is an active incident rather than a latent risk.
-    // Penalties are intentionally steep: a single critical vuln is a serious risk.
-    let securityScore = 100;
-    securityScore -= Math.min((inputs.vulnCriticalCount ?? 0) * 20, 70); // was 15/cap-60
-    securityScore -= Math.min((inputs.vulnHighCount ?? 0) * 10, 45);     // was 8/cap-30
-    securityScore -= Math.min((inputs.secretScanningAlertCount ?? 0) * 20, 60);
-    securityScore = Math.max(securityScore, 0);
+    const securityControls: Record<string, boolean> = {
+        securityPolicy: inputs.hasSecurityPolicy ?? false,
+        privateVulnerabilityReporting: inputs.privateVulnerabilityReportingEnabled ?? false,
+        dependabotAlerts: inputs.dependabotAlertsEnabled ?? false,
+        codeScanning: inputs.codeScanningEnabled ?? false,
+        secretScanning: inputs.secretScanningEnabled ?? false,
+    };
+    const requiredControls = profile.requiredSecurityControls;
+    const enabledRequiredControls = requiredControls.filter((control: string) => securityControls[control]).length;
+    const securityPosture = requiredControls.length > 0
+        ? (enabledRequiredControls / requiredControls.length) * 100
+        : 100;
 
-    // Weighted Total
+    let findingScore = 100;
+    findingScore -= Math.min((inputs.vulnCriticalCount ?? 0) * 20, 70);
+    findingScore -= Math.min((inputs.vulnHighCount ?? 0) * 10, 45);
+    findingScore -= Math.min((inputs.codeScanningAlertCount ?? 0) * 5, 25);
+    findingScore -= Math.min((inputs.secretScanningAlertCount ?? 0) * 20, 60);
+    findingScore = Math.max(findingScore, 0);
+
+    const securityScore = Math.round(securityPosture * 0.6 + findingScore * 0.4);
+
     const total = Math.round(
-        docScore * 0.10 +
-        testScore * 0.25 +
-        bestPracticesScore * 0.25 +
-        communityScore * 0.05 +
-        activityScore * 0.05 +
-        securityScore * 0.30
+        docScore * (profile.weights.documentation / 100) +
+        testScore * (profile.weights.testing / 100) +
+        bestPracticesScore * (profile.weights.bestPractices / 100) +
+        communityScore * (profile.weights.community / 100) +
+        activityScore * (profile.weights.activity / 100) +
+        securityScore * (profile.weights.security / 100)
     );
 
     return {
@@ -136,7 +140,9 @@ export function calculateHealthScore(inputs: HealthScoreInputs): HealthScoreBrea
         bestPractices: Math.round(bestPracticesScore),
         community: Math.round(communityScore),
         activity: Math.round(activityScore),
-        security: Math.round(securityScore),
+        security: securityScore,
+        securityPosture: Math.round(securityPosture),
+        healthProfile: profile.id,
     };
 }
 
