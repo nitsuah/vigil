@@ -161,6 +161,12 @@ export async function POST(request: Request): Promise<NextResponse> {
                 }
             };
 
+            // Progress writes are best-effort: a transient DB error while
+            // reporting progress must never fail a repo or abort the sync.
+            const reportProgress = (updates: Parameters<typeof updateSyncProgress>[1]) =>
+                updateSyncProgress(sessionId, updates).catch((e: unknown) =>
+                    logger.warn('Sync progress update failed:', e instanceof Error ? e.message : e));
+
             let successCount = 0;
             let errorCount = 0;
             const failedRepos: RepoMetadata[] = [];
@@ -168,37 +174,37 @@ export async function POST(request: Request): Promise<NextResponse> {
             // 1. FAST METADATA SYNC (First Pass)
             // This ensures all repos appear in the dashboard immediately
             logger.info('Starting Phase 1: Fast Metadata Sync');
-            await updateSyncProgress(sessionId, { phase: 'metadata', currentRepo: 'Starting...' });
+            await reportProgress({ phase: 'metadata', currentRepo: 'Starting...' });
             for (const repo of reposToSync) {
                 try {
-                    await updateSyncProgress(sessionId, { currentRepo: repo.fullName });
+                    await reportProgress({ currentRepo: repo.fullName });
                     await syncRepoMetadata(repo, db);
                     // repo came from this user's own github.listRepos() call
                     // above, so their GitHub token already confirmed access
                     // (CWE-639) -- record it now that the row exists.
                     await grantRepoAccess(db, repo.fullName, String(githubUserId));
                     successCount++;
-                    await updateSyncProgress(sessionId, { completedRepos: successCount + errorCount });
+                    await reportProgress({ completedRepos: successCount + errorCount });
                 } catch (repoError: unknown) {
                     const message = repoError instanceof Error ? repoError.message : 'Unknown error';
                     logger.warn(`Error syncing metadata for ${repo.name}:`, message);
                     errorCount++;
                     failedRepos.push(repo);
-                    await updateSyncProgress(sessionId, { completedRepos: successCount + errorCount });
+                    await reportProgress({ completedRepos: successCount + errorCount });
                 }
             }
 
             // 2. DETAILED HEALTH SYNC (Second Pass - Background)
             // This fills in the health scores, issues, PRs, etc. slowly to avoid rate limits
             logger.info('Starting Phase 2: Detailed Health Sync (Background)');
-            await updateSyncProgress(sessionId, { phase: 'health', currentRepo: 'Starting...' });
+            await reportProgress({ phase: 'health', currentRepo: 'Starting...' });
 
             // Helper to sync details with delay and exponential backoff retry
             const syncDetailsWithDelay = async (repoMeta: RepoMetadata, client: GitHubClient, isFirstRepo: boolean) => {
                 let lastError: Error | null = null;
                 for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
                     try {
-                        await updateSyncProgress(sessionId, { currentRepo: repoMeta.fullName });
+                        await reportProgress({ currentRepo: repoMeta.fullName });
                         await syncRepo(repoMeta, client, db);
                         logger.info(`✓ Detailed sync completed for ${repoMeta.name}${attempt > 0 ? ` (attempt ${attempt + 1})` : ''}`);
                         
@@ -332,8 +338,13 @@ export async function POST(request: Request): Promise<NextResponse> {
                 db`UPDATE users SET last_sync_at = ${syncStartTime} WHERE id = ${userId}`,
             ]);
             
-            await updateSyncProgress(sessionId, { phase: 'complete', currentRepo: 'Complete' });
-        })().catch(error => logger.error('Background sync failed:', error));
+            await reportProgress({ phase: 'complete', currentRepo: 'Complete' });
+        })().catch(async (error) => {
+            logger.error('Background sync failed:', error);
+            // Tell the polling client the sync is over instead of leaving it on 'metadata'/'health'.
+            await updateSyncProgress(sessionId, { phase: 'error', currentRepo: 'Sync failed' })
+                .catch((e: unknown) => logger.warn('Could not record sync failure:', e instanceof Error ? e.message : e));
+        });
 
         // Return immediately to avoid timeout
         return NextResponse.json({

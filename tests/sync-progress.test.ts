@@ -87,7 +87,7 @@ test('getProgressPercentage handles fractional percentages with rounding', () =>
 test('getSyncProgress returns undefined when not found', async () => {
   mockQuery.mockResolvedValueOnce([]);
 
-  const result = await getSyncProgress('nonexistent');
+  const result = await getSyncProgress('nonexistent', 'user-1');
 
   expect(result).toBeUndefined();
 });
@@ -110,7 +110,7 @@ test('getSyncProgress returns progress when found', async () => {
     return Promise.resolve([]);
   });
 
-  const result = await getSyncProgress('test-1');
+  const result = await getSyncProgress('test-1', 'user-1');
 
   expect(result).toEqual({
     sessionId: 'test-1',
@@ -144,7 +144,7 @@ test('getSyncProgress handles all phases correctly', async () => {
       return Promise.resolve([]);
     });
 
-    const result = await getSyncProgress('test-1');
+    const result = await getSyncProgress('test-1', 'user-1');
     expect(result?.phase).toBe(phase);
   }
 });
@@ -152,53 +152,81 @@ test('getSyncProgress handles all phases correctly', async () => {
 test('deleteSyncProgress deletes record', async () => {
   mockQuery.mockResolvedValueOnce([]);
 
-  await deleteSyncProgress('test-1');
+  await deleteSyncProgress('test-1', 'user-1');
 
   expect(mockQuery).toHaveBeenCalledWith(
-    expect.stringContaining('DELETE FROM sync_progress'),
-    expect.arrayContaining(['test-1'])
+    expect.stringContaining('AND github_user_id ='),
+    expect.arrayContaining(['test-1', 'user-1'])
   );
 });
 
 test('updateSyncProgress updates completedRepos', async () => {
-  mockQuery.mockResolvedValueOnce([]);
+  mockQuery.mockResolvedValue([]);
 
   await updateSyncProgress('test-1', { completedRepos: 7 });
 
+  expect(mockQuery).toHaveBeenCalledTimes(1);
   expect(mockQuery).toHaveBeenCalledWith(
-    expect.stringContaining('UPDATE sync_progress SET completed_repos = 7, updated_at = NOW() WHERE session_id = test-1'),
-    expect.arrayContaining([])
+    expect.stringContaining('UPDATE sync_progress SET'),
+    expect.arrayContaining([7, 'test-1'])
   );
 });
 
 test('updateSyncProgress updates currentRepo', async () => {
-  mockQuery.mockResolvedValueOnce([]);
+  mockQuery.mockResolvedValue([]);
 
   await updateSyncProgress('test-1', { currentRepo: 'owner/repo-name' });
 
+  expect(mockQuery).toHaveBeenCalledTimes(1);
   expect(mockQuery).toHaveBeenCalledWith(
-    expect.stringContaining('UPDATE sync_progress SET current_repo = owner/repo-name, updated_at = NOW() WHERE session_id = test-1'),
-    expect.arrayContaining([])
+    expect.stringContaining('UPDATE sync_progress SET'),
+    expect.arrayContaining(['owner/repo-name', 'test-1'])
   );
 });
 
 test('updateSyncProgress updates phase', async () => {
-  mockQuery.mockResolvedValueOnce([]);
+  mockQuery.mockResolvedValue([]);
 
   await updateSyncProgress('test-1', { phase: 'health' });
 
+  expect(mockQuery).toHaveBeenCalledTimes(1);
   expect(mockQuery).toHaveBeenCalledWith(
-    expect.stringContaining('UPDATE sync_progress SET phase = health, updated_at = NOW() WHERE session_id = test-1'),
-    expect.arrayContaining([])
+    expect.stringContaining('UPDATE sync_progress SET'),
+    expect.arrayContaining(['health', 'test-1'])
   );
 });
 
-test('updateSyncProgress updates multiple fields with separate queries', async () => {
+test('updateSyncProgress applies multiple fields in one atomic statement', async () => {
   mockQuery.mockResolvedValue([]);
 
   await updateSyncProgress('test-1', { completedRepos: 5, currentRepo: 'repo-1', phase: 'health' });
 
-  expect(mockQuery).toHaveBeenCalledTimes(3);
+  expect(mockQuery).toHaveBeenCalledTimes(1);
+  expect(mockQuery).toHaveBeenCalledWith(
+    expect.stringContaining('COALESCE'),
+    expect.arrayContaining([5, 'repo-1', 'health', 'test-1'])
+  );
+});
+
+test('getSyncProgress is scoped to the owning GitHub user', async () => {
+  mockQuery.mockResolvedValue([]);
+
+  const result = await getSyncProgress('test-1', 'someone-else');
+
+  expect(result).toBeUndefined();
+  expect(mockQuery).toHaveBeenCalledWith(
+    expect.stringContaining('AND github_user_id ='),
+    expect.arrayContaining(['test-1', 'someone-else'])
+  );
+});
+
+test('createSyncProgress reaps abandoned sessions before inserting', async () => {
+  mockQuery.mockResolvedValue([]);
+
+  await createSyncProgress('test-1', 'user-1', 3);
+
+  expect(mockQuery.mock.calls[0][0]).toContain('DELETE FROM sync_progress WHERE updated_at <');
+  expect(mockQuery.mock.calls[1][0]).toContain('INSERT INTO sync_progress');
 });
 
 test('updateSyncProgress does nothing with empty updates', async () => {
@@ -227,7 +255,7 @@ test('getProgressWithPercentage adds percentage', async () => {
     return Promise.resolve([]);
   });
 
-  const result = await getProgressWithPercentage('test-1');
+  const result = await getProgressWithPercentage('test-1', 'user-1');
 
   expect(result).toEqual({
     sessionId: 'test-1',
@@ -250,7 +278,7 @@ test('getProgressWithPercentage returns undefined when not found', async () => {
     return Promise.resolve([]);
   });
 
-  const result = await getProgressWithPercentage('nonexistent');
+  const result = await getProgressWithPercentage('nonexistent', 'user-1');
 
   expect(result).toBeUndefined();
 });

@@ -118,16 +118,17 @@ export default function Dashboard() {
           // Poll for progress
           pollSyncProgress(data.sessionId);
         }
+        // Refresh the rate-limit indicator right away; don't make it wait on
+        // (or depend on) the repo list reload below.
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
+        }
         await refetch();
         // Re-fetch details for expanded repos in the background — don't clear first to avoid flash
         const expanded = Array.from(expandedRepos);
         expanded.forEach(name => fetchRepoDetails(name, true));
         setToastMessage(data.message || 'Sync started successfully!');
 
-        // Trigger rate limit refresh after sync starts
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
-        }
       } else {
         const errorData = await res.json();
         setToastMessage(`Sync failed: ${errorData.error || 'Unknown error'}`);
