@@ -4,9 +4,8 @@ import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileText, FlaskConical, Shield, ShieldAlert, Clock } from 'lucide-react';
 import { Repo, RepoDetails } from '@/types/repo';
-import { detectRepoType, RepoType } from '@/lib/repo-type';
-import { calculateDocHealth } from '@/lib/doc-health';
 import { calculateHealthScore } from '@/lib/health-score';
+import { buildHealthScoreInputs } from '@/lib/health-score-inputs';
 import { getHealthProfile, type HealthProfileId } from '@/lib/health-profiles';
 
 interface HealthBreakdownProps {
@@ -21,8 +20,31 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const popupRef = React.useRef<HTMLDivElement>(null);
+  const selectRef = React.useRef<HTMLSelectElement>(null);
+  const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Set when Escape hands focus back to the button, so that focus doesn't reopen it.
+  const suppressFocusOpen = React.useRef(false);
+
+  const cancelClose = (): void => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+
+  // Close after a short grace period so the pointer can cross the gap from
+  // the grade button into the popup (and reach the profile selector); entering
+  // or focusing the popup cancels it.
+  const scheduleClose = (): void => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setShowPopup(false), 150);
+  };
+
+  React.useEffect(() => cancelClose, []);
 
   const handleMouseEnter = (): void => {
+    cancelClose();
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
     const popupWidth = Math.min(400, window.innerWidth - 32);
@@ -40,8 +62,11 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
     setShowPopup(true);
   };
 
-  const handleMouseLeave = (): void => {
-    setShowPopup(false);
+  // Keep the popup open while focus moves between the button and the popup.
+  const handleBlur = (e: React.FocusEvent): void => {
+    const next = e.relatedTarget as Node | null;
+    if (next && (popupRef.current?.contains(next) || buttonRef.current?.contains(next))) return;
+    scheduleClose();
   };
 
   const [now] = useState(() => Date.now());
@@ -49,53 +74,10 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
   const profileId: HealthProfileId = repo.health_profile || 'production';
   const profile = getHealthProfile(profileId);
 
-  const scores = useMemo(() => {
-    const calcRepoType = repo.repo_type
-      ? (repo.repo_type as RepoType)
-      : detectRepoType(repo.name, repo.description, repo.language, repo.topics).type;
-
-    const docHealthCalc = calculateDocHealth(details.docStatuses, calcRepoType);
-    const bpHealthy = details.bestPractices.filter((bp) => bp.status === 'healthy').length;
-    const csHealthy = details.communityStandards.filter((cs) => cs.status === 'healthy').length;
-    const hasTests = details.bestPractices.some(
-      (bp) => bp.practice_type === 'testing_framework' && bp.status === 'healthy'
-    );
-    const hasCI = repo.ci_status !== undefined && repo.ci_status !== null && repo.ci_status !== 'unknown';
-    const ciPassing = repo.ci_status === 'passing'
-      ? true
-      : repo.ci_status === 'failing'
-        ? false
-        : undefined;
-    const daysSinceCommit = repo.last_commit_date
-      ? Math.floor((now - new Date(repo.last_commit_date).getTime()) / (1000 * 60 * 60 * 24))
-      : 365;
-
-    return calculateHealthScore({
-      healthProfile: profileId,
-      docHealth: docHealthCalc.score,
-      hasTests,
-      codeCoverage: repo.coverage_score,
-      bestPracticesCount: details.bestPractices.length,
-      bestPracticesHealthy: bpHealthy,
-      communityStandardsCount: details.communityStandards.length,
-      communityStandardsHealthy: csHealthy,
-      hasCI,
-      ciPassing,
-      lastCommitDays: daysSinceCommit,
-      openIssuesCount: repo.open_issues_count || 0,
-      openPRsCount: repo.open_prs || 0,
-      vulnCriticalCount: repo.vuln_critical_count || 0,
-      vulnHighCount: repo.vuln_high_count || 0,
-      codeScanningAlertCount: repo.code_scanning_alert_count || 0,
-      secretScanningAlertCount: repo.secret_scanning_alert_count || 0,
-      hasSecurityPolicy: repo.has_security_policy || false,
-      hasSecurityAdvisories: repo.has_security_advisories || false,
-      privateVulnerabilityReportingEnabled: repo.private_vuln_reporting_enabled || false,
-      dependabotAlertsEnabled: repo.dependabot_alerts_enabled || false,
-      codeScanningEnabled: repo.code_scanning_enabled || false,
-      secretScanningEnabled: repo.secret_scanning_enabled || false,
-    });
-  }, [repo, details, now, profileId]);
+  const scores = useMemo(
+    () => calculateHealthScore(buildHealthScoreInputs({ ...repo, health_profile: profileId }, details, now)),
+    [repo, details, now, profileId]
+  );
 
   const changeProfile = async (nextProfile: HealthProfileId): Promise<void> => {
     if (nextProfile === profileId || updatingProfile) return;
@@ -151,9 +133,15 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
         type="button"
         ref={buttonRef}
         onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onFocus={handleMouseEnter}
-        onBlur={handleMouseLeave}
+        onMouseLeave={scheduleClose}
+        onFocus={() => {
+          if (suppressFocusOpen.current) {
+            suppressFocusOpen.current = false;
+            return;
+          }
+          handleMouseEnter();
+        }}
+        onBlur={handleBlur}
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
@@ -163,6 +151,13 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
             e.preventDefault();
             e.stopPropagation();
             onToggle();
+          } else if (e.key === 'Tab' && !e.shiftKey && showPopup) {
+            // The popup is portaled to <body>, outside the natural tab order.
+            e.preventDefault();
+            selectRef.current?.focus();
+          } else if (e.key === 'Escape') {
+            cancelClose();
+            setShowPopup(false);
           }
         }}
         className={`text-lg font-bold ${health.color} cursor-pointer hover:opacity-80 transition-opacity`}
@@ -176,8 +171,19 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
           id={`health-popup-${repo.name}`}
           role="dialog"
           aria-label="Health breakdown"
-          onMouseEnter={() => setShowPopup(true)}
-          onMouseLeave={() => setShowPopup(false)}
+          ref={popupRef}
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+          onFocus={cancelClose}
+          onBlur={handleBlur}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              cancelClose();
+              setShowPopup(false);
+              suppressFocusOpen.current = true;
+              buttonRef.current?.focus();
+            }
+          }}
           className="fixed -translate-x-1/2 w-[min(400px,calc(100vw-32px))] bg-slate-800 border border-slate-700 rounded-lg shadow-2xl p-4"
           style={{
             top: `${position.top}px`,
@@ -191,6 +197,7 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
               <p className="text-[10px] text-slate-500 mt-0.5">{profile.description}</p>
             </div>
             <select
+              ref={selectRef}
               value={profileId}
               disabled={updatingProfile}
               onChange={(e) => void changeProfile(e.target.value as HealthProfileId)}

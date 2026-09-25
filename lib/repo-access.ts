@@ -56,10 +56,25 @@ export async function canAccessRepo(
 ): Promise<boolean> {
     if (isDefaultRepo(repo.full_name)) return true;
     if (repo.visibility_verified && !repo.private_repo) return true;
+    return hasRepoGrant(db, repo.id, githubUserId);
+}
+
+/**
+ * Returns true only if a repo_access row confirms `githubUserId`'s own token
+ * has resolved this repo. Unlike canAccessRepo there is no public/default
+ * shortcut, so this is the check for routes that CHANGE a repo's shared row:
+ * any signed-in user may read a public repo, but only someone who synced or
+ * added it may rewrite its settings.
+ */
+export async function hasRepoGrant(
+    db: RepoAccessDb,
+    repoId: string,
+    githubUserId: string | undefined
+): Promise<boolean> {
     if (!githubUserId) return false;
 
     const rows = await db`
-        SELECT 1 FROM repo_access WHERE repo_id = ${repo.id} AND github_user_id = ${githubUserId} LIMIT 1
+        SELECT 1 FROM repo_access WHERE repo_id = ${repoId} AND github_user_id = ${githubUserId} LIMIT 1
     `;
     return rows.length > 0;
 }

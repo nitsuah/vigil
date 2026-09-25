@@ -235,7 +235,7 @@ export function RepoTableRow({
               </a>
             )}
             {/* Open Issues and Vulnerability Alerts */}
-            {!repo.is_hidden && repo.open_issues_count !== undefined && repo.open_issues_count > 0 && (
+            {!repo.is_hidden && (repo.open_issues_count ?? 0) > 0 && (
               <a
                 href={`${repo.url}/issues`}
                 target="_blank"

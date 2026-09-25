@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS repos (
   avg_pr_merge_time_hours NUMERIC,
   contributors_last_checked TIMESTAMP WITH TIME ZONE,
   open_issues_count INTEGER DEFAULT 0,
+  stale_issues_count INTEGER,
   has_security_policy BOOLEAN DEFAULT FALSE,
   has_security_advisories BOOLEAN DEFAULT FALSE,
   private_vuln_reporting_enabled BOOLEAN DEFAULT FALSE,

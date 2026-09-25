@@ -4,10 +4,11 @@ import { parseRoadmap, diffRoadmapItems } from './parsers/roadmap';
 import { parseTasks } from './parsers/tasks';
 import { parseMetrics } from './parsers/metrics';
 import { parseFeatures } from './parsers/features';
-import { calculateDocHealthState, hashContent, calculateDocHealth } from './doc-health';
+import { calculateDocHealthState, hashContent } from './doc-health';
 import { checkBestPractices } from './best-practices';
 import { checkCommunityStandards } from './community-standards';
 import { calculateHealthScore } from './health-score';
+import { buildHealthScoreInputs, type RepoHealthFields, type RepoHealthRows } from './health-score-inputs';
 import { isTestFile, parseTestFile } from './parsers/test-cases';
 import { aggregateCodeDensity } from './parsers/code-density';
 import { ensureSchema } from './db';
@@ -195,16 +196,15 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         console.warn(`Could not get PR stats for ${repo.name}:`, (e as Error).message);
     }
 
-    // Fetch issues
-    let openIssuesCountDetailed = 0;
-    let staleIssuesCount = 0;
-    let issueLabels: string[] = [];
+    // Fetch issues. Both counts stay NULL if the scan fails, so the health score
+    // falls back to open_issues instead of treating the repo as issue-free.
+    let openIssuesCountDetailed: number | null = null;
+    let staleIssuesCount: number | null = null;
     try {
         const issues = await github.getIssues(repo.name, owner, 'open', 100);
         openIssuesCountDetailed = issues.length;
         const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
         staleIssuesCount = issues.filter((issue) => new Date(issue.updatedAt).getTime() < ninetyDaysAgo).length;
-        issueLabels = [...new Set(issues.flatMap((issue) => issue.labels))];
     } catch (e) {
         console.warn(`Could not get issues for ${repo.name}:`, (e as Error).message);
     }
@@ -244,7 +244,8 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             contributor_count, commit_frequency, bus_factor, avg_pr_merge_time_hours, contributors_last_checked,
             has_security_policy, has_security_advisories, private_vuln_reporting_enabled,
             dependabot_alerts_enabled, dependabot_alert_count, code_scanning_enabled, code_scanning_alert_count,
-            secret_scanning_enabled, secret_scanning_alert_count, security_last_checked, private_repo, visibility_verified
+            secret_scanning_enabled, secret_scanning_alert_count, security_last_checked, private_repo, visibility_verified,
+            open_issues_count, stale_issues_count
         )
         VALUES (
             ${repo.name}, ${repo.fullName}, ${repo.description}, ${repo.language}, ${repo.stars},
@@ -255,7 +256,8 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             ${contributorCount}, ${finiteOrNull(commitFrequency)}, ${busFactor}, ${finiteOrNull(avgPrMergeTimeHours)}, NOW(),
             ${hasSecurityPolicy}, ${hasSecurityAdvisories}, ${privateVulnReportingEnabled},
             ${dependabotAlertsEnabled}, ${dependabotAlertCount}, ${codeScanningEnabled}, ${codeScanningAlertCount},
-            ${secretScanningEnabled}, ${secretScanningAlertCount}, NOW(), ${repo.isPrivate}, TRUE
+            ${secretScanningEnabled}, ${secretScanningAlertCount}, NOW(), ${repo.isPrivate}, TRUE,
+            ${openIssuesCountDetailed}, ${staleIssuesCount}
         )
         ON CONFLICT (full_name) DO UPDATE SET
           description = EXCLUDED.description,
@@ -302,7 +304,9 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
           code_scanning_alert_count = EXCLUDED.code_scanning_alert_count,
           secret_scanning_enabled = EXCLUDED.secret_scanning_enabled,
           secret_scanning_alert_count = EXCLUDED.secret_scanning_alert_count,
-          security_last_checked = EXCLUDED.security_last_checked
+          security_last_checked = EXCLUDED.security_last_checked,
+          open_issues_count = EXCLUDED.open_issues_count,
+          stale_issues_count = EXCLUDED.stale_issues_count
         RETURNING id;
     `;
     const repoId = repoRows[0].id;
@@ -635,64 +639,25 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
 
     // Calculate and update health score
     try {
-        // Fetch all data needed for health calculation
-        const docStatuses = await db`SELECT * FROM doc_status WHERE repo_id = ${repoId}`;
-        const bestPractices = await db`SELECT * FROM best_practices WHERE repo_id = ${repoId}`;
-        const communityStandards = await db`SELECT * FROM community_standards WHERE repo_id = ${repoId}`;
-        const metrics = await db`SELECT * FROM metrics WHERE repo_id = ${repoId}`;
+        // Score from the persisted rows (the upsert above wrote every repo
+        // column the score reads) so a later profile change or dashboard
+        // recompute lands on the same number.
+        const [repoRow] = await db`SELECT * FROM repos WHERE id = ${repoId} LIMIT 1`;
+        const [docStatuses, bestPractices, communityStandards, metrics] = await Promise.all([
+            db`SELECT * FROM doc_status WHERE repo_id = ${repoId}`,
+            db`SELECT * FROM best_practices WHERE repo_id = ${repoId}`,
+            db`SELECT * FROM community_standards WHERE repo_id = ${repoId}`,
+            db`SELECT * FROM metrics WHERE repo_id = ${repoId} ORDER BY timestamp DESC`,
+        ]);
 
-        const docHealth = calculateDocHealth(docStatuses, 'tool');
-
-        const coverage = metrics.find((m: { metric_name: string }) => m.metric_name?.toLowerCase().includes('coverage'));
-        const hasTests = bestPractices.some((bp: { practice_type: string; status: string }) =>
-            bp.practice_type === 'testing_framework' && bp.status === 'healthy'
+        const healthScore = calculateHealthScore(
+            buildHealthScoreInputs(repoRow as RepoHealthFields, {
+                docStatuses,
+                bestPractices,
+                communityStandards,
+                metrics,
+            } as RepoHealthRows)
         );
-        const hasCI = bestPractices.some((bp: { practice_type: string; status: string }) =>
-            bp.practice_type === 'ci_cd' && bp.status === 'healthy'
-        );
-        // ciPassing: true = CI passing, false = CI actively failing, undefined = unknown/no CI
-        // Uses the live GitHub Actions status, not just whether CI files exist.
-        const ciPassing: boolean | undefined =
-            ciStatus === 'passing' ? true :
-            ciStatus === 'failing' ? false :
-            undefined;
-
-        const daysSinceCommit = lastCommitDate
-            ? Math.floor((Date.now() - new Date(lastCommitDate).getTime()) / (1000 * 60 * 60 * 24))
-            : 365;
-
-        const [healthProfileRow] = await db`
-            SELECT health_profile FROM repos WHERE id = ${repoId} LIMIT 1
-        `;
-
-        const healthScore = calculateHealthScore({
-            healthProfile: healthProfileRow?.health_profile,
-            docHealth: docHealth.score,
-            hasTests,
-            codeCoverage: coverage?.value,
-            bestPracticesCount: bestPractices.length,
-            bestPracticesHealthy: bestPractices.filter((bp: { status: string }) => bp.status === 'healthy').length,
-            communityStandardsCount: communityStandards.length,
-            communityStandardsHealthy: communityStandards.filter((cs: { status: string }) => cs.status === 'healthy').length,
-            hasCI,
-            ciPassing,
-            lastCommitDays: daysSinceCommit,
-            openIssuesCount: repo.openIssues,
-            openPRsCount: openPrs,
-            vulnCriticalCount,
-            vulnHighCount,
-            codeScanningAlertCount,
-            secretScanningAlertCount,
-            hasSecurityPolicy,
-            hasSecurityAdvisories,
-            privateVulnerabilityReportingEnabled: privateVulnReportingEnabled,
-            dependabotAlertsEnabled,
-            codeScanningEnabled,
-            secretScanningEnabled,
-            openIssuesCountDetailed,
-            staleIssuesCount,
-            issueLabels,
-        });
 
         await db`
             UPDATE repos 
