@@ -6,6 +6,8 @@ import { FileText, FlaskConical, Shield, ShieldAlert, Clock } from 'lucide-react
 import { Repo, RepoDetails } from '@/types/repo';
 import { detectRepoType, RepoType } from '@/lib/repo-type';
 import { calculateDocHealth } from '@/lib/doc-health';
+import { calculateHealthScore } from '@/lib/health-score';
+import { getHealthProfile, type HealthProfileId } from '@/lib/health-profiles';
 
 interface HealthBreakdownProps {
   repo: Repo;
@@ -17,6 +19,7 @@ interface HealthBreakdownProps {
 export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreakdownProps): React.JSX.Element {
   const [showPopup, setShowPopup] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
 
   const handleMouseEnter = (): void => {
@@ -24,13 +27,11 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
     const rect = buttonRef.current.getBoundingClientRect();
     const popupWidth = Math.min(400, window.innerWidth - 32);
     const idealLeft = rect.left + rect.width / 2;
-    // Clamp so the popup never overflows the viewport edges horizontally
     const clampedLeft = Math.max(
       popupWidth / 2 + 16,
       Math.min(window.innerWidth - popupWidth / 2 - 16, idealLeft)
     );
-    // Place above the trigger when there isn't enough room below
-    const popupHeight = 220;
+    const popupHeight = 290;
     const spaceBelow = window.innerHeight - rect.bottom - 8;
     const top = spaceBelow >= popupHeight
       ? rect.bottom + 8
@@ -38,112 +39,102 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
     setPosition({ top, left: clampedLeft });
     setShowPopup(true);
   };
-  
+
   const handleMouseLeave = (): void => {
     setShowPopup(false);
   };
-  
-  // Use state to capture timestamp once on mount
+
   const [now] = useState(() => Date.now());
-  
-  // Calculate all scores using useMemo
+
+  const profileId: HealthProfileId = repo.health_profile || 'production';
+  const profile = getHealthProfile(profileId);
+
   const scores = useMemo(() => {
-    // Get repo type for calculations (same logic as component level)
-    const calcRepoType = repo.repo_type 
+    const calcRepoType = repo.repo_type
       ? (repo.repo_type as RepoType)
       : detectRepoType(repo.name, repo.description, repo.language, repo.topics).type;
-      
-    // Calculate documentation score using the same logic as sync
-    const docHealthCalc = calculateDocHealth(details.docStatuses, calcRepoType);
-    const docScore = Math.round(docHealthCalc.score);
 
-    // Calculate testing score with 3 components:
-    // 1. Testing framework (25 points)
-    // 2. CI/CD exists (15 points)
-    // 3. CI/CD is passing (20 points)
-    // 4. Coverage (up to 40 points)
-    const hasTestFramework = details.bestPractices.some(
+    const docHealthCalc = calculateDocHealth(details.docStatuses, calcRepoType);
+    const bpHealthy = details.bestPractices.filter((bp) => bp.status === 'healthy').length;
+    const csHealthy = details.communityStandards.filter((cs) => cs.status === 'healthy').length;
+    const hasTests = details.bestPractices.some(
       (bp) => bp.practice_type === 'testing_framework' && bp.status === 'healthy'
     );
-    const hasCICD = repo.ci_status && repo.ci_status !== 'unknown';
-    const cicdPassing = repo.ci_status === 'passing';
-    
-    let testScore = 0;
-    if (hasTestFramework) testScore += 25;
-    if (hasCICD) testScore += 15;
-    if (cicdPassing) testScore += 20;
-    if (repo.coverage_score !== undefined) {
-      testScore += Math.min(repo.coverage_score * 0.4, 40); // Up to 40 points for coverage
-    }
-    testScore = Math.round(testScore);
-
-    // Calculate best practices score (simple percentage, no bonuses for health breakdown display)
-    const bpHealthy = details.bestPractices.filter((bp) => bp.status === 'healthy').length;
-    const bpTotal = details.bestPractices.length;
-    const bpScore = bpTotal > 0 ? Math.round((bpHealthy / bpTotal) * 100) : 0;
-
-    // Calculate community standards score
-    const csHealthy = details.communityStandards.filter((cs) => cs.status === 'healthy').length;
-    const csTotal = details.communityStandards.length;
-    const csScore = csTotal > 0 ? Math.round((csHealthy / csTotal) * 100) : 0;
-
-    // Calculate activity score with penalties
-    const lastCommitDate = repo.last_commit_date;
-    const daysSinceCommit = lastCommitDate
-      ? Math.floor((now - new Date(lastCommitDate).getTime()) / (1000 * 60 * 60 * 24))
+    const hasCI = repo.ci_status !== undefined && repo.ci_status !== null && repo.ci_status !== 'unknown';
+    const ciPassing = repo.ci_status === 'passing'
+      ? true
+      : repo.ci_status === 'failing'
+        ? false
+        : undefined;
+    const daysSinceCommit = repo.last_commit_date
+      ? Math.floor((now - new Date(repo.last_commit_date).getTime()) / (1000 * 60 * 60 * 24))
       : 365;
-    
-    let activityScore = 100;
-    
-    // Deduct points for staleness
-    if (daysSinceCommit > 90) {
-      activityScore -= Math.min((daysSinceCommit - 90) / 3, 40);
+
+    return calculateHealthScore({
+      healthProfile: profileId,
+      docHealth: docHealthCalc.score,
+      hasTests,
+      codeCoverage: repo.coverage_score,
+      bestPracticesCount: details.bestPractices.length,
+      bestPracticesHealthy: bpHealthy,
+      communityStandardsCount: details.communityStandards.length,
+      communityStandardsHealthy: csHealthy,
+      hasCI,
+      ciPassing,
+      lastCommitDays: daysSinceCommit,
+      openIssuesCount: repo.open_issues_count || 0,
+      openPRsCount: repo.open_prs || 0,
+      vulnCriticalCount: repo.vuln_critical_count || 0,
+      vulnHighCount: repo.vuln_high_count || 0,
+      codeScanningAlertCount: repo.code_scanning_alert_count || 0,
+      secretScanningAlertCount: repo.secret_scanning_alert_count || 0,
+      hasSecurityPolicy: repo.has_security_policy || false,
+      hasSecurityAdvisories: repo.has_security_advisories || false,
+      privateVulnerabilityReportingEnabled: repo.private_vuln_reporting_enabled || false,
+      dependabotAlertsEnabled: repo.dependabot_alerts_enabled || false,
+      codeScanningEnabled: repo.code_scanning_enabled || false,
+      secretScanningEnabled: repo.secret_scanning_enabled || false,
+    });
+  }, [repo, details, now, profileId]);
+
+  const changeProfile = async (nextProfile: HealthProfileId): Promise<void> => {
+    if (nextProfile === profileId || updatingProfile) return;
+    try {
+      setUpdatingProfile(true);
+      const response = await fetch(`/api/repos/${encodeURIComponent(repo.name)}/update-health-profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile: nextProfile }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update health profile');
+      }
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to update health profile:', error);
+      setUpdatingProfile(false);
     }
-    
-    // Deduct points for many open issues
-    const openIssues = repo.open_issues_count || 0;
-    if (openIssues > 10) {
-      activityScore -= Math.min((openIssues - 10) * 2, 20);
-    }
-    
-    // Deduct points for stale PRs
-    const openPRs = repo.open_prs || 0;
-    if (openPRs > 5) {
-      activityScore -= Math.min((openPRs - 5) * 3, 20);
-    }
-    
-    activityScore = Math.max(0, Math.round(activityScore));
+  };
 
-    // Determine activity color based on score (green to red scale)
-    let activityColor = 'green';
-    if (activityScore < 40) activityColor = 'red';
-    else if (activityScore < 60) activityColor = 'orange';
-    else if (activityScore < 80) activityColor = 'yellow';
+  const securityColor =
+    scores.security < 40 ? 'red' :
+    scores.security < 60 ? 'orange' :
+    scores.security < 80 ? 'yellow' : 'green';
 
-    // Calculate security score: critical/high Dependabot alerts and open
-    // secret-scanning alerts each reduce the score (secrets weighted heaviest)
-    let securityScore = 100;
-    securityScore -= Math.min((repo.vuln_critical_count || 0) * 15, 60);
-    securityScore -= Math.min((repo.vuln_high_count || 0) * 8, 30);
-    securityScore -= Math.min((repo.secret_scanning_alert_count || 0) * 20, 60);
-    securityScore = Math.max(0, Math.round(securityScore));
+  const activityColor =
+    scores.activity < 40 ? 'red' :
+    scores.activity < 60 ? 'orange' :
+    scores.activity < 80 ? 'yellow' : 'green';
 
-    let securityColor = 'green';
-    if (securityScore < 40) securityColor = 'red';
-    else if (securityScore < 60) securityColor = 'orange';
-    else if (securityScore < 80) securityColor = 'yellow';
+  const scoresForDisplay = [
+    { label: 'Community', score: scores.community, color: 'green', weight: profile.weights.community },
+    { label: 'Best Practices', score: scores.bestPractices, color: 'purple', weight: profile.weights.bestPractices },
+    { label: 'Testing', score: scores.testing, color: 'blue', weight: profile.weights.testing },
+    { label: 'Documentation', score: scores.documentation, color: 'slate', weight: profile.weights.documentation },
+    { label: 'Activity', score: scores.activity, color: activityColor, weight: profile.weights.activity },
+    { label: 'Security', score: scores.security, color: securityColor, weight: profile.weights.security },
+  ];
 
-    return [
-      { label: 'Community', score: csScore, color: 'green', weight: '5%' },
-      { label: 'Best Practices', score: bpScore, color: 'purple', weight: '30%' },
-      { label: 'Testing', score: testScore, color: 'blue', weight: '15%' },
-      { label: 'Documentation', score: docScore, color: 'slate', weight: '15%' },
-      { label: 'Activity', score: activityScore, color: activityColor, weight: '5%' },
-      { label: 'Security', score: securityScore, color: securityColor, weight: '30%' },
-    ];
-  }, [repo, details, now]);
-
-  // Color mapping for proper Tailwind JIT compilation
   const colorMap: Record<string, { text: string; bg: string; hex: string }> = {
     slate: { text: 'text-slate-400', bg: 'bg-slate-500', hex: '#64748b' },
     blue: { text: 'text-blue-400', bg: 'bg-blue-500', hex: '#3b82f6' },
@@ -183,31 +174,54 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
       {showPopup && position && createPortal(
         <div
           id={`health-popup-${repo.name}`}
-          role="tooltip"
-          className="fixed -translate-x-1/2 w-[min(400px,calc(100vw-32px))] bg-slate-800 border border-slate-700 rounded-lg shadow-2xl p-4 pointer-events-none"
+          role="dialog"
+          aria-label="Health breakdown"
+          onMouseEnter={() => setShowPopup(true)}
+          onMouseLeave={() => setShowPopup(false)}
+          className="fixed -translate-x-1/2 w-[min(400px,calc(100vw-32px))] bg-slate-800 border border-slate-700 rounded-lg shadow-2xl p-4"
           style={{
             top: `${position.top}px`,
             left: `${position.left}px`,
             zIndex: 9999,
           }}
         >
-          <h4 className="text-sm font-semibold text-slate-200 mb-3">Health Breakdown</h4>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <h4 className="text-sm font-semibold text-slate-200">Health Breakdown</h4>
+              <p className="text-[10px] text-slate-500 mt-0.5">{profile.description}</p>
+            </div>
+            <select
+              value={profileId}
+              disabled={updatingProfile}
+              onChange={(e) => void changeProfile(e.target.value as HealthProfileId)}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-[10px] text-slate-200"
+              aria-label="Health maturity profile"
+            >
+              <option value="starter">Starter</option>
+              <option value="production">Production</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+          </div>
+
+          <div className="mb-3 flex items-center justify-between text-[10px] text-slate-500">
+            <span>Profile weights</span>
+            <span className="text-slate-400">Security posture {scores.securityPosture}%</span>
+          </div>
+
           <div className="space-y-2.5">
-            {scores.map(({ label, score, color, weight }) => {
+            {scoresForDisplay.map(({ label, score, color, weight }) => {
               const colors = colorMap[color] || colorMap.blue;
-              // Use red for scores below 50%
               const barColor = score < 50 ? '#ef4444' : colors.hex;
-              
-              // Icon mapping for each section
               const iconMap: Record<string, React.ReactNode> = {
-                'Documentation': <FileText className="h-3.5 w-3.5 text-slate-400" />,
-                'Testing': <FlaskConical className="h-3.5 w-3.5 text-blue-400" />,
+                Documentation: <FileText className="h-3.5 w-3.5 text-slate-400" />,
+                Testing: <FlaskConical className="h-3.5 w-3.5 text-blue-400" />,
                 'Best Practices': <Shield className="h-3.5 w-3.5 text-purple-400" />,
-                'Community': <Shield className="h-3.5 w-3.5 text-green-400" />,
-                'Activity': <Clock className="h-3.5 w-3.5 text-green-400" />,
-                'Security': <ShieldAlert className="h-3.5 w-3.5 text-red-400" />,
+                Community: <Shield className="h-3.5 w-3.5 text-green-400" />,
+                Activity: <Clock className="h-3.5 w-3.5 text-green-400" />,
+                Security: <ShieldAlert className="h-3.5 w-3.5 text-red-400" />,
               };
-              
+
               return (
                 <div key={label} className="flex items-center gap-2 text-xs">
                   <div className="flex items-center gap-1.5 w-32 shrink-0">
@@ -215,23 +229,22 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
                     <span className="text-slate-400 truncate">{label}</span>
                   </div>
                   <div className="flex-1 relative bg-slate-700 rounded-full h-1.5 overflow-visible">
-                    {/* 50% threshold indicator */}
-                    <div 
+                    <div
                       className="absolute top-0 bottom-0 w-px bg-yellow-400/50"
                       style={{ left: '50%' }}
                       title="50% threshold"
                     />
                     <div
                       className="h-full transition-all rounded-full"
-                      style={{ 
+                      style={{
                         width: `${score}%`,
-                        backgroundColor: barColor
+                        backgroundColor: barColor,
                       }}
                     />
                   </div>
                   <div className="flex items-center gap-1.5 w-16 shrink-0 justify-end">
                     <span className={`${score < 50 ? 'text-red-400' : colors.text} font-medium tabular-nums`}>{score}%</span>
-                    <span className="text-slate-500 text-[10px]">({weight})</span>
+                    <span className="text-slate-500 text-[10px]">({weight}%)</span>
                   </div>
                 </div>
               );
