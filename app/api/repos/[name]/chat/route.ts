@@ -153,8 +153,8 @@ export async function POST(
         // can never be silently absent. session.user.email can be -- GitHub
         // omits it when the account has no public email and the
         // /user/emails fallback also fails -- which would otherwise let such
-        // a session skip metering entirely (CWE-770). session.userId (the
-        // JWT sub, GitHub's numeric user id) is always set once signed in.
+        // a session skip metering entirely (CWE-770). session.userId (GitHub's
+        // numeric user id, lib/auth-session.ts) is set once signed in.
         const meterId = session.user?.email ?? session.userId;
         // Both are absent only for a malformed/corrupted session -- fail
         // closed rather than silently letting it ride the shared key
