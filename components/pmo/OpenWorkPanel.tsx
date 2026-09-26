@@ -41,6 +41,8 @@ export function OpenWorkPanel({ refreshKey }: { refreshKey?: number }) {
     const load = useCallback(async () => {
         setLoading(true);
         setError(null);
+        // Every chip off: clear rows now, so a failed summary request can't leave stale ones.
+        if (priorities.size === 0) setView(null);
         try {
             // Unfiltered counts for the chips and repo options.
             setSummary(await fetchRollup({ limit: '1' }));

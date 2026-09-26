@@ -81,6 +81,15 @@ describe('parseOpenTaskFilters', () => {
         expect(() => parseOpenTaskFilters({ priority: { P0: true } })).toThrow(/priority/);
     });
 
+    it('rejects wrong-type status/owner/limit instead of dropping or coercing them', () => {
+        expect(() => parseOpenTaskFilters({ status: ['todo'] })).toThrow(/status/);
+        expect(() => parseOpenTaskFilters({ owner: 42 })).toThrow(/owner/);
+        expect(() => parseOpenTaskFilters({ limit: [] })).toThrow(/limit/);
+        expect(() => parseOpenTaskFilters({ limit: true })).toThrow(/limit/);
+        // PMO query params arrive as strings; empty/null mean omitted.
+        expect(parseOpenTaskFilters({ limit: '25', status: '', owner: null })).toMatchObject({ limit: 25, status: undefined, owner: undefined });
+    });
+
     it('keeps same-named repos under different owners apart in by_repo', () => {
         const r = rollupOpenTasks([
             task({ repo: 'site', full_name: 'a/site' }),

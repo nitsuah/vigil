@@ -144,19 +144,29 @@ export function parseOpenTaskFilters(input: Record<string, unknown>): OpenTaskFi
     const badPriority = priorities.find((p) => p !== 'none' && !TASK_PRIORITIES.includes(p as TaskPriority));
     if (badPriority) throw new Error(`Unknown priority "${badPriority}" — use P0, P1, P2, P3, or none`);
 
-    const status = typeof input.status === 'string' && input.status ? input.status : undefined;
+    // Omitted = undefined / null / ''. Anything else of the wrong type is an error,
+    // never silently dropped (which would widen the result).
+    const omitted = (v: unknown) => v === undefined || v === null || v === '';
+    for (const key of ['status', 'owner'] as const) {
+        if (!omitted(input[key]) && typeof input[key] !== 'string') throw new Error(`"${key}" must be a string`);
+    }
+    if (!omitted(input.limit) && typeof input.limit !== 'number' && typeof input.limit !== 'string') {
+        throw new Error('"limit" must be a number');
+    }
+
+    const status = omitted(input.status) ? undefined : (input.status as string);
     if (status && status !== 'todo' && status !== 'in-progress') {
         throw new Error(`Unknown status "${status}" — use todo or in-progress (done tasks are not open)`);
     }
 
-    const limitNum = input.limit === undefined || input.limit === null || input.limit === '' ? undefined : Number(input.limit);
+    const limitNum = omitted(input.limit) ? undefined : Number(input.limit);
     if (limitNum !== undefined && !Number.isFinite(limitNum)) throw new Error('"limit" must be a number');
 
     return {
         repos: list(input.repos ?? input.repo, 'repos'),
         priorities: priorities as OpenTaskFilters['priorities'],
         status: status as OpenTaskFilters['status'],
-        owner: typeof input.owner === 'string' ? input.owner : undefined,
+        owner: omitted(input.owner) ? undefined : (input.owner as string),
         limit: limitNum,
     };
 }
