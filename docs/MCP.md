@@ -9,7 +9,8 @@ Connect Claude Code (or any MCP client) to vigil so an agent session can ask
 - **Transport:** MCP Streamable HTTP, JSON responses only (no SSE stream). Protocol versions 2024-11-05, 2025-03-26, 2025-06-18.
 - **Auth:** `Authorization: Bearer <MCP_API_KEY>`, one shared portfolio-admin key.
 - **Rate limit:** 60 requests/minute per IP.
-- **Discovery:** `GET /api/mcp` returns the tool list. Unauthenticated browser requests are redirected to `/login` like the rest of the app, so send the bearer header.
+- **Discovery:** `GET /api/mcp` returns the tool list. Send the bearer header: unauthenticated browser requests are redirected to `/login` like the rest of the app, and other clients get a JSON `401`.
+- **Errors:** missing or invalid tool arguments return JSON-RPC `-32602`. A call that runs but fails (e.g. an unknown repo) returns a result with `isError: true` and `{"error": "..."}` in its text.
 
 ## 1. Create the key
 
@@ -27,6 +28,12 @@ User scope makes it available in every repo:
 
 ```bash
 claude mcp add --transport http --scope user vigil https://ghoverseer.netlify.app/api/mcp --header "Authorization: Bearer $VIGIL_MCP_KEY"
+```
+
+In PowerShell, `$VIGIL_MCP_KEY` is an unset PowerShell variable, which silently registers an empty `Bearer` header. Use `$env:`:
+
+```powershell
+claude mcp add --transport http --scope user vigil https://ghoverseer.netlify.app/api/mcp --header "Authorization: Bearer $env:VIGIL_MCP_KEY"
 ```
 
 Check it:
@@ -91,10 +98,11 @@ The rollup covers every **non-hidden** repo in vigil. The canonical portfolio li
 
 ## Troubleshooting
 
-| Symptom                                                 | Cause                                                              |
-| ------------------------------------------------------- | ------------------------------------------------------------------ |
-| `307` to `/login`                                       | No `Authorization: Bearer …` header was sent.                      |
-| `401` / `-32001`                                        | Wrong key, or `MCP_API_KEY` is unset in that environment.          |
-| `-32029`                                                | Rate limited (60/min/IP).                                          |
-| Tool call returns `-32603 Error connecting to database` | The server's `DATABASE_URL` is unreachable. Common locally.        |
-| Every task has `priority: null`                         | The repo hasn't been synced since this parser shipped. Run a sync. |
+| Symptom                                                 | Cause                                                                                                                |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `401` / `-32001`, key "missing or empty"                | No key sent. `claude mcp get vigil` shows a bare `Bearer` header: re-add it (PowerShell needs `$env:VIGIL_MCP_KEY`). |
+| `401` / `-32001`                                        | Wrong key, or `MCP_API_KEY` is unset in that environment.                                                            |
+| `-32602`                                                | A required tool argument is missing or invalid (e.g. `name`, not `repo`).                                            |
+| `-32029`                                                | Rate limited (60/min/IP).                                                                                            |
+| Tool call returns `-32603 Error connecting to database` | The server's `DATABASE_URL` is unreachable. Common locally.                                                          |
+| Every task has `priority: null`                         | The repo hasn't been synced since this parser shipped. Run a sync.                                                   |
