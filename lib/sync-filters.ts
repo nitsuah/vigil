@@ -1,5 +1,6 @@
 import { RepoType, detectRepoType } from '@/lib/repo-type';
 import type { RepoMetadata } from '@/lib/github';
+import { DEFAULT_REPOS } from '@/lib/default-repos';
 
 /** Shared fork-filter contract used by the dashboard hook and the sync route. */
 export type ForkFilter = 'all' | 'no-forks' | 'forks-only';
@@ -41,4 +42,18 @@ export function filterReposForSync(
     if (filters.filterFork === 'forks-only' && !repo.isFork) return false;
     return true;
   });
+}
+/**
+ * Default repos that still need their own sync pass: the ones not already in
+ * the user's list (compared case-insensitively on owner/repo). A default repo
+ * the user owns is synced once, with the user's list, not twice.
+ */
+type DefaultRepo = (typeof DEFAULT_REPOS)[number];
+
+export function defaultReposNotIn(
+    reposToSync: Array<{ fullName: string }>,
+    defaults: readonly DefaultRepo[] = DEFAULT_REPOS,
+): DefaultRepo[] {
+    const have = new Set(reposToSync.map((r) => r.fullName.toLowerCase()));
+    return defaults.filter((d) => !have.has(d.fullName.toLowerCase()));
 }

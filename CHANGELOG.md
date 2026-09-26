@@ -9,12 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sync progress accuracy
+
+- **Fixed:** "Sync All" counted the default repos (vigil, nitsuah-io) twice when the user already owns them. The total overshot (13 counted, 11 synced), so the bar finished at 85%, and both repos got a full second detailed sync. Defaults already in the user's list are now synced once (`defaultReposNotIn` in `lib/sync-filters.ts`).
+- **Fixed:** the progress count only advanced during the seconds-long metadata phase, then sat still through the minutes-long health phase, so the bar looked frozen. `completedRepos` now counts repos whose detailed sync has finished (success or final failure).
+
+### Dashboard fixes
+
+- **Fixed:** one grade scale everywhere. The dashboard (`lib/dashboard-utils.ts`) graded 60–69 as "C" and 80–89 as "A", while MCP and `/api/context` (`lib/health-grade.ts`) graded 60–69 as "D". The dashboard now takes its letter from `healthGrade()` (A+ ≥ 95, A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60, F), and the grade distribution gains an `A+` bucket. A test asserts the two letters agree for every score from 0 to 100.
+- **Fixed:** the header was wider than the viewport, adding a horizontal scrollbar. The collapsed status pills were invisible but still laid out past the right edge; they now collapse to zero width. Hovering the avatar no longer changes anything. Sign-out moved into the expanded profile panel (click the avatar), where it no longer overlaps the avatar or floats detached below the header.
+- **Fixed:** a repo whose TASKS.md exists but has no checklist items (e.g. ats-fill) lost its Tasks card entirely, as if the file were missing. It now shows an explicit empty state.
+- **Tests:** route test for `update-health-profile` (write grant keyed by `session.userId`, 404 without a grant, 400 on an unknown profile); Tasks empty states; grade-scale parity.
+
+### Session identity fix
+
+- **Fixed:** `session.userId` was a random per-login UUID, not the GitHub numeric id. Without a database adapter, Auth.js v5 sets `token.sub` to a UUID and ignores `profile().id`. So `/api/sync-progress` always 404'd (frozen "Sync All" bar), repo-access checks never matched the grants that Sync All writes under the GitHub id (private repos hidden from the dashboard, PMO, `/api/context` and chat), and single-repo sync and add wrote grants under a throwaway UUID. The GitHub id now comes from `account.providerAccountId` at sign-in (`lib/auth-session.ts`). Sessions from before this fix have no `userId` until the next sign-in.
+- **Fixed:** the sync progress poll stopped silently on any non-OK response. It now retries through transient failures and, after ten failures in a row, drops the bar with a "still running in the background" toast.
+
+### Visual docs signal + CI recipe
+
+- **Added:** `visual_docs` best practice (informational, not scored): diagrams + screenshots detected from the repo tree, healthy only when the README embeds them; Best Practices panel shows a "(not scored)" tag and a link to the recipe when missing/dormant. `INFORMATIONAL_PRACTICES` keeps it out of the health score so no repo's score moves.
+- **Added:** reusable recipe — `templates/.github/workflows/visual-docs.yml`, `scripts/visual-docs-readme.mjs` (rewrites the README's `<!-- visual-docs:start/end -->` block, `--check` for CI), [docs/VISUAL_DOCS.md](./docs/VISUAL_DOCS.md).
+- **Added:** dogfood — `.github/workflows/visual-docs.yml` regenerates `docs/screenshots/*.png` from a DB-free Playwright spec (`e2e/visual-docs`, frozen clock) and `docs/diagrams/architecture.svg` from Mermaid, then opens a PR on `bot/visual-docs`; README gains a "Screenshots & diagrams" section.
+
+### Cross-repo task rollup + Claude Code MCP connection
+
+- **Added:** `get_open_tasks` MCP tool (8th tool) — open TASKS.md work across every tracked repo, sorted P0 first, filterable by repos/priority/status/owner, with counts by priority and repo.
+- **Added:** `open_work` block (P0/P1 slice + counts) in `GET /api/context`; "Open work" panel on the PMO page backed by session-scoped `GET /api/pmo/tasks`.
+- **Added:** TASKS parser captures `priority` (sub-bullet > inline tag > heading) and `owner`; new nullable `tasks.priority` / `tasks.owner` columns (additive migration). Unchecked items under `## In Progress` now count as in-progress.
+- **Fixed:** the MCP endpoint was unreachable from any agent in production — `proxy.ts` redirected every session-less request, bearer or not, to `/login`. Bearer requests now pass through to `/api/mcp` and `/api/context`, which validate the key themselves.
+- **Fixed:** MCP Streamable HTTP compatibility for `claude mcp add --transport http`: notifications return 202, `ping` is answered, `initialize` negotiates 2024-11-05 → 2025-06-18, and SSE `GET` probes get 405.
+- **Docs:** [docs/MCP.md](./docs/MCP.md) — key generation, `claude mcp add` / `.mcp.json` setup, tool guide, TASKS.md priority/owner conventions.
+
 ### Health scoring profiles
 
 - **Added:** Repository health maturity profiles: Starter, Production, and Enterprise, with persisted per-repo selection and profile-specific component weights.
 - **Changed:** Security scoring now measures both security-control coverage and open findings, so zero reported alerts no longer implies a fully enabled security posture.
 - **Added:** Health breakdown profile picker with immediate score recalculation.
-
 
 ### 2026-09-18 → 2026-09-24 (PRs #221–#233)
 

@@ -2,7 +2,7 @@
 
 > 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · **Tasks** · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
 
-updated: 2026-09-24
+updated: 2026-09-25
 
 ## In Progress
 
@@ -40,9 +40,20 @@ _None open — see CHANGELOG for the #221–#233 work._
 - [ ] Give every authenticated session a stable rate-limiter identity, not just `session.user.email`.
   - Priority: P2
   - Context: flagged by CodeRabbit on PR #211 (2026-09-11) — the entire shared-key reservation block in `app/api/repos/[name]/chat/route.ts` is gated on `session?.user?.email`. GitHub's OAuth profile can return a null email (an account with no public/verified email), in which case that gate is skipped entirely and the request proceeds through `generateAIContent` with **no shared-key rate limiting or budget at all** — a full bypass, not just a narrow edge case. Confirmed this gate predates PR #211 (the original process-local-`Map` code had the identical `if (session?.user?.email)` condition), so it's a pre-existing gap PR #211 didn't introduce — not fixed inline because it touches `auth.ts`/session-shape internals (does NextAuth's JWT session reliably expose a stable non-email id like `token.sub` on `session.user`? not currently wired up) and deserves its own scoped change + tests rather than a rushed edit alongside an already-large rate-limiter PR.
+  - Status: 🟡 PARTIAL (2026-09-26) — `session.userId` is now the stable GitHub numeric id captured at sign-in (`lib/auth-session.ts`), not the per-login UUID it silently was, and the chat route already fails closed when both email and userId are absent. Remaining: the route test for an authenticated session with no email.
   - Acceptance Criteria: every authenticated session has a stable identifier available to the rate limiter (email when present, falling back to a stable provider id such as GitHub's numeric user id otherwise) — no authenticated session can reach `generateAIContent` without being subject to either the shared-key budget or an explicit BYOK exemption. Add a route test covering an authenticated session with no email.
 
 ### P3 - Exploratory
+
+- [ ] Roll the visual-docs recipe out to tracked web-app repos, then score it.
+  - Priority: P3
+  - Context: `visual_docs` shipped informational-only (excluded via `INFORMATIONAL_PRACTICES` in `lib/visual-docs.ts`) so adding it didn't drop every repo's best-practices ratio at once. See docs/VISUAL_DOCS.md.
+  - Acceptance Criteria: recipe adopted (workflow + script + README markers) in nitsuah-io, darkmoon, skyview, farm-3j, games; then remove `visual_docs` from `INFORMATIONAL_PRACTICES`, update the Health Score table in FEATURES.md, and add a Fix-PR template so the Best Practices panel can open the adoption PR in one click.
+
+- [ ] Per-user API tokens for MCP / `/api/context`.
+  - Priority: P3
+  - Context: today a single shared `MCP_API_KEY` (Netlify env) is the only machine credential — fine while vigil has one owner (see docs/MCP.md). Once other people use vigil, each needs their own revocable key scoped to the repos they can access (a bearer key currently means full-portfolio admin).
+  - Acceptance Criteria: `api_tokens` table storing only a hash, with `user_id`, `name`, `created_at`, `last_used_at`, `revoked_at`; tokens resolve to the owning user's `getAccessibleRepoIds` scope rather than full portfolio; a small Settings panel to create (shown once), list, and revoke; the shared `MCP_API_KEY` keeps working as the admin key.
 
 - [ ] Add zombie-branch detection.
   - Priority: P3

@@ -22,6 +22,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Machine clients (Claude Code, other MCP agents) carry the MCP_API_KEY as a
+  // bearer token instead of a session cookie. Let them reach the two routes that
+  // validate that key themselves; without a bearer header they still redirect.
+  if (
+    (pathname === '/api/mcp' || pathname === '/api/context') &&
+    request.headers.get('authorization')?.startsWith('Bearer ')
+  ) {
+    return NextResponse.next();
+  }
+
   // Redirect to login if not authenticated
   if (!session) {
     const loginUrl = new URL('/login', request.url);

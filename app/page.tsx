@@ -140,34 +140,60 @@ export default function Dashboard() {
     }
   };
 
+  // Only the most recent sync may touch the progress bar: a second "Sync All"
+  // can start while an older one is still polling (or giving up), and the older
+  // callbacks must not update or clear the newer bar.
+  const activeSyncSessionRef = useRef<string | null>(null);
+
   const pollSyncProgress = async (sessionId: string) => {
+    activeSyncSessionRef.current = sessionId;
+    const isActive = () => activeSyncSessionRef.current === sessionId;
+    // A non-OK poll used to end polling silently and freeze the bar at 0% while
+    // the sync kept running. Retry through transient failures; after a run of
+    // them, drop the bar instead of showing a stuck one.
+    const MAX_FAILED_POLLS = 10;
+    let failedPolls = 0;
+    const retryOrGiveUp = () => {
+      if (!isActive()) return;
+      failedPolls += 1;
+      if (failedPolls < MAX_FAILED_POLLS) {
+        setTimeout(poll, 1000);
+      } else {
+        setSyncProgress(null);
+        setToastMessage('Sync is still running in the background; progress is unavailable. Refresh later to see results.');
+      }
+    };
     const poll = async () => {
+      if (!isActive()) return;
       try {
         const res = await fetch(`/api/sync-progress?sessionId=${sessionId}`);
-        if (res.ok) {
-          const progress = await res.json();
-          setSyncProgress(prev => prev ? {
-            ...prev,
-            progress: progress.progressPercentage ?? 0,
-            currentRepo: progress.currentRepo ?? 'Processing...',
-            totalRepos: progress.totalRepos ?? prev.totalRepos,
-            completedRepos: progress.completedRepos ?? 0,
-          } : null);
+        if (!isActive()) return;
+        if (!res.ok) {
+          retryOrGiveUp();
+          return;
+        }
+        failedPolls = 0;
+        const progress = await res.json();
+        setSyncProgress(prev => prev ? {
+          ...prev,
+          progress: progress.progressPercentage ?? 0,
+          currentRepo: progress.currentRepo ?? 'Processing...',
+          totalRepos: progress.totalRepos ?? prev.totalRepos,
+          completedRepos: progress.completedRepos ?? 0,
+        } : null);
 
-          if (progress.phase !== 'complete' && progress.phase !== 'error') {
-            setTimeout(poll, 1000);
-          } else {
-            // Trigger rate limit refresh when sync completes
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
-            }
-            // Sync complete, hide toast after delay
-            setTimeout(() => setSyncProgress(null), 2000);
+        if (progress.phase !== 'complete' && progress.phase !== 'error') {
+          setTimeout(poll, 1000);
+        } else {
+          // Trigger rate limit refresh when sync completes
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
           }
+          // Sync complete, hide toast after delay
+          setTimeout(() => { if (isActive()) setSyncProgress(null); }, 2000);
         }
       } catch {
-        // Ignore polling errors
-        setTimeout(poll, 1000);
+        retryOrGiveUp();
       }
     };
     await poll();
