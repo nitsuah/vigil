@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, ListTodo, RefreshCw } from 'lucide-react';
 import type { OpenTaskRollup } from '@/lib/task-rollup';
 import type { TaskPriority } from '@/types/repo';
@@ -31,6 +31,9 @@ export function OpenWorkPanel({ refreshKey }: { refreshKey?: number }) {
     // P0/P1 by default: the view is "what matters now", not the whole backlog.
     const [priorities, setPriorities] = useState<Set<PriorityChip>>(new Set(['P0', 'P1']));
     const [repo, setRepo] = useState('');
+    // Each load gets a sequence number; a response from a superseded load is dropped,
+    // so quick filter changes can't be overwritten by an older, slower request.
+    const loadSeq = useRef(0);
 
     const fetchRollup = async (params: Record<string, string>): Promise<OpenTaskRollup> => {
         const res = await fetch(`/api/pmo/tasks?${new URLSearchParams(params)}`);
@@ -39,23 +42,28 @@ export function OpenWorkPanel({ refreshKey }: { refreshKey?: number }) {
     };
 
     const load = useCallback(async () => {
+        const seq = ++loadSeq.current;
+        const current = () => seq === loadSeq.current;
         setLoading(true);
         setError(null);
         // Every chip off: clear rows now, so a failed summary request can't leave stale ones.
         if (priorities.size === 0) setView(null);
         try {
             // Unfiltered counts for the chips and repo options.
-            setSummary(await fetchRollup({ limit: '1' }));
+            const nextSummary = await fetchRollup({ limit: '1' });
             // Every chip off means "show nothing", not "no filter".
-            setView(priorities.size === 0 ? null : await fetchRollup({
+            const nextView = priorities.size === 0 ? null : await fetchRollup({
                 priority: [...priorities].join(','),
                 ...(repo ? { repos: repo } : {}),
                 limit: String(VISIBLE_ROWS),
-            }));
+            });
+            if (!current()) return;
+            setSummary(nextSummary);
+            setView(nextView);
         } catch (e) {
-            setError(e instanceof Error ? e.message : 'Unknown error');
+            if (current()) setError(e instanceof Error ? e.message : 'Unknown error');
         } finally {
-            setLoading(false);
+            if (current()) setLoading(false);
         }
     }, [priorities, repo]);
 
