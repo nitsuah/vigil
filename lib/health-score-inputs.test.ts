@@ -25,6 +25,18 @@ describe('buildHealthScoreInputs', () => {
         expect(inputs.communityStandardsHealthy).toBe(1);
     });
 
+    it('leaves informational practices (visual_docs) out of the best-practices ratio', () => {
+        const withVisual = (status: string) => buildHealthScoreInputs({}, {
+            ...rows,
+            bestPractices: [...rows.bestPractices, { practice_type: 'visual_docs', status }],
+        }, NOW);
+        for (const status of ['missing', 'healthy']) {
+            const inputs = withVisual(status);
+            expect(inputs.bestPracticesCount).toBe(3);
+            expect(inputs.bestPracticesHealthy).toBe(2);
+        }
+    });
+
     it('reads coverage from the API shape (name instead of metric_name)', () => {
         const inputs = buildHealthScoreInputs({}, { ...rows, metrics: [{ name: 'coverage', value: 40 }] }, NOW);
         expect(inputs.codeCoverage).toBe(40);

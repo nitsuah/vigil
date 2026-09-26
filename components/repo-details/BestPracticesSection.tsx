@@ -140,6 +140,7 @@ export function BestPracticesSection({
                 'env_template',
                 'dependabot',
                 'deploy_badge',
+                'visual_docs',
               ];
               const aIndex = order.indexOf(a.practice_type);
               const bIndex = order.indexOf(b.practice_type);
@@ -161,6 +162,11 @@ export function BestPracticesSection({
                       <span className={getStatusColor(practice.status)}>
                         {getLabel(practice.practice_type)}
                       </span>
+                      {practice.details?.informational === true && (
+                        <span className="text-[10px] text-slate-500" title="Shown for guidance; not counted in the health score yet">
+                          (not scored)
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       {isAuthenticated && canFix && isMissing && onFixPractice && repoName && (
@@ -175,6 +181,23 @@ export function BestPracticesSection({
                       {getStatusBadge(practice.status)}
                     </div>
                   </div>
+
+                  {practice.practice_type === 'visual_docs' && practice.status !== 'healthy' && (
+                    <div className="mt-2 ml-6 text-xs text-slate-400">
+                      {practice.status === 'dormant'
+                        ? 'Diagrams or screenshots exist but the README does not embed any of them.'
+                        : 'No architecture diagram or app screenshots found.'}
+                      {' '}Add the CI recipe that regenerates them and rewrites a marked README block:{' '}
+                      <a
+                        href="https://github.com/nitsuah/vigil/blob/main/docs/VISUAL_DOCS.md"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-400 hover:text-blue-300 underline"
+                      >
+                        visual-docs recipe
+                      </a>.
+                    </div>
+                  )}
 
                   {practice.practice_type === 'deploy_badge' && practice.status === 'dormant' && (
                     <div className="mt-2 ml-6 text-xs text-slate-400">
