@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Added:** reusable recipe — `templates/.github/workflows/visual-docs.yml`, `scripts/visual-docs-readme.mjs` (rewrites the README's `<!-- visual-docs:start/end -->` block, `--check` for CI), [docs/VISUAL_DOCS.md](./docs/VISUAL_DOCS.md).
 - **Added:** dogfood — `.github/workflows/visual-docs.yml` regenerates `docs/screenshots/*.png` from a DB-free Playwright spec (`e2e/visual-docs`, frozen clock) and `docs/diagrams/architecture.svg` from Mermaid, then opens a PR on `bot/visual-docs`; README gains a "Screenshots & diagrams" section.
 
+### Cross-repo task rollup + Claude Code MCP connection
+
+- **Added:** `get_open_tasks` MCP tool (8th tool) — open TASKS.md work across every tracked repo, sorted P0 first, filterable by repos/priority/status/owner, with counts by priority and repo.
+- **Added:** `open_work` block (P0/P1 slice + counts) in `GET /api/context`; "Open work" panel on the PMO page backed by session-scoped `GET /api/pmo/tasks`.
+- **Added:** TASKS parser captures `priority` (sub-bullet > inline tag > heading) and `owner`; new nullable `tasks.priority` / `tasks.owner` columns (additive migration). Unchecked items under `## In Progress` now count as in-progress.
+- **Fixed:** the MCP endpoint was unreachable from any agent in production — `proxy.ts` redirected every session-less request, bearer or not, to `/login`. Bearer requests now pass through to `/api/mcp` and `/api/context`, which validate the key themselves.
+- **Fixed:** MCP Streamable HTTP compatibility for `claude mcp add --transport http`: notifications return 202, `ping` is answered, `initialize` negotiates 2024-11-05 → 2025-06-18, and SSE `GET` probes get 405.
+- **Docs:** [docs/MCP.md](./docs/MCP.md) — key generation, `claude mcp add` / `.mcp.json` setup, tool guide, TASKS.md priority/owner conventions.
+
 ### Health scoring profiles
 
 - **Added:** Repository health maturity profiles: Starter, Production, and Enterprise, with persisted per-repo selection and profile-specific component weights.

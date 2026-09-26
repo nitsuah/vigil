@@ -7,7 +7,13 @@ export interface Task {
   status: 'todo' | 'in-progress' | 'done';
   section: string | null;
   subsection?: string | null;
+  /** P0–P3, from a `- Priority:` sub-bullet, an inline `(P2, M)` tag, or a `### P1 - High` heading. */
+  priority?: TaskPriority | null;
+  /** From an `- Owner:` / `- Assignee:` sub-bullet; null when unassigned. */
+  owner?: string | null;
 }
+
+export type TaskPriority = 'P0' | 'P1' | 'P2' | 'P3';
 
 export interface RoadmapItem {
   id: string;
