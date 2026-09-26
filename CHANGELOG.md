@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Session identity fix
+
+- **Fixed:** `session.userId` was a random per-login UUID, not the GitHub numeric id. Without a database adapter, Auth.js v5 sets `token.sub` to a UUID and ignores `profile().id`. So `/api/sync-progress` always 404'd (frozen "Sync All" bar), repo-access checks never matched the grants that Sync All writes under the GitHub id (private repos hidden from the dashboard, PMO, `/api/context` and chat), and single-repo sync and add wrote grants under a throwaway UUID. The GitHub id now comes from `account.providerAccountId` at sign-in (`lib/auth-session.ts`). Sessions from before this fix have no `userId` until the next sign-in.
+- **Fixed:** the sync progress poll stopped silently on any non-OK response. It now retries through transient failures and, after ten failures in a row, drops the bar with a "still running in the background" toast.
+
 ### Cross-repo task rollup + Claude Code MCP connection
 
 - **Added:** `get_open_tasks` MCP tool (8th tool) — open TASKS.md work across every tracked repo, sorted P0 first, filterable by repos/priority/status/owner, with counts by priority and repo.
