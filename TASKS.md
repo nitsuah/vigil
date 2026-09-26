@@ -2,7 +2,7 @@
 
 > 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · **Tasks** · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
 
-updated: 2026-09-24
+updated: 2026-09-25
 
 ## In Progress
 
@@ -43,6 +43,11 @@ _None open — see CHANGELOG for the #221–#233 work._
   - Acceptance Criteria: every authenticated session has a stable identifier available to the rate limiter (email when present, falling back to a stable provider id such as GitHub's numeric user id otherwise) — no authenticated session can reach `generateAIContent` without being subject to either the shared-key budget or an explicit BYOK exemption. Add a route test covering an authenticated session with no email.
 
 ### P3 - Exploratory
+
+- [ ] Per-user API tokens for MCP / `/api/context`.
+  - Priority: P3
+  - Context: today a single shared `MCP_API_KEY` (Netlify env) is the only machine credential — fine while vigil has one owner (see docs/MCP.md). Once other people use vigil, each needs their own revocable key scoped to the repos they can access (a bearer key currently means full-portfolio admin).
+  - Acceptance Criteria: `api_tokens` table storing only a hash, with `user_id`, `name`, `created_at`, `last_used_at`, `revoked_at`; tokens resolve to the owning user's `getAccessibleRepoIds` scope rather than full portfolio; a small Settings panel to create (shown once), list, and revoke; the shared `MCP_API_KEY` keeps working as the admin key.
 
 - [ ] Add zombie-branch detection.
   - Priority: P3

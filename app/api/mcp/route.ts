@@ -1,7 +1,7 @@
 /**
  * Vigil MCP Server — exposes repo intelligence as MCP tools.
  *
- * Transport: HTTP JSON-RPC 2.0  (MCP spec 2024-11-05)
+ * Transport: HTTP JSON-RPC 2.0 (MCP 2024-11-05 through 2025-06-18; Streamable HTTP, JSON-only)
  * Auth:      Authorization: Bearer <MCP_API_KEY>
  * Rate limit: 60 req/min per IP (in-memory, resets on cold start)
  *
@@ -13,15 +13,26 @@
  *   get_portfolio_overview — cross-repo aggregate: health, CI, security
  *   search_repos           — search by name, description, or language
  *   get_security_summary   — security posture for one repo or the whole portfolio
+ *   get_open_tasks         — open TASKS.md work across every tracked repo, by priority
+ *
+ * Streamable HTTP: JSON responses only (no SSE stream), so `claude mcp add
+ * --transport http` works directly. Notifications get 202, GET with
+ * `Accept: text/event-stream` gets 405. See docs/MCP.md.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getNeonClient } from '@/lib/db';
+import { getNeonClient, ensureSchema } from '@/lib/db';
 import logger from '@/lib/log';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
+import { loadOpenTasks, parseOpenTaskFilters, rollupOpenTasks, DEFAULT_ROLLUP_LIMIT, MAX_ROLLUP_LIMIT } from '@/lib/task-rollup';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const SERVER_VERSION = '0.3.0';
+/** Newest first; initialize echoes the client's version when we support it. */
+const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'] as const;
+const FALLBACK_PROTOCOL_VERSION = '2024-11-05';
 
 // ---------------------------------------------------------------------------
 // Rate limiting (in-memory; resets on cold start)
@@ -175,6 +186,42 @@ const TOOLS = [
         name: {
           type: 'string',
           description: 'Repository name for single-repo view (omit for portfolio-wide)',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_open_tasks',
+    description:
+      'Cross-repo rollup of open (todo + in-progress) TASKS.md items across every tracked repository, ' +
+      'sorted by priority (P0 first), with repo, status, priority, owner, and section. ' +
+      'Use this to answer "what should I work on next?" across the portfolio. ' +
+      'Returns counts by priority and by repo for all matches, plus up to `limit` items.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repos: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Only these repos (name or owner/repo). Omit for all tracked repos.',
+        },
+        priority: {
+          type: 'array',
+          items: { type: 'string', enum: ['P0', 'P1', 'P2', 'P3', 'none'] },
+          description: 'Only these priorities; "none" = tasks with no priority tag. Omit for all.',
+        },
+        status: {
+          type: 'string',
+          enum: ['todo', 'in-progress'],
+          description: 'Only this status (omit for both)',
+        },
+        owner: {
+          type: 'string',
+          description: 'Case-insensitive substring match on the task owner (from an "- Owner:" sub-bullet)',
+        },
+        limit: {
+          type: 'number',
+          description: `Max items returned (default ${DEFAULT_ROLLUP_LIMIT}, max ${MAX_ROLLUP_LIMIT}); counts always cover every match`,
         },
       },
     },
@@ -547,6 +594,25 @@ async function getSecuritySummary(args: Row): Promise<string> {
   });
 }
 
+async function getOpenTasks(args: Row): Promise<string> {
+  const filters = parseOpenTaskFilters(args);
+  const db = getNeonClient();
+  // tasks.priority/owner are added by a migration; don't depend on another route having run it.
+  await ensureSchema(db);
+  // Bearer key = portfolio admin, so no per-user repo scoping here.
+  const rollup = rollupOpenTasks(await loadOpenTasks(db), filters);
+  return JSON.stringify({
+    ...rollup,
+    count: rollup.tasks.length,
+    filters_applied: {
+      repos:    filters.repos?.length ? filters.repos : null,
+      priority: filters.priorities?.length ? filters.priorities : null,
+      status:   filters.status ?? null,
+      owner:    filters.owner ?? null,
+    },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // JSON-RPC dispatch
 // ---------------------------------------------------------------------------
@@ -570,12 +636,20 @@ function rpcResult(id: unknown, result: unknown) {
 // Route handlers
 // ---------------------------------------------------------------------------
 
-/** GET /api/mcp — capability discovery (no auth required) */
-export async function GET() {
+/**
+ * GET /api/mcp — capability discovery. A Streamable HTTP client probing for a
+ * server-sent event stream (Accept: text/event-stream) gets 405: we only speak
+ * JSON responses to POST.
+ */
+export async function GET(req?: NextRequest) {
+  if (req?.headers.get('accept')?.includes('text/event-stream')) {
+    return new NextResponse(null, { status: 405, headers: { Allow: 'POST' } });
+  }
   return NextResponse.json({
     name:            'vigil-mcp',
-    version:         '0.2.0',
-    protocolVersion: '2024-11-05',
+    version:         SERVER_VERSION,
+    protocolVersion: FALLBACK_PROTOCOL_VERSION,
+    supportedProtocolVersions: SUPPORTED_PROTOCOL_VERSIONS,
     description:     'Vigil repo intelligence as MCP tools — portfolio health, task tracking, security posture, and roadmap status',
     tools:           TOOLS.map(t => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
     auth:            'Authorization: Bearer <MCP_API_KEY env var>',
@@ -600,6 +674,13 @@ export async function POST(req: NextRequest) {
     return rpcError(null, -32001, 'Unauthorized — set Authorization: Bearer <MCP_API_KEY>', 401);
   }
 
+  // Streamable HTTP: a present-but-unsupported MCP-Protocol-Version is a 400;
+  // an absent header stays on the compatibility path.
+  const headerVersion = req.headers.get('mcp-protocol-version');
+  if (headerVersion !== null && !(SUPPORTED_PROTOCOL_VERSIONS as readonly string[]).includes(headerVersion)) {
+    return rpcError(null, -32602, `Unsupported MCP-Protocol-Version "${headerVersion}"`, 400);
+  }
+
   let body: JsonRpcRequest;
   try {
     body = await req.json();
@@ -609,14 +690,33 @@ export async function POST(req: NextRequest) {
 
   const { method, params = {}, id } = body;
 
+  // An explicit null id is not a notification (MCP ids are strings or numbers).
+  if (id === null) {
+    return rpcError(null, -32600, 'Invalid Request — id must be a string or number');
+  }
+  // JSON-RPC notifications (id omitted, e.g. notifications/initialized) get no body.
+  if (id === undefined) {
+    if (typeof method === 'string' && method.startsWith('notifications/')) {
+      return new NextResponse(null, { status: 202 });
+    }
+  }
+
   try {
     switch (method) {
-      case 'initialize':
+      case 'initialize': {
+        const requested = String(params.protocolVersion ?? '');
+        const protocolVersion = (SUPPORTED_PROTOCOL_VERSIONS as readonly string[]).includes(requested)
+          ? requested
+          : FALLBACK_PROTOCOL_VERSION;
         return rpcResult(id, {
-          protocolVersion: '2024-11-05',
+          protocolVersion,
           capabilities:    { tools: {} },
-          serverInfo:      { name: 'vigil-mcp', version: '0.2.0' },
+          serverInfo:      { name: 'vigil-mcp', version: SERVER_VERSION },
         });
+      }
+
+      case 'ping':
+        return rpcResult(id, {});
 
       case 'tools/list':
         return rpcResult(id, { tools: TOOLS });
@@ -634,6 +734,7 @@ export async function POST(req: NextRequest) {
           case 'get_portfolio_overview': text = await getPortfolioOverview();         break;
           case 'search_repos':           text = await searchRepos(toolArgs);          break;
           case 'get_security_summary':   text = await getSecuritySummary(toolArgs);   break;
+          case 'get_open_tasks':         text = await getOpenTasks(toolArgs);         break;
           default:
             return rpcError(id, -32601, `Unknown tool: "${toolName}"`);
         }
