@@ -64,6 +64,27 @@ const PMO = {
   portfolio: { repo_count: 4, roadmap_planned: 12, roadmap_in_progress: 4, roadmap_in_review: 2, roadmap_done: 6, tasks_in_progress: 4, stale_count: 1 },
 };
 
+const OPEN_TASKS = (() => {
+  const t = (name: string, title: string, priority: string | null, status = 'todo') => ({
+    repo: name, full_name: `nitsuah/${name}`, repo_url: `https://github.com/nitsuah/${name}`,
+    title, status, priority, owner: null, section: 'Todo', subsection: null,
+  });
+  const tasks = [
+    t('skyview', 'Bring the marketplace backend live in production', 'P0'),
+    t('skyview', 'Verify production auth/env end-to-end', 'P1', 'in-progress'),
+    t('skyview', 'Set up the email sending domain', 'P2'),
+    t('darkmoon', 'Open-source safety scrub', 'P1'),
+    t('darkmoon', 'UI/UX interactivity improvements', 'P1'),
+    t('vigil', 'Durable cross-repo relationship map', 'P1', 'in-progress'),
+    t('vigil', 'Chat-driven doc editing, stage 3', 'P2'),
+    t('agent-board', 'Wire the board to bb-mcp', 'P3'),
+  ];
+  const by_priority: Record<string, number> = { P0: 0, P1: 0, P2: 0, P3: 0, none: 0 };
+  const by_repo: Record<string, number> = {};
+  for (const x of tasks) { by_priority[x.priority ?? 'none']++; by_repo[x.full_name] = (by_repo[x.full_name] ?? 0) + 1; }
+  return { tasks, total: tasks.length, truncated: false, by_priority, by_repo };
+})();
+
 async function mockApi(target: Page | BrowserContext): Promise<void> {
   const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   await target.route('**/api/repos?*', (route) => route.fulfill(json(REPOS)));
@@ -73,6 +94,7 @@ async function mockApi(target: Page | BrowserContext): Promise<void> {
   await target.route('**/api/gemini-status', (route) => route.fulfill(json({ status: 'ok' })));
   await target.route('**/api/github-rate-limit', (route) => route.fulfill(json({ core: { remaining: 5000, limit: 5000, reset: 0 } })));
   await target.route('**/api/pmo/overview', (route) => route.fulfill(json(PMO)));
+  await target.route('**/api/pmo/tasks?*', (route) => route.fulfill(json(OPEN_TASKS)));
 }
 
 async function signedInContext(page: Page): Promise<void> {
@@ -123,5 +145,6 @@ test('pmo', async ({ page }) => {
   await signedInContext(page);
   await page.goto('/pmo');
   await expect(page.getByText('Portfolio Pipeline')).toBeVisible();
+  await expect(page.getByRole('article', { name: 'nitsuah/skyview' })).toBeVisible();
   await page.screenshot({ path: `${OUT}/pmo.png` });
 });
