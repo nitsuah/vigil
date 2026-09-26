@@ -161,10 +161,10 @@ describe('tools/call — list_repos', () => {
 });
 
 describe('tools/call — list_tasks', () => {
-  it('returns -32603 when name is missing', async () => {
+  it('returns -32602 when name is missing', async () => {
     const res = await callTool('list_tasks', {});
     const body = await res.json();
-    expect(body.error.code).toBe(-32603);
+    expect(body.error.code).toBe(-32602);
   });
 
   it('returns tasks array and count when db is empty', async () => {
@@ -180,16 +180,28 @@ describe('tools/call — list_tasks', () => {
 });
 
 describe('tools/call — get_repo_details', () => {
-  it('returns -32603 when name is missing', async () => {
+  it('returns -32602 when name is missing', async () => {
     const res = await callTool('get_repo_details', {});
     const body = await res.json();
-    expect(body.error.code).toBe(-32603);
+    expect(body.error.code).toBe(-32602);
   });
 
-  it('returns not-found error in result content when repo does not exist', async () => {
-    const data = await callResult('get_repo_details', { name: 'no-such-repo' });
-    expect(data).toHaveProperty('error');
-    expect(String(data.error)).toContain('no-such-repo');
+  it('returns a not-found tool result flagged isError when repo does not exist', async () => {
+    const body = await (await callTool('get_repo_details', { name: 'no-such-repo' })).json();
+    expect(body.result.isError).toBe(true);
+    expect(JSON.parse(body.result.content[0].text).error).toContain('no-such-repo');
+  });
+
+  it('flags unknown repos with isError on get_repo_health and get_security_summary too', async () => {
+    for (const tool of ['get_repo_health', 'get_security_summary']) {
+      const body = await (await callTool(tool, { name: 'no-such-repo' })).json();
+      expect(body.result.isError).toBe(true);
+    }
+  });
+
+  it('leaves isError unset on a successful call', async () => {
+    const body = await (await callTool('list_repos')).json();
+    expect(body.result.isError).toBeUndefined();
   });
 });
 
@@ -223,10 +235,10 @@ describe('tools/call — get_portfolio_overview', () => {
 });
 
 describe('tools/call — search_repos', () => {
-  it('returns -32603 when query is missing', async () => {
+  it('returns -32602 when query is missing', async () => {
     const res = await callTool('search_repos', {});
     const body = await res.json();
-    expect(body.error.code).toBe(-32603);
+    expect(body.error.code).toBe(-32602);
   });
 
   it('returns query echo, empty results, and count when db is empty', async () => {
@@ -302,7 +314,7 @@ describe('Streamable HTTP handshake', () => {
 
   it('rejects a malformed repos filter on get_open_tasks', async () => {
     const res = await POST(post({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: { name: 'get_open_tasks', arguments: { repos: 123 } } }));
-    expect((await res.json()).error.code).toBe(-32603);
+    expect((await res.json()).error.code).toBe(-32602);
   });
 
   it('answers ping with an empty result', async () => {
@@ -329,10 +341,10 @@ describe('tools/call — get_open_tasks', () => {
     expect(data.filters_applied).toMatchObject({ repos: ['vigil'], priority: ['P0', 'P1'], status: 'todo' });
   });
 
-  it('rejects an unknown priority with -32603', async () => {
+  it('rejects an unknown priority with -32602', async () => {
     const res = await POST(post({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: {
       name: 'get_open_tasks', arguments: { priority: ['P9'] },
     } }));
-    expect((await res.json()).error.code).toBe(-32603);
+    expect((await res.json()).error.code).toBe(-32602);
   });
 });

@@ -72,6 +72,12 @@ function authenticate(req: NextRequest): boolean {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
+/** Bad or missing tool arguments → JSON-RPC -32602 (Invalid params). */
+class InvalidParamsError extends Error {}
+
+/** The tool ran but the call failed (e.g. unknown repo) → result with isError: true. */
+class ToolCallError extends Error {}
+
 // ---------------------------------------------------------------------------
 // Tool definitions
 // ---------------------------------------------------------------------------
@@ -234,7 +240,7 @@ const TOOLS = [
 
 async function getRepoHealth(args: Row): Promise<string> {
   const name = String(args.name ?? '');
-  if (!name) throw new Error('"name" is required');
+  if (!name) throw new InvalidParamsError('"name" is required');
 
   const db = getNeonClient();
   const rows = await db`
@@ -247,7 +253,7 @@ async function getRepoHealth(args: Row): Promise<string> {
   `;
 
   if (rows.length === 0) {
-    return JSON.stringify({ error: `Repository "${name}" not found in Vigil` });
+    throw new ToolCallError(`Repository "${name}" not found in Vigil`);
   }
 
   const r = rows[0] as Row;
@@ -271,7 +277,7 @@ async function getRepoHealth(args: Row): Promise<string> {
 async function listTasks(args: Row): Promise<string> {
   const name   = String(args.name   ?? '');
   const status = typeof args.status === 'string' ? args.status : null;
-  if (!name) throw new Error('"name" is required');
+  if (!name) throw new InvalidParamsError('"name" is required');
 
   const db = getNeonClient();
   const rows = status
@@ -348,7 +354,7 @@ async function listRepos(args: Row): Promise<string> {
 
 async function getRepoDetails(args: Row): Promise<string> {
   const name = String(args.name ?? '');
-  if (!name) throw new Error('"name" is required');
+  if (!name) throw new InvalidParamsError('"name" is required');
 
   /** Maximum rows fetched per paginated query; used to detect truncation. */
   const ROADMAP_ROW_LIMIT = 100;
@@ -362,7 +368,7 @@ async function getRepoDetails(args: Row): Promise<string> {
   `;
 
   if (repoRows.length === 0) {
-    return JSON.stringify({ error: `Repository "${name}" not found` });
+    throw new ToolCallError(`Repository "${name}" not found in Vigil`);
   }
 
   const repo = repoRows[0] as Row;
@@ -478,7 +484,7 @@ async function getPortfolioOverview(): Promise<string> {
 
 async function searchRepos(args: Row): Promise<string> {
   const query = String(args.query ?? '').trim();
-  if (!query) throw new Error('"query" is required');
+  if (!query) throw new InvalidParamsError('"query" is required');
 
   const db = getNeonClient();
   const escaped = query.toLowerCase().replace(/[\\%_]/g, c => `\\${c}`);
@@ -529,7 +535,7 @@ async function getSecuritySummary(args: Row): Promise<string> {
       LIMIT 1
     `) as Row[];
 
-    if (rows.length === 0) return JSON.stringify({ error: `Repository "${name}" not found` });
+    if (rows.length === 0) throw new ToolCallError(`Repository "${name}" not found in Vigil`);
     const r = rows[0];
     return JSON.stringify({
       scope:      'single_repo',
@@ -595,7 +601,12 @@ async function getSecuritySummary(args: Row): Promise<string> {
 }
 
 async function getOpenTasks(args: Row): Promise<string> {
-  const filters = parseOpenTaskFilters(args);
+  let filters: ReturnType<typeof parseOpenTaskFilters>;
+  try {
+    filters = parseOpenTaskFilters(args);
+  } catch (error) {
+    throw new InvalidParamsError(error instanceof Error ? error.message : 'Invalid arguments');
+  }
   const db = getNeonClient();
   // tasks.priority/owner are added by a migration; don't depend on another route having run it.
   await ensureSchema(db);
@@ -747,6 +758,10 @@ export async function POST(req: NextRequest) {
         return rpcError(id, -32601, `Method not found: "${method}"`);
     }
   } catch (error) {
+    if (error instanceof InvalidParamsError) return rpcError(id, -32602, error.message);
+    if (error instanceof ToolCallError) {
+      return rpcResult(id, { content: [{ type: 'text', text: JSON.stringify({ error: error.message }) }], isError: true });
+    }
     logger.warn('[MCP] Tool error:', error);
     return rpcError(id, -32603, error instanceof Error ? error.message : 'Internal error');
   }
