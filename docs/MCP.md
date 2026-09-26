@@ -19,7 +19,7 @@ There is one key, not per-user tokens. Generate it once:
 openssl rand -hex 32
 ```
 
-Set it as `MCP_API_KEY` in Netlify (Site configuration → Environment variables) and redeploy. Keep a copy in your shell profile as `VIGIL_MCP_KEY`. To rotate, change both. Every holder of the key sees the whole portfolio, so treat it like a password.
+Set it as `MCP_API_KEY` in Netlify (Site configuration → Environment variables) and redeploy. Keep a copy in your shell profile as `VIGIL_MCP_KEY`. To rotate, change both, then update every Claude Code client: rerun the `claude mcp add` command below (after `claude mcp remove vigil --scope user`), because it stored the old key in `~/.claude.json`. Clients using the `.mcp.json` setup only need the new `VIGIL_MCP_KEY` in their environment and a restart. Every holder of the key sees the whole portfolio, so treat it like a password.
 
 ## 2. Add it to Claude Code
 

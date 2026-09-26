@@ -52,8 +52,21 @@ The check detects:
 Run it locally the same way CI does (Docker keeps the fonts identical):
 
 ```bash
-docker run --rm --ipc=host -v "$PWD:/app" -w /app mcr.microsoft.com/playwright:v1.63.0-noble bash -lc "npm ci && npx playwright test -c playwright.visual-docs.config.ts && node scripts/visual-docs-readme.mjs"
+docker run --rm --ipc=host -v "$PWD:/app" -w /app mcr.microsoft.com/playwright:v1.63.0-noble bash -lc '
+  set -e
+  if [ -f package-lock.json ]; then npm ci; fi
+  if [ -f playwright.visual-docs.config.ts ]; then npx playwright test -c playwright.visual-docs.config.ts; fi
+  CONFIG=""; [ -f docs/diagrams/mermaid.config.json ] && CONFIG="-c docs/diagrams/mermaid.config.json"
+  for f in docs/diagrams/*.mmd; do
+    [ -e "$f" ] || continue
+    echo "{\"args\":[\"--no-sandbox\"]}" > /tmp/puppeteer.json
+    npx -y @mermaid-js/mermaid-cli@12.0.0 -p /tmp/puppeteer.json $CONFIG -b white -i "$f" -o "${f%.mmd}.svg"
+  done
+  node scripts/visual-docs-readme.mjs
+'
 ```
+
+Like the workflow, it skips `npm ci` without a lockfile and the screenshots without the Playwright config, so diagram-only repos work too.
 
 `node scripts/visual-docs-readme.mjs --check` exits 1 when the README block is out of date. It can be used as a CI gate.
 
