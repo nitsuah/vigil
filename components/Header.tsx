@@ -442,7 +442,7 @@ export default function Header(props: HeaderProps = {}) {
                                 <button
                                     onClick={() => setShowStatusPills(!showStatusPills)}
                                     className="relative cursor-pointer focus:outline-none"
-                                    title="Toggle status indicators"
+                                    title="Profile, status & sign out"
                                     data-tour="profile-close"
                                 >
                                     <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 rounded-full opacity-40 group-hover:opacity-60 blur transition duration-300 motion-safe:animate-[spin_8s_linear_infinite]"></div>
@@ -460,7 +460,7 @@ export default function Header(props: HeaderProps = {}) {
                                 <button
                                     onClick={() => setShowStatusPills(!showStatusPills)}
                                     className="h-11 w-11 rounded-full bg-gradient-to-br from-purple-600 to-fuchsia-600 flex items-center justify-center text-sm font-bold text-white shadow-lg cursor-pointer focus:outline-none"
-                                    title="Toggle status indicators"
+                                    title="Profile, status & sign out"
                                     data-tour="profile-close"
                                 >
                                     {session.user?.name?.charAt(0) ?? 'U'}
@@ -484,24 +484,22 @@ export default function Header(props: HeaderProps = {}) {
                                 </div>
                             )}
 
-                            {/* Sign Out - popover below the profile on hover/focus. Positioned out of
-                                flow (top-full) so revealing it never changes the header's width: the
-                                old in-flow version grew the box by pr-10 on hover, pushing the header
-                                past the viewport (horizontal scrollbar) and overlapping the avatar.
-                                pt-2 (not mt-2) keeps the hover area continuous. */}
-                            <div className="absolute right-0 top-full z-50 pt-2 opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+                            {/* Sign Out lives inside the expanded profile panel (click the avatar),
+                                in the right-hand space the panel reserves (pr-16). Nothing appears on
+                                hover, so the header never shifts, overlaps, or overflows. */}
+                            {showStatusPills && (
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         signOut();
                                     }}
                                     aria-label="Sign out"
-                                    className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-red-500/95 px-3 py-1.5 text-xs font-semibold text-white shadow-xl transition-colors hover:bg-red-600"
+                                    title="Sign out"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 rounded-lg bg-red-500/90 p-2 text-white shadow-lg transition-colors hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-300"
                                 >
                                     <LogOut className="h-4 w-4" />
-                                    Sign out
                                 </button>
-                            </div>
+                            )}
                         </div>
                     </div>
                 ) : (
