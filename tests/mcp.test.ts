@@ -207,7 +207,7 @@ describe('tools/call — get_portfolio_overview', () => {
     expect(data.summary).toMatchObject({
       total_repos:        0,
       avg_health_score:   0,
-      grade_distribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
+      grade_distribution: { 'A+': 0, A: 0, B: 0, C: 0, D: 0, F: 0 },
       ci_distribution:    { passing: 0, failing: 0, unknown: 0 },
       total_open_prs:     0,
       total_open_issues:  0,
