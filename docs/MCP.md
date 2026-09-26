@@ -1,5 +1,7 @@
 # Vigil MCP server
 
+> 🧭 [vigil](../README.md) · [Features](../FEATURES.md) · [Roadmap](../ROADMAP.md) · [Tasks](../TASKS.md) · [Changelog](../CHANGELOG.md) · [Metrics](../METRICS.md) <!-- nav -->
+
 Connect Claude Code (or any MCP client) to vigil so an agent session can ask
 "what's open across my repos?" instead of reading 17 TASKS.md files.
 

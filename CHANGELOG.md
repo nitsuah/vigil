@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Visual docs signal + CI recipe
+
+- **Added:** `visual_docs` best practice (informational, not scored): diagrams + screenshots detected from the repo tree, healthy only when the README embeds them; Best Practices panel shows a "(not scored)" tag and a link to the recipe when missing/dormant. `INFORMATIONAL_PRACTICES` keeps it out of the health score so no repo's score moves.
+- **Added:** reusable recipe — `templates/.github/workflows/visual-docs.yml`, `scripts/visual-docs-readme.mjs` (rewrites the README's `<!-- visual-docs:start/end -->` block, `--check` for CI), [docs/VISUAL_DOCS.md](./docs/VISUAL_DOCS.md).
+- **Added:** dogfood — `.github/workflows/visual-docs.yml` regenerates `docs/screenshots/*.png` from a DB-free Playwright spec (`e2e/visual-docs`, frozen clock) and `docs/diagrams/architecture.svg` from Mermaid, then opens a PR on `bot/visual-docs`; README gains a "Screenshots & diagrams" section.
+
 ### Cross-repo task rollup + Claude Code MCP connection
 
 - **Added:** `get_open_tasks` MCP tool (8th tool) — open TASKS.md work across every tracked repo, sorted P0 first, filterable by repos/priority/status/owner, with counts by priority and repo.

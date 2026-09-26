@@ -44,6 +44,11 @@ _None open — see CHANGELOG for the #221–#233 work._
 
 ### P3 - Exploratory
 
+- [ ] Roll the visual-docs recipe out to tracked web-app repos, then score it.
+  - Priority: P3
+  - Context: `visual_docs` shipped informational-only (excluded via `INFORMATIONAL_PRACTICES` in `lib/visual-docs.ts`) so adding it didn't drop every repo's best-practices ratio at once. See docs/VISUAL_DOCS.md.
+  - Acceptance Criteria: recipe adopted (workflow + script + README markers) in nitsuah-io, darkmoon, skyview, farm-3j, games; then remove `visual_docs` from `INFORMATIONAL_PRACTICES`, update the Health Score table in FEATURES.md, and add a Fix-PR template so the Best Practices panel can open the adoption PR in one click.
+
 - [ ] Per-user API tokens for MCP / `/api/context`.
   - Priority: P3
   - Context: today a single shared `MCP_API_KEY` (Netlify env) is the only machine credential — fine while vigil has one owner (see docs/MCP.md). Once other people use vigil, each needs their own revocable key scoped to the repos they can access (a bearer key currently means full-portfolio admin).

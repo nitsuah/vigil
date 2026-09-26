@@ -10,7 +10,8 @@ templates/
 │   ├── dependabot.yml         # Dependabot configuration
 │   └── workflows/
 │       ├── ci.yml             # JavaScript/TypeScript CI workflow
-│       └── ci-python.yml      # Python CI workflow
+│       ├── ci-python.yml      # Python CI workflow
+│       └── visual-docs.yml    # Regenerate diagrams + screenshots, open a README PR (docs/VISUAL_DOCS.md)
 │
 ├── pre-commit/                 # Pre-commit hooks configurations
 │   ├── .pre-commit-config.yaml        # Generic/JS/TS pre-commit hooks
