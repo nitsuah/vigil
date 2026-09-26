@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Dashboard fixes
+
+- **Fixed:** one grade scale everywhere. The dashboard (`lib/dashboard-utils.ts`) graded 60–69 as "C" and 80–89 as "A", while MCP and `/api/context` (`lib/health-grade.ts`) graded 60–69 as "D". The dashboard now takes its letter from `healthGrade()` (A+ ≥ 95, A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60, F), and the grade distribution gains an `A+` bucket. A test asserts the two letters agree for every score from 0 to 100.
+- **Fixed:** the header was wider than the viewport, adding a horizontal scrollbar. The collapsed status pills were invisible but still laid out past the right edge; they now collapse to zero width. Hovering the avatar also no longer grows the profile box; sign-out is a popover below it and no longer overlaps the avatar.
+- **Fixed:** a repo whose TASKS.md exists but has no checklist items (e.g. ats-fill) lost its Tasks card entirely, as if the file were missing. It now shows an explicit empty state.
+- **Tests:** route test for `update-health-profile` (write grant keyed by `session.userId`, 404 without a grant, 400 on an unknown profile); Tasks empty states; grade-scale parity.
+
 ### Session identity fix
 
 - **Fixed:** `session.userId` was a random per-login UUID, not the GitHub numeric id. Without a database adapter, Auth.js v5 sets `token.sub` to a UUID and ignores `profile().id`. So `/api/sync-progress` always 404'd (frozen "Sync All" bar), repo-access checks never matched the grants that Sync All writes under the GitHub id (private repos hidden from the dashboard, PMO, `/api/context` and chat), and single-repo sync and add wrote grants under a throwaway UUID. The GitHub id now comes from `account.providerAccountId` at sign-in (`lib/auth-session.ts`). Sessions from before this fix have no `userId` until the next sign-in.

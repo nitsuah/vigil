@@ -322,13 +322,15 @@ export default function Header(props: HeaderProps = {}) {
                     /* Enhanced Profile Section with Integrated Sign Out and Status Pills */
                     <div className="relative group">
                         <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 rounded-lg opacity-25 group-hover:opacity-40 blur transition duration-300"></div>
-                        <div className={`relative flex items-center bg-slate-900/90 rounded-lg border border-slate-700/50 backdrop-blur-sm transition-all duration-300 ease-out overflow-visible gap-3 ${showStatusPills ? 'py-8 pl-28 pr-16' : 'py-3 pl-4 pr-0 group-hover:pr-10'
+                        <div className={`relative flex items-center bg-slate-900/90 rounded-lg border border-slate-700/50 backdrop-blur-sm transition-all duration-300 ease-out overflow-visible gap-3 ${showStatusPills ? 'py-8 pl-28 pr-16' : 'py-3 pl-4 pr-0'
                             }`}>
 
                             {/* Auth Pill - Top */}
                             <div className={`absolute left-4 top-2 transition-all duration-500 ease-out origin-right ${showStatusPills
-                                ? 'opacity-100 scale-100'
-                                : 'opacity-0 scale-50 pointer-events-none'
+                                ? 'opacity-100 scale-100 max-w-xs'
+                                // max-w-0: collapsed pills are invisible but still laid out at the
+                                // screen's right edge; without it they widen the page (scrollbar).
+                                : 'opacity-0 scale-50 pointer-events-none max-w-0 overflow-hidden'
                                 }`} data-tour="auth-status">
                                 <span
                                     className={`pill relative overflow-hidden flex items-center gap-1 font-bold shadow-lg group/auth cursor-pointer transition-all duration-300 ease-out ${!session ? 'pl-2' : ''} ${session
@@ -357,8 +359,10 @@ export default function Header(props: HeaderProps = {}) {
 
                             {/* Gemini Pill - Middle */}
                             <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-500 ease-out origin-right ${showStatusPills
-                                ? 'opacity-100 scale-100'
-                                : 'opacity-0 scale-50 pointer-events-none'
+                                ? 'opacity-100 scale-100 max-w-xs'
+                                // max-w-0: collapsed pills are invisible but still laid out at the
+                                // screen's right edge; without it they widen the page (scrollbar).
+                                : 'opacity-0 scale-50 pointer-events-none max-w-0 overflow-hidden'
                                 }`} data-tour="gemini-status">
                                 <span
                                     className={`pill relative overflow-hidden flex items-center gap-1 font-bold shadow-lg group/gemini cursor-pointer transition-all duration-300 ease-out ${!geminiStatus.healthy && !geminiStatus.loading ? 'pl-2' : ''} ${geminiStatus.loading
@@ -391,8 +395,10 @@ export default function Header(props: HeaderProps = {}) {
 
                             {/* Version Pill - Bottom Left */}
                             <div className={`absolute left-4 bottom-2 transition-all duration-500 ease-out origin-right ${showStatusPills
-                                ? 'opacity-100 scale-100'
-                                : 'opacity-0 scale-50 pointer-events-none'
+                                ? 'opacity-100 scale-100 max-w-xs'
+                                // max-w-0: collapsed pills are invisible but still laid out at the
+                                // screen's right edge; without it they widen the page (scrollbar).
+                                : 'opacity-0 scale-50 pointer-events-none max-w-0 overflow-hidden'
                                 }`} data-tour="version-info">
                                 <span
                                     className="pill relative overflow-hidden flex items-center gap-1 text-sky-300 font-bold shadow-lg shadow-sky-500/30 group/version cursor-pointer transition-all duration-300 ease-out"
@@ -409,8 +415,10 @@ export default function Header(props: HeaderProps = {}) {
 
                             {/* Tour Pill - Bottom Right */}
                             <div className={`absolute right-16 bottom-2 transition-all duration-500 ease-out origin-left ${showStatusPills
-                                ? 'opacity-100 scale-100'
-                                : 'opacity-0 scale-50 pointer-events-none'
+                                ? 'opacity-100 scale-100 max-w-xs'
+                                // max-w-0: collapsed pills are invisible but still laid out at the
+                                // screen's right edge; without it they widen the page (scrollbar).
+                                : 'opacity-0 scale-50 pointer-events-none max-w-0 overflow-hidden'
                                 }`}>
                                 <button
                                     onClick={(e) => {
@@ -476,16 +484,22 @@ export default function Header(props: HeaderProps = {}) {
                                 </div>
                             )}
 
-                            {/* Sign Out Button - Overlays right side on hover */}
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
+                            {/* Sign Out - popover below the profile on hover/focus. Positioned out of
+                                flow (top-full) so revealing it never changes the header's width: the
+                                old in-flow version grew the box by pr-10 on hover, pushing the header
+                                past the viewport (horizontal scrollbar) and overlapping the avatar.
+                                pt-2 (not mt-2) keeps the hover area continuous. */}
+                            <div className="absolute right-0 top-full z-50 pt-2 opacity-0 pointer-events-none transition-opacity duration-200 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         signOut();
                                     }}
-                                    className="shrink-0 p-3 rounded-lg bg-red-500/95 text-white hover:bg-red-600 transition-all hover:scale-105 transform shadow-xl backdrop-blur-sm"
+                                    aria-label="Sign out"
+                                    className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-red-500/95 px-3 py-1.5 text-xs font-semibold text-white shadow-xl transition-colors hover:bg-red-600"
                                 >
-                                    <LogOut className="h-5 w-5" />
+                                    <LogOut className="h-4 w-4" />
+                                    Sign out
                                 </button>
                             </div>
                         </div>
