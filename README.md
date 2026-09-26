@@ -351,7 +351,9 @@ Every committed Markdown doc in this repo (other than this README, `.github/` an
 
 - [Agent Task Queue API](./docs/AGENT_TASK_QUEUE_API.md) — `docs/AGENT_TASK_QUEUE_API.md`
 - [Overseer Feature Audit](./docs/AUDIT.md) — `docs/AUDIT.md`
+- [Vigil MCP server](./docs/MCP.md) — `docs/MCP.md`
 - [Testing Improvement Strategy Prompt](./docs/TESTING_STRATEGY_PROMPT.md) — `docs/TESTING_STRATEGY_PROMPT.md`
+- [Visual docs: diagrams and screenshots that stay current](./docs/VISUAL_DOCS.md) — `docs/VISUAL_DOCS.md`
 - [DB Scaling Assessment](./docs/db-scaling-assessment.md) — `docs/db-scaling-assessment.md`
 
 **`docs/archive/`**

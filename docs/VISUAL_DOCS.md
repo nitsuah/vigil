@@ -1,5 +1,7 @@
 # Visual docs: diagrams and screenshots that stay current
 
+> 🧭 [vigil](../README.md) · [Features](../FEATURES.md) · [Roadmap](../ROADMAP.md) · [Tasks](../TASKS.md) · [Changelog](../CHANGELOG.md) · [Metrics](../METRICS.md) <!-- nav -->
+
 Stale screenshots mislead, and diagrams nobody regenerates mislead worse. This recipe has CI rebuild both on every push to `main`. It embeds them in the README by name and path, and hands you a PR to review. Nothing is pushed to `main` directly.
 
 Vigil checks for it with the **Visual Docs** best practice, and runs the recipe on itself: see the README's "Screenshots & diagrams" section and `.github/workflows/visual-docs.yml`.
