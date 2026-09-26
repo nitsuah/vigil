@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sync progress accuracy
+
+- **Fixed:** "Sync All" counted the default repos (vigil, nitsuah-io) twice when the user already owns them. The total overshot (13 counted, 11 synced), so the bar finished at 85%, and both repos got a full second detailed sync. Defaults already in the user's list are now synced once (`defaultReposNotIn` in `lib/sync-filters.ts`).
+- **Fixed:** the progress count only advanced during the seconds-long metadata phase, then sat still through the minutes-long health phase, so the bar looked frozen. `completedRepos` now counts repos whose detailed sync has finished (success or final failure).
+
 ### Dashboard fixes
 
 - **Fixed:** one grade scale everywhere. The dashboard (`lib/dashboard-utils.ts`) graded 60–69 as "C" and 80–89 as "A", while MCP and `/api/context` (`lib/health-grade.ts`) graded 60–69 as "D". The dashboard now takes its letter from `healthGrade()` (A+ ≥ 95, A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60, F), and the grade distribution gains an `A+` bucket. A test asserts the two letters agree for every score from 0 to 100.
