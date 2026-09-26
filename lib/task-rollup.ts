@@ -45,6 +45,7 @@ export interface OpenTaskRollup {
     total: number;
     truncated: boolean;
     by_priority: Record<TaskPriority | 'none', number>;
+    /** Keyed by owner/repo full name (short names can collide across owners). */
     by_repo: Record<string, number>;
 }
 
@@ -76,7 +77,7 @@ export function rollupOpenTasks(all: OpenTask[], filters: OpenTaskFilters = {}):
     const by_repo: Record<string, number> = {};
     for (const t of matched) {
         by_priority[t.priority ?? 'none']++;
-        by_repo[t.repo] = (by_repo[t.repo] ?? 0) + 1;
+        by_repo[t.full_name] = (by_repo[t.full_name] ?? 0) + 1;
     }
 
     return {
@@ -94,19 +95,29 @@ export function rollupOpenTasks(all: OpenTask[], filters: OpenTaskFilters = {}):
  * the portfolio-admin bearer key.
  */
 export async function loadOpenTasks(db: Db, repoIds?: Set<string>): Promise<OpenTask[]> {
-    const rows = (await db`
-        SELECT r.id AS repo_id, r.name AS repo, r.full_name, r.url AS repo_url,
-               t.title, t.status, t.priority, t.owner, t.section, t.subsection
-        FROM tasks t
-        JOIN repos r ON r.id = t.repo_id
-        WHERE t.status <> 'done'
-          AND (r.is_hidden = false OR r.is_hidden IS NULL)
-        ORDER BY r.name, t.created_at ASC
-    `) as Row[];
+    if (repoIds && repoIds.size === 0) return [];
+    const rows = (repoIds
+        ? await db`
+            SELECT r.name AS repo, r.full_name, r.url AS repo_url,
+                   t.title, t.status, t.priority, t.owner, t.section, t.subsection
+            FROM tasks t
+            JOIN repos r ON r.id = t.repo_id
+            WHERE t.status <> 'done'
+              AND (r.is_hidden = false OR r.is_hidden IS NULL)
+              AND r.id = ANY(${[...repoIds]})
+            ORDER BY r.name, t.created_at ASC
+        `
+        : await db`
+            SELECT r.name AS repo, r.full_name, r.url AS repo_url,
+                   t.title, t.status, t.priority, t.owner, t.section, t.subsection
+            FROM tasks t
+            JOIN repos r ON r.id = t.repo_id
+            WHERE t.status <> 'done'
+              AND (r.is_hidden = false OR r.is_hidden IS NULL)
+            ORDER BY r.name, t.created_at ASC
+        `) as Row[];
 
-    return rows
-        .filter((r) => !repoIds || repoIds.has(r.repo_id))
-        .map((r) => ({
+    return rows.map((r) => ({
             repo: r.repo,
             full_name: r.full_name,
             repo_url: r.repo_url ?? null,
@@ -121,12 +132,15 @@ export async function loadOpenTasks(db: Db, repoIds?: Set<string>): Promise<Open
 
 /** Parse loosely-typed tool/query input into filters, rejecting unknown values. */
 export function parseOpenTaskFilters(input: Record<string, unknown>): OpenTaskFilters {
-    const list = (v: unknown): string[] =>
-        Array.isArray(v) ? v.map(String)
-            : typeof v === 'string' && v.trim() ? v.split(',').map((s) => s.trim()).filter(Boolean)
-            : [];
+    // A malformed filter must error, never silently widen to "every repo".
+    const list = (v: unknown, name: string): string[] => {
+        if (v === undefined || v === null || v === '') return [];
+        if (typeof v === 'string') return v.split(',').map((s) => s.trim()).filter(Boolean);
+        if (Array.isArray(v) && v.every((x) => typeof x === 'string')) return v.map((s) => s.trim()).filter(Boolean);
+        throw new Error(`"${name}" must be a string or an array of strings`);
+    };
 
-    const priorities = list(input.priority).map((p) => (p.toLowerCase() === 'none' ? 'none' : p.toUpperCase()));
+    const priorities = list(input.priority, 'priority').map((p) => (p.toLowerCase() === 'none' ? 'none' : p.toUpperCase()));
     const badPriority = priorities.find((p) => p !== 'none' && !TASK_PRIORITIES.includes(p as TaskPriority));
     if (badPriority) throw new Error(`Unknown priority "${badPriority}" — use P0, P1, P2, P3, or none`);
 
@@ -139,7 +153,7 @@ export function parseOpenTaskFilters(input: Record<string, unknown>): OpenTaskFi
     if (limitNum !== undefined && !Number.isFinite(limitNum)) throw new Error('"limit" must be a number');
 
     return {
-        repos: list(input.repos ?? input.repo),
+        repos: list(input.repos ?? input.repo, 'repos'),
         priorities: priorities as OpenTaskFilters['priorities'],
         status: status as OpenTaskFilters['status'],
         owner: typeof input.owner === 'string' ? input.owner : undefined,

@@ -30,7 +30,7 @@ describe('rollupOpenTasks', () => {
     it('counts by priority and by repo over all matches', () => {
         const r = rollupOpenTasks(ALL);
         expect(r.by_priority).toEqual({ P0: 1, P1: 2, P2: 1, P3: 0, none: 1 });
-        expect(r.by_repo).toEqual({ 'nitsuah-io': 1, skyview: 2, darkmoon: 1, vigil: 1 });
+        expect(r.by_repo).toEqual({ 'Nitsuah-Labs/nitsuah-io': 1, 'nitsuah/skyview': 2, 'nitsuah/darkmoon': 1, 'nitsuah/vigil': 1 });
         expect(r.total).toBe(5);
     });
 
@@ -73,6 +73,20 @@ describe('parseOpenTaskFilters', () => {
 
     it('accepts a single "repo" alias', () => {
         expect(parseOpenTaskFilters({ repo: 'vigil' }).repos).toEqual(['vigil']);
+    });
+
+    it('rejects malformed repo/priority filters instead of widening to every repo', () => {
+        expect(() => parseOpenTaskFilters({ repos: 123 })).toThrow(/repos/);
+        expect(() => parseOpenTaskFilters({ repos: ['vigil', 7] })).toThrow(/repos/);
+        expect(() => parseOpenTaskFilters({ priority: { P0: true } })).toThrow(/priority/);
+    });
+
+    it('keeps same-named repos under different owners apart in by_repo', () => {
+        const r = rollupOpenTasks([
+            task({ repo: 'site', full_name: 'a/site' }),
+            task({ repo: 'site', full_name: 'b/site' }),
+        ]);
+        expect(r.by_repo).toEqual({ 'a/site': 1, 'b/site': 1 });
     });
 
     it('rejects unknown priorities, statuses, and non-numeric limits', () => {

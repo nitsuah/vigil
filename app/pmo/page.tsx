@@ -505,7 +505,7 @@ export default function PmoDashboard(): React.JSX.Element | null {
                     )}
 
                     {/* Cross-repo open TASKS.md work, by priority */}
-                    {portfolio && <OpenWorkPanel />}
+                    {portfolio && <OpenWorkPanel refreshKey={lastFetched?.getTime()} />}
 
                     {/* Cross-Repo Dependencies */}
                     <section className="space-y-3">

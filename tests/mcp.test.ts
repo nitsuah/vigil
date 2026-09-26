@@ -288,6 +288,23 @@ describe('Streamable HTTP handshake', () => {
     expect(await res.text()).toBe('');
   });
 
+  it('rejects an explicit null id with -32600', async () => {
+    const res = await POST(post({ jsonrpc: '2.0', method: 'tools/list', id: null }));
+    expect((await res.json()).error.code).toBe(-32600);
+  });
+
+  it('returns 400 for an unsupported MCP-Protocol-Version header, accepts a supported one', async () => {
+    const bad = await POST(post({ jsonrpc: '2.0', method: 'tools/list', id: 1 }, { 'MCP-Protocol-Version': '1999-01-01' }));
+    expect(bad.status).toBe(400);
+    const good = await POST(post({ jsonrpc: '2.0', method: 'tools/list', id: 1 }, { 'MCP-Protocol-Version': '2025-06-18' }));
+    expect(good.status).toBe(200);
+  });
+
+  it('rejects a malformed repos filter on get_open_tasks', async () => {
+    const res = await POST(post({ jsonrpc: '2.0', method: 'tools/call', id: 1, params: { name: 'get_open_tasks', arguments: { repos: 123 } } }));
+    expect((await res.json()).error.code).toBe(-32603);
+  });
+
   it('answers ping with an empty result', async () => {
     const res = await POST(post({ jsonrpc: '2.0', method: 'ping', id: 7 }));
     expect((await res.json()).result).toEqual({});

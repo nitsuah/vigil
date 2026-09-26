@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ListTodo, RefreshCw } from 'lucide-react';
-import { rollupOpenTasks, MAX_ROLLUP_LIMIT, type OpenTask, type OpenTaskRollup } from '@/lib/task-rollup';
+import type { OpenTaskRollup } from '@/lib/task-rollup';
 import type { TaskPriority } from '@/types/repo';
 
 type PriorityChip = TaskPriority | 'none';
@@ -19,44 +19,48 @@ const VISIBLE_ROWS = 50;
 
 /**
  * Cross-repo "Open work": every unfinished TASKS.md item across the tracked
- * portfolio, grouped by priority. Loads the whole open set once and filters
- * locally with the same rollup the get_open_tasks MCP tool uses.
+ * portfolio, grouped by priority. Filtering happens server-side (same rollup as
+ * the get_open_tasks MCP tool), so counts and repo options always cover every
+ * match rather than one page. `refreshKey` changes when the PMO page refreshes.
  */
-export function OpenWorkPanel() {
-    const [all, setAll] = useState<OpenTask[] | null>(null);
+export function OpenWorkPanel({ refreshKey }: { refreshKey?: number }) {
+    const [summary, setSummary] = useState<OpenTaskRollup | null>(null);
+    const [view, setView] = useState<OpenTaskRollup | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     // P0/P1 by default: the view is "what matters now", not the whole backlog.
     const [priorities, setPriorities] = useState<Set<PriorityChip>>(new Set(['P0', 'P1']));
     const [repo, setRepo] = useState('');
 
-    const load = async () => {
+    const fetchRollup = async (params: Record<string, string>): Promise<OpenTaskRollup> => {
+        const res = await fetch(`/api/pmo/tasks?${new URLSearchParams(params)}`);
+        if (!res.ok) throw new Error('Failed to load open tasks');
+        return res.json() as Promise<OpenTaskRollup>;
+    };
+
+    const load = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/pmo/tasks?limit=${MAX_ROLLUP_LIMIT}`);
-            if (!res.ok) throw new Error('Failed to load open tasks');
-            const data = await res.json() as OpenTaskRollup;
-            setAll(data.tasks);
+            // Unfiltered counts for the chips and repo options.
+            setSummary(await fetchRollup({ limit: '1' }));
+            // Every chip off means "show nothing", not "no filter".
+            setView(priorities.size === 0 ? null : await fetchRollup({
+                priority: [...priorities].join(','),
+                ...(repo ? { repos: repo } : {}),
+                limit: String(VISIBLE_ROWS),
+            }));
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
-    };
+    }, [priorities, repo]);
 
-    useEffect(() => { void load(); }, []);
+    useEffect(() => { void load(); }, [load, refreshKey]);
 
-    const unfiltered = useMemo(() => rollupOpenTasks(all ?? [], { limit: 1 }), [all]);
-    const view = useMemo(
-        () => rollupOpenTasks(all ?? [], {
-            priorities: [...priorities],
-            repos: repo ? [repo] : undefined,
-            limit: VISIBLE_ROWS,
-        }),
-        [all, priorities, repo],
-    );
-    const repoNames = useMemo(() => Object.keys(unfiltered.by_repo).sort(), [unfiltered]);
+    const repoNames = useMemo(() => Object.keys(summary?.by_repo ?? {}).sort(), [summary]);
+    const total = summary?.total ?? 0;
 
     const toggle = (p: PriorityChip) => setPriorities(prev => {
         const next = new Set(prev);
@@ -72,7 +76,7 @@ export function OpenWorkPanel() {
                     Open work
                 </h2>
                 <span className="text-xs text-slate-500">
-                    {unfiltered.total} open task{unfiltered.total !== 1 ? 's' : ''} across {repoNames.length} repo{repoNames.length !== 1 ? 's' : ''}
+                    {total} open task{total !== 1 ? 's' : ''} across {repoNames.length} repo{repoNames.length !== 1 ? 's' : ''}
                 </span>
             </div>
 
@@ -87,7 +91,7 @@ export function OpenWorkPanel() {
                             aria-pressed={on}
                             className={`px-2 py-0.5 rounded border text-[11px] font-medium transition-opacity ${c.color} ${on ? '' : 'opacity-40'}`}
                         >
-                            {c.label} <span className="tabular-nums">{unfiltered.by_priority[c.key]}</span>
+                            {c.label} <span className="tabular-nums">{summary?.by_priority[c.key] ?? 0}</span>
                         </button>
                     );
                 })}
@@ -98,7 +102,7 @@ export function OpenWorkPanel() {
                     className="ml-auto text-xs bg-slate-900 border border-white/10 rounded px-2 py-1 text-slate-300"
                 >
                     <option value="">All repos</option>
-                    {repoNames.map(n => <option key={n} value={n}>{n} ({unfiltered.by_repo[n]})</option>)}
+                    {repoNames.map(n => <option key={n} value={n}>{n} ({summary?.by_repo[n]})</option>)}
                 </select>
             </div>
 
@@ -109,15 +113,18 @@ export function OpenWorkPanel() {
                         <button type="button" onClick={() => void load()} className="ml-auto underline">Retry</button>
                     </div>
                 )}
-                {loading && !all && (
+                {loading && !summary && (
                     <div className="flex items-center gap-2 p-3 text-slate-500 text-xs">
                         <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading open tasks…
                     </div>
                 )}
-                {all && view.tasks.length === 0 && (
+                {summary && priorities.size === 0 && (
+                    <p className="p-3 text-xs text-slate-500">Select at least one priority.</p>
+                )}
+                {view && view.tasks.length === 0 && (
                     <p className="p-3 text-xs text-slate-500">No open tasks match these filters.</p>
                 )}
-                {view.tasks.map((t, i) => (
+                {view?.tasks.map((t, i) => (
                     <div key={`${t.full_name}-${i}`} className="flex items-start gap-3 px-3 py-2 text-xs">
                         <span className={`shrink-0 w-9 text-center rounded border px-1 py-0.5 text-[10px] font-semibold ${CHIPS.find(c => c.key === (t.priority ?? 'none'))?.color}`}>
                             {t.priority ?? '—'}
@@ -137,7 +144,7 @@ export function OpenWorkPanel() {
                         )}
                     </div>
                 ))}
-                {view.truncated && (
+                {view?.truncated && (
                     <p className="px-3 py-2 text-[11px] text-slate-500">
                         Showing {view.tasks.length} of {view.total}. Narrow by repo or priority to see the rest.
                     </p>

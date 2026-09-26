@@ -674,6 +674,13 @@ export async function POST(req: NextRequest) {
     return rpcError(null, -32001, 'Unauthorized — set Authorization: Bearer <MCP_API_KEY>', 401);
   }
 
+  // Streamable HTTP: a present-but-unsupported MCP-Protocol-Version is a 400;
+  // an absent header stays on the compatibility path.
+  const headerVersion = req.headers.get('mcp-protocol-version');
+  if (headerVersion !== null && !(SUPPORTED_PROTOCOL_VERSIONS as readonly string[]).includes(headerVersion)) {
+    return rpcError(null, -32602, `Unsupported MCP-Protocol-Version "${headerVersion}"`, 400);
+  }
+
   let body: JsonRpcRequest;
   try {
     body = await req.json();
@@ -683,8 +690,12 @@ export async function POST(req: NextRequest) {
 
   const { method, params = {}, id } = body;
 
-  // JSON-RPC notifications (no id, e.g. notifications/initialized) get no body.
-  if (id === undefined || id === null) {
+  // An explicit null id is not a notification (MCP ids are strings or numbers).
+  if (id === null) {
+    return rpcError(null, -32600, 'Invalid Request — id must be a string or number');
+  }
+  // JSON-RPC notifications (id omitted, e.g. notifications/initialized) get no body.
+  if (id === undefined) {
     if (typeof method === 'string' && method.startsWith('notifications/')) {
       return new NextResponse(null, { status: 202 });
     }
