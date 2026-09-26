@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sync progress accuracy
+
+- **Fixed:** "Sync All" counted the default repos (vigil, nitsuah-io) twice when the user already owns them. The total overshot (13 counted, 11 synced), so the bar finished at 85%, and both repos got a full second detailed sync. Defaults already in the user's list are now synced once (`defaultReposNotIn` in `lib/sync-filters.ts`).
+- **Fixed:** the progress count only advanced during the seconds-long metadata phase, then sat still through the minutes-long health phase, so the bar looked frozen. `completedRepos` now counts repos whose detailed sync has finished (success or final failure).
+
 ### Session identity fix
 
 - **Fixed:** `session.userId` was a random per-login UUID, not the GitHub numeric id. Without a database adapter, Auth.js v5 sets `token.sub` to a UUID and ignores `profile().id`. So `/api/sync-progress` always 404'd (frozen "Sync All" bar), repo-access checks never matched the grants that Sync All writes under the GitHub id (private repos hidden from the dashboard, PMO, `/api/context` and chat), and single-repo sync and add wrote grants under a throwaway UUID. The GitHub id now comes from `account.providerAccountId` at sign-in (`lib/auth-session.ts`). Sessions from before this fix have no `userId` until the next sign-in.
