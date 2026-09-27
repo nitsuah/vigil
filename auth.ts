@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import logger from './lib/log';
-import { applyJwt, sessionUserId } from '@/lib/auth-session';
+import { applyJwt, backfillGithubId, sessionUserId } from '@/lib/auth-session';
 
 // Exact-match check (not substring) so a host like "notlocalhost.example.com" doesn't
 // falsely qualify for the localhost HTTP exemption below.
@@ -91,7 +91,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     callbacks: {
         async jwt({ token, account }) {
             logger.debug('JWT callback', { token, account });
-            return applyJwt(token, account);
+            return backfillGithubId(applyJwt(token, account));
         },
         async session({ session, token }) {
             logger.debug('Session callback', { session, token });

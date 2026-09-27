@@ -1,16 +1,16 @@
 "use client";
 
 import { signIn, signOut, useSession } from "next-auth/react";
-import { LogOut, Zap, CheckCircle, AlertCircle, Tag, Plus, Filter, X, RefreshCw, HelpCircle, LayoutDashboard, Menu, Settings, EyeOff } from "lucide-react";
+import { LogOut, Plus, Filter, X, RefreshCw, HelpCircle, LayoutDashboard, Menu, Settings, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { GithubIcon } from "@/components/icons/GithubIcon";
 import { VigilIcon } from "@/components/icons/VigilIcon";
 import Image from "next/image";
-import { useGeminiStatus } from "@/hooks/useGeminiStatus";
 import { getLanguageColor } from "@/lib/language-colors";
 import { useState } from "react";
 import { RepoType } from "@/lib/repo-type";
 import { useRateLimit, RateLimitDisplay } from "./RateLimitIndicator";
+import { ProfileMenu } from "./ProfileMenu";
 
 interface HeaderProps {
     repoCount?: { filtered: number; total: number };
@@ -45,7 +45,6 @@ const repoTypes: RepoType[] = ['web-app', 'game', 'tool', 'library', 'bot', 'res
 
 export default function Header(props: HeaderProps = {}) {
     const { data: session, status } = useSession();
-    const geminiStatus = useGeminiStatus();
     const rateLimitState = useRateLimit(!!session);
 
     const {
@@ -76,7 +75,6 @@ export default function Header(props: HeaderProps = {}) {
         onOpenSettings,
     } = props;
 
-    const [showStatusPills, setShowStatusPills] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const hasActiveFilters = filterType && (filterType !== 'all' || filterLanguage !== 'all' || filterFork !== 'all');
 
@@ -319,189 +317,7 @@ export default function Header(props: HeaderProps = {}) {
                 )}
 
                 {session ? (
-                    /* Enhanced Profile Section with Integrated Sign Out and Status Pills */
-                    <div className="relative group">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 rounded-lg opacity-25 group-hover:opacity-40 blur transition duration-300"></div>
-                        <div className={`relative flex items-center bg-slate-900/90 rounded-lg border border-slate-700/50 backdrop-blur-sm transition-all duration-300 ease-out overflow-visible gap-3 ${showStatusPills ? 'py-8 pl-28 pr-16' : 'py-3 pl-4 pr-0'
-                            }`}>
-
-                            {/* Auth Pill - Top */}
-                            <div className={`absolute left-4 top-2 transition-all duration-500 ease-out origin-right ${showStatusPills
-                                ? 'opacity-100 scale-100 max-w-xs'
-                                // max-w-0: collapsed pills are invisible but still laid out at the
-                                // screen's right edge; without it they widen the page (scrollbar).
-                                : 'opacity-0 scale-50 pointer-events-none max-w-0 overflow-hidden'
-                                }`} data-tour="auth-status">
-                                <span
-                                    className={`pill relative overflow-hidden flex items-center gap-1 font-bold shadow-lg group/auth cursor-pointer transition-all duration-300 ease-out ${!session ? 'pl-2' : ''} ${session
-                                        ? 'pill-success shadow-emerald-500/30'
-                                        : 'pill-warn shadow-amber-500/30'
-                                        }`}
-                                >
-                                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-[shimmer_2s_infinite]"></span>
-                                    <span className="relative flex items-center">
-                                        {session ? (
-                                            <>
-                                                <CheckCircle className="h-3.5 w-3.5 drop-shadow-[0_0_4px_rgba(52,211,153,0.8)]" />
-                                                <span className="w-0 group-hover/auth:w-auto overflow-hidden transition-all duration-300 ease-out">
-                                                    <span className="ml-1.5 whitespace-nowrap inline-block">Auth: OK</span>
-                                                </span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <AlertCircle className="h-3.5 w-3.5" />
-                                                <span className="ml-1.5 whitespace-nowrap">Auth: Guest</span>
-                                            </>
-                                        )}
-                                    </span>
-                                </span>
-                            </div>
-
-                            {/* Gemini Pill - Middle */}
-                            <div className={`absolute left-4 top-1/2 -translate-y-1/2 transition-all duration-500 ease-out origin-right ${showStatusPills
-                                ? 'opacity-100 scale-100 max-w-xs'
-                                // max-w-0: collapsed pills are invisible but still laid out at the
-                                // screen's right edge; without it they widen the page (scrollbar).
-                                : 'opacity-0 scale-50 pointer-events-none max-w-0 overflow-hidden'
-                                }`} data-tour="gemini-status">
-                                <span
-                                    className={`pill relative overflow-hidden flex items-center gap-1 font-bold shadow-lg group/gemini cursor-pointer transition-all duration-300 ease-out ${!geminiStatus.healthy && !geminiStatus.loading ? 'pl-2' : ''} ${geminiStatus.loading
-                                        ? 'text-slate-400 shadow-slate-500/20'
-                                        : geminiStatus.healthy
-                                            ? 'pill-success shadow-emerald-500/30'
-                                            : 'pill-error shadow-red-500/30'
-                                        }`}
-                                >
-                                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-[shimmer_2s_infinite]"></span>
-                                    <span className="relative flex items-center">
-                                        {!geminiStatus.healthy && !geminiStatus.loading ? (
-                                            <>
-                                                <Zap className="h-3.5 w-3.5" />
-                                                <span className="ml-1.5 whitespace-nowrap">Gemini: Error</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Zap className={`h-3.5 w-3.5 ${geminiStatus.healthy ? 'motion-safe:animate-pulse drop-shadow-[0_0_4px_rgba(52,211,153,0.8)]' : ''}`} />
-                                                <span className="w-0 group-hover/gemini:w-auto overflow-hidden transition-all duration-300 ease-out">
-                                                    <span className="ml-1.5 whitespace-nowrap inline-block">
-                                                        {geminiStatus.loading ? 'Gemini: ...' : 'Gemini: OK'}
-                                                    </span>
-                                                </span>
-                                            </>
-                                        )}
-                                    </span>
-                                </span>
-                            </div>
-
-                            {/* Version Pill - Bottom Left */}
-                            <div className={`absolute left-4 bottom-2 transition-all duration-500 ease-out origin-right ${showStatusPills
-                                ? 'opacity-100 scale-100 max-w-xs'
-                                // max-w-0: collapsed pills are invisible but still laid out at the
-                                // screen's right edge; without it they widen the page (scrollbar).
-                                : 'opacity-0 scale-50 pointer-events-none max-w-0 overflow-hidden'
-                                }`} data-tour="version-info">
-                                <span
-                                    className="pill relative overflow-hidden flex items-center gap-1 text-sky-300 font-bold shadow-lg shadow-sky-500/30 group/version cursor-pointer transition-all duration-300 ease-out"
-                                >
-                                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-[shimmer_2s_infinite]"></span>
-                                    <span className="relative flex items-center drop-shadow-[0_0_4px_rgba(125,211,252,0.6)]">
-                                        <Tag className="h-3.5 w-3.5" />
-                                        <span className="w-0 group-hover/version:w-auto overflow-hidden transition-all duration-300 ease-out">
-                                            <span className="ml-1.5 whitespace-nowrap inline-block">v0.2.0</span>
-                                        </span>
-                                    </span>
-                                </span>
-                            </div>
-
-                            {/* Tour Pill - Bottom Right */}
-                            <div className={`absolute right-16 bottom-2 transition-all duration-500 ease-out origin-left ${showStatusPills
-                                ? 'opacity-100 scale-100 max-w-xs'
-                                // max-w-0: collapsed pills are invisible but still laid out at the
-                                // screen's right edge; without it they widen the page (scrollbar).
-                                : 'opacity-0 scale-50 pointer-events-none max-w-0 overflow-hidden'
-                                }`}>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onStartTour?.();
-                                    }}
-                                    className="pill relative overflow-hidden flex items-center gap-1 text-violet-300 font-bold shadow-lg shadow-violet-500/30 group/tour cursor-pointer transition-all duration-300 ease-out hover:shadow-violet-500/50"
-                                    title="Start guided tour"
-                                >
-                                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-[shimmer_2s_infinite]"></span>
-                                    <span className="relative flex items-center drop-shadow-[0_0_4px_rgba(196,181,253,0.6)]">
-                                        <HelpCircle className="h-3.5 w-3.5" />
-                                        <span className="w-0 group-hover/tour:w-auto overflow-hidden transition-all duration-300 ease-out">
-                                            <span className="ml-1.5 whitespace-nowrap inline-block">Tour</span>
-                                        </span>
-                                    </span>
-                                </button>
-                            </div>
-
-                            {session.user?.image ? (
-                                <button
-                                    onClick={() => setShowStatusPills(!showStatusPills)}
-                                    className="relative cursor-pointer focus:outline-none"
-                                    title="Profile, status & sign out"
-                                    data-tour="profile-close"
-                                >
-                                    <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 rounded-full opacity-40 group-hover:opacity-60 blur transition duration-300 motion-safe:animate-[spin_8s_linear_infinite]"></div>
-                                    <div className="relative">
-                                        <Image
-                                            src={session.user.image}
-                                            alt={session.user?.name ?? 'User'}
-                                            width={44}
-                                            height={44}
-                                            className="rounded-full ring-2 ring-purple-500/60 shadow-lg shadow-purple-900/50"
-                                        />
-                                    </div>
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={() => setShowStatusPills(!showStatusPills)}
-                                    className="h-11 w-11 rounded-full bg-gradient-to-br from-purple-600 to-fuchsia-600 flex items-center justify-center text-sm font-bold text-white shadow-lg cursor-pointer focus:outline-none"
-                                    title="Profile, status & sign out"
-                                    data-tour="profile-close"
-                                >
-                                    {session.user?.name?.charAt(0) ?? 'U'}
-                                </button>
-                            )}
-                            {/* Name/email stay hidden until the user clicks the avatar to expand
-                                the profile (showStatusPills) — keeps the collapsed control to just
-                                the profile icon and avoids the wide inline name/email pushing the
-                                header's right cluster past the viewport on narrower/half-width
-                                screens. */}
-                            {showStatusPills && (
-                                <div className="flex flex-col justify-center transition-all duration-300 flex-1 min-w-0 pl-3 pr-14">
-                                    <span className="text-sm font-semibold bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-transparent whitespace-nowrap">
-                                        {session.user?.name ?? 'User'}
-                                    </span>
-                                    {session.user?.email && (
-                                        <span className="text-[11px] text-slate-400 truncate">
-                                            {session.user.email}
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Sign Out lives inside the expanded profile panel (click the avatar),
-                                in the right-hand space the panel reserves (pr-16). Nothing appears on
-                                hover, so the header never shifts, overlaps, or overflows. */}
-                            {showStatusPills && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        signOut();
-                                    }}
-                                    aria-label="Sign out"
-                                    title="Sign out"
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 rounded-lg bg-red-500/90 p-2 text-white shadow-lg transition-colors hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-300"
-                                >
-                                    <LogOut className="h-4 w-4" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
+                    <ProfileMenu session={session} onStartTour={onStartTour} />
                 ) : (
                     <button
                         onClick={() => signIn('github', { redirectTo: '/' })}

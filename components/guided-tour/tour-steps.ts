@@ -167,8 +167,8 @@ export const tourSteps: TourStep[] = [
     id: 'profile-close',
     title: 'Tour Complete!',
     description:
-      'Click the profile picture to collapse the status pills and finish the tour. You can always click it again to view your authentication status, AI availability, and version info.',
-    target: '[data-tour="profile-close"]',
+      'Click your profile picture any time to see your sign-in status, AI availability and version, restart this tour, or sign out.',
+    target: '[data-tour="profile-toggle"]',
     position: 'bottom',
   },
 ];

@@ -168,6 +168,12 @@ export default function Dashboard() {
       try {
         const res = await fetch(`/api/sync-progress?sessionId=${sessionId}`);
         if (!isActive()) return;
+        // 401 won't clear by retrying: the session can't be matched to the sync's owner.
+        if (res.status === 401) {
+          setSyncProgress(null);
+          setToastMessage('Sync is running, but this session can\'t read its progress. Reload the page (or sign out and back in) to see results.');
+          return;
+        }
         if (!res.ok) {
           retryOrGiveUp();
           return;
