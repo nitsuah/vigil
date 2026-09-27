@@ -56,7 +56,13 @@ describe('backfillGithubId', () => {
         expect(fail).toHaveBeenCalledTimes(2);
     });
 
-    it('treats a network error as a failed lookup', async () => {
+    it('bounds the lookup with a timeout signal', async () => {
+        const fetchImpl = ok({ id: 7 });
+        await backfillGithubId({ accessToken: 't' }, fetchImpl as never);
+        expect(fetchImpl.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it('treats a network error or timeout as a failed lookup', async () => {
         const boom = vi.fn().mockRejectedValue(new Error('offline'));
         const token = await backfillGithubId({ accessToken: 't' }, boom as never, 5);
         expect(token.githubId).toBeUndefined();

@@ -233,36 +233,54 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
     refreshKey?: number;
     onHandoff: OnHandoff;
 }): React.JSX.Element {
-    const [rollup, setRollup] = useState<OpenTaskRollup | null>(null);
+    // `summary`: unfiltered counts for the chips and each repo's open total.
+    // `view`: the tasks at the selected priorities, filtered server-side so the
+    // row cap applies to what's shown, not to the whole backlog.
+    const [summary, setSummary] = useState<OpenTaskRollup | null>(null);
+    const [view, setView] = useState<OpenTaskRollup | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     // P0/P1 by default: "what matters now", not the whole backlog.
     const [priorities, setPriorities] = useState<Set<PriorityKey>>(new Set(['P0', 'P1']));
     const loadSeq = useRef(0);
 
-    // One unfiltered load; priority filtering is client-side so chips are instant.
     const load = useCallback(async () => {
         const seq = ++loadSeq.current;
+        const current = () => seq === loadSeq.current;
+        const fetchRollup = async (params: Record<string, string>) => {
+            const res = await fetch(`/api/pmo/tasks?${new URLSearchParams(params)}`);
+            if (!res.ok) throw new Error('Failed to load open tasks');
+            return res.json() as Promise<OpenTaskRollup>;
+        };
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`/api/pmo/tasks?limit=${MAX_ROLLUP_LIMIT}`);
-            if (!res.ok) throw new Error('Failed to load open tasks');
-            const data = await res.json() as OpenTaskRollup;
-            if (seq === loadSeq.current) setRollup(data);
+            const [nextSummary, nextView] = await Promise.all([
+                fetchRollup({ limit: '1' }),
+                // Every chip off means "show nothing", not "no filter".
+                priorities.size === 0
+                    ? Promise.resolve(null)
+                    : fetchRollup({ priority: [...priorities].join(','), limit: String(MAX_ROLLUP_LIMIT) }),
+            ]);
+            if (!current()) return;
+            setSummary(nextSummary);
+            setView(nextView);
         } catch (e) {
-            if (seq === loadSeq.current) setError(e instanceof Error ? e.message : 'Unknown error');
+            if (current()) setError(e instanceof Error ? e.message : 'Unknown error');
         } finally {
-            if (seq === loadSeq.current) setLoading(false);
+            if (current()) setLoading(false);
         }
-    }, []);
+    }, [priorities]);
 
     useEffect(() => { void load(); }, [load, refreshKey]);
 
-    const { active, idle } = useMemo(
-        () => groupWorkByRepo(repos, rollup?.tasks ?? [], priorities),
-        [repos, rollup, priorities],
-    );
+    const { active, idle } = useMemo(() => {
+        const grouped = groupWorkByRepo(repos, view?.tasks ?? [], priorities);
+        // open_total from the unfiltered counts, not just the filtered tasks.
+        const withTotals = (gs: typeof grouped.active) =>
+            gs.map((g) => ({ ...g, open_total: summary?.by_repo[g.repo.full_name] ?? g.open_total }));
+        return { active: withTotals(grouped.active), idle: withTotals(grouped.idle) };
+    }, [repos, view, summary, priorities]);
 
     const toggle = (p: PriorityKey) => setPriorities((prev) => {
         const next = new Set(prev);
@@ -270,7 +288,7 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
         return next;
     });
 
-    const total = rollup?.total ?? 0;
+    const total = summary?.total ?? 0;
 
     return (
         <section className="space-y-3" aria-labelledby="repo-work-heading">
@@ -287,7 +305,7 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
                         aria-pressed={priorities.has(p)}
                         className={`px-2 py-0.5 rounded border text-[11px] font-medium transition-opacity ${CHIP_COLOR[p]} ${priorities.has(p) ? '' : 'opacity-40'}`}
                     >
-                        {p === 'none' ? 'None' : p} <span className="tabular-nums">{rollup?.by_priority[p] ?? 0}</span>
+                        {p === 'none' ? 'None' : p} <span className="tabular-nums">{summary?.by_priority[p] ?? 0}</span>
                     </button>
                 ))}
                 <span className="ml-auto text-xs text-slate-500">
@@ -301,14 +319,14 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
                     <button type="button" onClick={() => void load()} className="ml-auto underline">Retry</button>
                 </div>
             )}
-            {loading && !rollup && (
+            {loading && !summary && (
                 <div className="flex items-center gap-2 text-slate-500 text-xs">
                     <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading open tasks…
                 </div>
             )}
-            {rollup?.truncated && (
+            {view?.truncated && (
                 <p className="text-[11px] text-amber-400/80">
-                    Showing the {rollup.tasks.length} most urgent of {rollup.total} open tasks.
+                    Showing the {view.tasks.length} most urgent of {view.total} matching tasks.
                 </p>
             )}
 
@@ -317,7 +335,7 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
                     {active.map((g) => <RepoWorkCard key={g.repo.id} group={g} onHandoff={onHandoff} />)}
                 </div>
             )}
-            {rollup && priorities.size > 0 && active.length === 0 && (
+            {view && active.length === 0 && (
                 <p className="text-xs text-slate-500">No open tasks at these priorities.</p>
             )}
 

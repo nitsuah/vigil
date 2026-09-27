@@ -46,6 +46,8 @@ export function sessionUserId(token: VigilToken): string | undefined {
 }
 
 const BACKFILL_RETRY_MS = 10 * 60_000;
+/** The lookup runs inside the jwt callback, so a slow GitHub must not stall the request. */
+const BACKFILL_TIMEOUT_MS = 3_000;
 
 /**
  * jwt callback, after applyJwt: sessions minted before githubId was captured
@@ -64,6 +66,7 @@ export async function backfillGithubId(
     try {
         const res = await fetchImpl('https://api.github.com/user', {
             headers: { Authorization: `Bearer ${token.accessToken}`, Accept: 'application/vnd.github+json' },
+            signal: AbortSignal.timeout(BACKFILL_TIMEOUT_MS),
         });
         const id = res.ok ? ((await res.json()) as { id?: unknown }).id : undefined;
         if (typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id))) {
@@ -72,7 +75,7 @@ export async function backfillGithubId(
             return token;
         }
     } catch {
-        // fall through: record the failure below
+        // Network error or timeout: record the failure below.
     }
     token.githubIdLookupFailedAt = now;
     return token;

@@ -281,8 +281,9 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
     }
 
     if (['auth-status', 'gemini-status', 'version-info'].includes(step.id)) {
+      // The status rows only exist while the profile menu is open.
       const authEl = document.querySelector('[data-tour="auth-status"]');
-      if (authEl && authEl.getBoundingClientRect().width === 0) {
+      if ((!authEl || authEl.getBoundingClientRect().width === 0) && document.querySelector('[data-tour="profile-toggle"]')) {
         clickAndWait('[data-tour="profile-toggle"]', 500, () => {
           updateHighlight();
           startAutoAdvance();
