@@ -16,7 +16,19 @@ const eslintConfig = defineConfig([
     // minified third-party code that isn't ours to lint.
     "playwright-report/**",
     "test-results/**",
+    // Promo render output (gitignored).
+    "promo/out/**",
   ]),
+  // GitHub Pages landing page (site/): plain browser scripts.
+  {
+    files: ["site/**/*.js"],
+    languageOptions: { globals: { window: "readonly", document: "readonly", navigator: "readonly", Image: "readonly", setTimeout: "readonly" } },
+  },
+  // Promo frame renderer: CommonJS, run by Node inside the promo image.
+  {
+    files: ["promo/render.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
 ]);
 
 export default eslintConfig;

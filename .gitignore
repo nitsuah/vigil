@@ -54,3 +54,5 @@ node_modules/
 .agent
 # Local Netlify folder
 .netlify
+promo/out/
+brag-output*/

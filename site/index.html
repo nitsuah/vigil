@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Vigil — keep watch over every repo</title>
+<meta name="description" content="A dashboard and MCP server for everyone with too many GitHub repos. Health grades for every repo, one ranked list of open work across all of them, a map of which repo uses which, and Claude can read it all." />
+<meta name="theme-color" content="#020617" />
+<meta property="og:title" content="Vigil — keep watch over every repo" />
+<meta property="og:description" content="Every repo graded, every TASKS.md rolled up, and your agents can ask what to work on next." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="https://nitsuah.github.io/vigil/assets/poster.jpg" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23a5b4fc%22 stroke-width=%221.8%22 stroke-linecap=%22round%22><circle cx=%2212%22 cy=%2212%22 r=%228.5%22/><path d=%22M12 3.5V7M12 17v3.5M3.5 12H7M17 12h3.5%22/><circle cx=%2212%22 cy=%2212%22 r=%222.5%22 fill=%22%23a5b4fc%22 stroke=%22none%22/></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="hero">
+  <div class="topbar">
+    <a class="mark" href="#top" aria-label="Vigil home">
+      <svg class="mark-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><path d="M12 3.5V7M12 17v3.5M3.5 12H7M17 12h3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+      <span class="brandname">Vigil</span>
+    </a>
+    <nav aria-label="Primary">
+      <a href="#features">Features</a>
+      <a href="#mcp">MCP</a>
+      <a href="#install">Install</a>
+      <a class="nav-gh" href="https://github.com/nitsuah/vigil" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+
+  <div class="hero-main" id="top">
+    <div class="hero-body">
+      <p class="eyebrow">Repo intelligence for you and your agents</p>
+      <h1 class="hero-headline">Too many repos?<br /><span class="emph">Keep watch over all of them.</span></h1>
+      <p class="hero-sub">Vigil grades <strong>every GitHub repo you own</strong>, rolls every repo's <code>TASKS.md</code> into one list of open work (most urgent first), and maps which repo uses which. An MCP server lets Claude ask the same question you do: <strong>what should I work on next?</strong></p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#install">Run it yourself</a>
+        <a class="btn btn-ghost" href="https://github.com/nitsuah/vigil" target="_blank" rel="noopener">View on GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+      <p class="hero-note">Screenshots and the video show a fictional demo portfolio.</p>
+    </div>
+
+    <figure class="hero-video">
+      <video id="hero-vid" src="assets/vigil.mp4" poster="assets/poster.jpg" muted loop playsinline preload="metadata" aria-label="22-second Vigil launch video"></video>
+      <div class="hero-controls">
+        <button id="hero-play" class="vid-btn" type="button" aria-label="Play video" data-state="paused">
+          <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+          <svg class="i-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button id="hero-mute" class="vid-btn vid-mute" type="button" aria-label="Unmute video" aria-pressed="false">
+          <svg class="i-muted" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3zm13.59 3l2.7-2.7-1.41-1.42L15.17 10.6 12.46 7.88l-1.41 1.41 2.71 2.71-2.71 2.71 1.41 1.41 2.71-2.7 2.71 2.7 1.41-1.41-2.7-2.7z"/></svg>
+          <svg class="i-sound" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3zm10.5 3a4.5 4.5 0 00-2.5-4.03v8.05A4.5 4.5 0 0013.5 12zm-2.5-9v2.06A7 7 0 0117 12a7 7 0 01-6 6.92V21A9 9 0 0019 12 9 9 0 0011 3z"/></svg>
+          <span class="vid-mute-label">Tap for sound</span>
+        </button>
+      </div>
+    </figure>
+  </div>
+  <ul class="stats" aria-label="At a glance">
+    <li><span class="stat-num">6</span><span class="stat-label">health components per repo, graded A+ to F</span></li>
+    <li><span class="stat-num">10</span><span class="stat-label">MCP tools for Claude and other agents</span></li>
+    <li><span class="stat-num">22</span><span class="stat-label">best practices and community standards checked</span></li>
+    <li><span class="stat-num">1</span><span class="stat-label">ranked list of open work across every repo</span></li>
+  </ul>
+</header>
+
+<main id="main">
+  <section class="feature" id="features" aria-labelledby="f1">
+    <div class="feature-copy">
+      <p class="kicker">One dashboard</p>
+      <h2 id="f1">Every repo, <span class="emph">graded.</span></h2>
+      <p>Sign in with GitHub and sync. Each repo gets a 0–100 health score across security, testing, best practices, docs, community standards and activity, weighted by a Starter, Production or Enterprise profile. Missing a doc or a CI check? Vigil opens the fix as a pull request.</p>
+    </div>
+    <div class="shot shot-wide"><img src="assets/dashboard.webp" width="1600" height="900" alt="Vigil dashboard listing ten repositories with health grades from A+ to F, doc status and actions" loading="lazy" /></div>
+  </section>
+
+  <section class="feature feature-flip" aria-labelledby="f2">
+    <div class="feature-copy">
+      <p class="kicker">PMO</p>
+      <h2 id="f2">Open work. <span class="emph">Most urgent first.</span></h2>
+      <p>Every repo's <code>TASKS.md</code> is parsed on sync (priority, status, owner) and rolled into one grid. Each repo card lists its own open tasks, P0 first, and the cards are ordered by how urgent their work is. Repos with nothing at the selected priorities fold into one row.</p>
+      <div class="scenario-toggle" role="group" aria-label="Priorities shown">
+        <button type="button" data-pri="p01" aria-pressed="true">P0 + P1</button>
+        <button type="button" data-pri="p012">+ P2</button>
+      </div>
+    </div>
+    <div class="shot shot-wide"><img id="pri-img" src="assets/pmo-p01.webp" alt="Repos and open work grid showing P0 and P1 tasks, most urgent first" loading="lazy" /></div>
+  </section>
+
+  <section class="feature" aria-labelledby="f3">
+    <div class="feature-copy">
+      <p class="kicker">Relationship map</p>
+      <h2 id="f3">Which repo uses which. <span class="emph">And why.</span></h2>
+      <p>Directed edges with a kind (<code>calls</code>, <code>depends_on</code>, <code>deploys</code>, <code>embeds</code>, <code>shares_data</code>, <code>tracks</code>) and a line of context. You add and confirm them. Agents can propose one with evidence, and it waits for your review.</p>
+    </div>
+    <div class="shot shot-wide"><img src="assets/relationships.webp" alt="Relationship graph of ten repos next to a list of edges with context, including one proposed by an agent that needs review" loading="lazy" /></div>
+  </section>
+
+  <section class="mcp" id="mcp" aria-labelledby="mcp-title">
+    <div class="mcp-copy">
+      <p class="kicker">Built for agents</p>
+      <h2 id="mcp-title">Your agents <span class="emph">read it too.</span></h2>
+      <p>A JSON-RPC MCP server at <code>/api/mcp</code> works with <code class="nowrap">claude mcp add</code> over HTTP. <code>GET /api/context</code> returns the same portfolio as one LLM-ready JSON document.</p>
+      <ul class="tools" aria-label="MCP tools">
+        <li>get_open_tasks</li><li>get_relationships</li><li>propose_relationship</li><li>get_portfolio_overview</li>
+        <li>list_repos</li><li>get_repo_health</li><li>get_repo_details</li><li>list_tasks</li>
+        <li>search_repos</li><li>get_security_summary</li>
+      </ul>
+    </div>
+    <div class="term" aria-label="Example Claude Code session against the demo portfolio">
+      <div class="term-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+      <pre><code><span class="t-k">&gt;</span> what should I work on next?
+<span class="t-g">⏺</span> vigil · <span class="t-k">get_open_tasks</span> <span class="t-d">(priority: P0, P1)</span>
+  <span class="t-g">8 open</span> <span class="t-d">· P0 2 · P1 6</span>
+  <span class="t-p0">P0</span>  billing       <span class="t-d">Fix failing proration test on plan downgrade</span>
+  <span class="t-p0">P0</span>  api-gateway   <span class="t-d">Rate-limit the public webhook endpoint</span>
+  <span class="t-p1">P1</span>  api-gateway   <span class="t-d">Rotate the staging TLS certificate</span>
+  <span class="t-p1">P1</span>  billing       <span class="t-d">Retry failed card charges with backoff</span></code></pre>
+    </div>
+  </section>
+
+  <section class="install-sec" id="install" aria-labelledby="install-title">
+    <h2 id="install-title">Run your own.</h2>
+    <p class="install-lead">Needs Node 22, a <a href="https://github.com/settings/developers" target="_blank" rel="noopener">GitHub OAuth app</a> and a free <a href="https://neon.tech" target="_blank" rel="noopener">Neon</a> Postgres database. Fill in <code>.env.local</code> from <code>.env.example</code>, then open <code>http://localhost:3000</code>.</p>
+    <pre class="install"><button class="copy" type="button" data-copy="git clone https://github.com/nitsuah/vigil.git
+cd vigil
+npm install
+cp .env.example .env.local
+npm run setup-db
+npm run dev">Copy</button><code><span class="prompt">$</span> git clone https://github.com/nitsuah/vigil.git
+<span class="prompt">$</span> cd vigil
+<span class="prompt">$</span> npm install
+<span class="prompt">$</span> cp .env.example .env.local   <span class="t-d"># GitHub OAuth + DATABASE_URL + MCP_API_KEY</span>
+<span class="prompt">$</span> npm run setup-db
+<span class="prompt">$</span> npm run dev</code></pre>
+    <p class="install-lead">Then connect Claude Code to your deployment:</p>
+    <pre class="install"><button class="copy" type="button" data-copy="claude mcp add --transport http --scope user vigil https://YOUR-VIGIL-HOST/api/mcp --header &quot;Authorization: Bearer $VIGIL_MCP_KEY&quot;">Copy</button><code><span class="prompt">$</span> claude mcp add --transport http --scope user vigil \
+    https://YOUR-VIGIL-HOST/api/mcp \
+    --header "Authorization: Bearer $VIGIL_MCP_KEY"</code></pre>
+    <div class="hero-ctas center">
+      <a class="btn btn-primary" href="https://github.com/nitsuah/vigil" target="_blank" rel="noopener">View on GitHub</a>
+      <a class="btn btn-ghost" href="https://github.com/nitsuah/vigil/blob/main/docs/MCP.md" target="_blank" rel="noopener">MCP setup guide <span aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span>Vigil · made by <a href="https://github.com/nitsuah" target="_blank" rel="noopener">@nitsuah</a></span>
+  <span class="foot-note">Screenshots and video show a fictional demo portfolio (acme).</span>
+</footer>
+<script src="main.js" defer></script>
+</body>
+</html>
