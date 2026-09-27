@@ -10,6 +10,12 @@ body {
 }
 
 /* Fancy header embellishments */
+/* Sync progress bar while the total isn't countable yet (components/ProgressToast.tsx). */
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
 @keyframes shimmer {
   0% { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }

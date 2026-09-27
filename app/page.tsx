@@ -17,7 +17,7 @@ import { SettingsModal } from '@/components/SettingsModal';
 import { resolveDocTargetPath } from '@/lib/doc-target-paths';
 import { detectRepoType, RepoType } from '@/lib/repo-type';
 import { byokPromptKey } from '@/lib/byok-prompt-key';
-import { ProgressToast } from '@/components/ProgressToast';
+import { ProgressToast, type SyncPhase } from '@/components/ProgressToast';
 import type { Repo } from '@/types/repo';
 
 export default function Dashboard() {
@@ -36,6 +36,7 @@ export default function Dashboard() {
   // Progress toast state
   const [syncProgress, setSyncProgress] = useState<{
     sessionId: string;
+    phase: SyncPhase;
     progress: number;
     currentRepo: string;
     totalRepos: number;
@@ -110,24 +111,25 @@ export default function Dashboard() {
         if (data.sessionId) {
           setSyncProgress({
             sessionId: data.sessionId,
+            phase: 'metadata',
             progress: 0,
             currentRepo: 'Starting...',
             totalRepos: data.totalRepos,
             completedRepos: 0,
           });
-          // Poll for progress
-          pollSyncProgress(data.sessionId);
         }
         // Refresh the rate-limit indicator right away; don't make it wait on
         // (or depend on) the repo list reload below.
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
         }
-        await refetch();
-        // Re-fetch details for expanded repos in the background — don't clear first to avoid flash
-        const expanded = Array.from(expandedRepos);
-        expanded.forEach(name => fetchRepoDetails(name, true));
-        setToastMessage(data.message || 'Sync started successfully!');
+        if (data.sessionId) {
+          // The progress panel reports from here on; results reload when it completes.
+          pollSyncProgress(data.sessionId);
+        } else {
+          await reloadAfterSync();
+          setToastMessage(data.message || 'Sync started');
+        }
 
       } else {
         const errorData = await res.json();
@@ -144,6 +146,12 @@ export default function Dashboard() {
   // can start while an older one is still polling (or giving up), and the older
   // callbacks must not update or clear the newer bar.
   const activeSyncSessionRef = useRef<string | null>(null);
+
+  // Pull the freshly synced data into the table (and any expanded rows).
+  const reloadAfterSync = async () => {
+    await refetch();
+    Array.from(expandedRepos).forEach(name => fetchRepoDetails(name, true));
+  };
 
   const pollSyncProgress = async (sessionId: string) => {
     activeSyncSessionRef.current = sessionId;
@@ -182,6 +190,7 @@ export default function Dashboard() {
         const progress = await res.json();
         setSyncProgress(prev => prev ? {
           ...prev,
+          phase: progress.phase ?? prev.phase,
           progress: progress.progressPercentage ?? 0,
           currentRepo: progress.currentRepo ?? 'Processing...',
           totalRepos: progress.totalRepos ?? prev.totalRepos,
@@ -195,8 +204,15 @@ export default function Dashboard() {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
           }
-          // Sync complete, hide toast after delay
-          setTimeout(() => { if (isActive()) setSyncProgress(null); }, 2000);
+          if (progress.phase === 'complete') await reloadAfterSync();
+          // Leave the finished panel up briefly, then swap it for a one-line summary.
+          setTimeout(() => {
+            if (!isActive()) return;
+            setSyncProgress(null);
+            setToastMessage(progress.phase === 'complete'
+              ? `Sync complete · ${progress.totalRepos ?? 0} repositories updated`
+              : 'Sync failed. Check the server logs, then try again.');
+          }, 1500);
         }
       } catch {
         retryOrGiveUp();
@@ -481,10 +497,10 @@ export default function Dashboard() {
         }}
       />
       {showTour && <GuidedTour onClose={() => setShowTour(false)} />}
-      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
+      {toastMessage && <Toast message={toastMessage} raised={!!syncProgress} onClose={() => setToastMessage(null)} />}
       {syncProgress && (
         <ProgressToast
-          isVisible={true}
+          phase={syncProgress.phase}
           progress={syncProgress.progress}
           currentRepo={syncProgress.currentRepo}
           totalRepos={syncProgress.totalRepos}
