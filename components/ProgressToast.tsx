@@ -69,7 +69,7 @@ export const ProgressToast = ({
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             {counting ? (
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 rounded-full transition-all duration-300 ease-out"
+                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 rounded-full motion-safe:transition-all motion-safe:duration-300 ease-out"
                 style={{ width: `${progress}%` }}
               />
             ) : (

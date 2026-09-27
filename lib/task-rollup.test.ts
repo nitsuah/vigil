@@ -121,3 +121,17 @@ describe('rollupOpenTasks per-repo cap', () => {
         expect(() => parseOpenTaskFilters({ per_repo_limit: 'many' })).toThrow(/per_repo_limit/);
     });
 });
+
+describe('rollupOpenTasks global limit with a per-repo cap', () => {
+    it('still returns every matching repo when the global limit is tight', () => {
+        const repo = (n: string, count: number, priority: 'P0' | 'P1') =>
+            Array.from({ length: count }, (_, i) => task({ repo: n, full_name: `o/${n}`, title: `${n}${i}`, priority }));
+        const all = [...repo('a', 5, 'P0'), ...repo('b', 5, 'P0'), ...repo('c', 5, 'P1')];
+        const r = rollupOpenTasks(all, { perRepoLimit: 5, limit: 6 });
+        expect(r.tasks).toHaveLength(6);
+        expect(new Set(r.tasks.map((t) => t.full_name))).toEqual(new Set(['o/a', 'o/b', 'o/c']));
+        // Output keeps priority order.
+        expect(r.tasks.at(-1)?.full_name).toBe('o/c');
+        expect(r.truncated).toBe(true);
+    });
+});

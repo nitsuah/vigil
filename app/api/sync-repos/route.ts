@@ -256,6 +256,10 @@ export async function POST(request: Request): Promise<NextResponse> {
                             await new Promise(resolve => setTimeout(resolve, backoffDelay));
                         } else if (attempt === MAX_RETRY_ATTEMPTS - 1) {
                             logger.warn(`Failed detailed sync for ${repoMeta.name} after ${MAX_RETRY_ATTEMPTS} attempts: ${lastError.message}`);
+                        } else {
+                            // Not transient (e.g. a permission 403, or the hourly quota is gone): don't retry.
+                            logger.warn(`Failed detailed sync for ${repoMeta.name} (not retryable): ${lastError.message}`);
+                            break;
                         }
                     }
                 }

@@ -25,6 +25,14 @@ const PER_REPO_ROWS = 25;
 
 type OnHandoff = (repoName: string, item: PmoInProgressItem, taskId: string) => void;
 
+/**
+ * Roadmap item id -> agent task already queued for it but not yet linked.
+ * Module scope, not a ref: HandoffButton unmounts whenever its roadmap list
+ * collapses, and a retry after a failed link must reuse the queued task
+ * rather than queue a duplicate.
+ */
+const queuedHandoffs = new Map<string, string>();
+
 function ciColor(status: string | null): string {
     if (status === 'passing') return 'text-emerald-400';
     if (status === 'failing') return 'text-red-400';
@@ -62,15 +70,12 @@ function HandoffButton({ repoName, item, onHandoff }: {
     const [loading, setLoading] = useState(false);
     const [done, setDone] = useState(!!item.agent_task_id);
     const [err, setErr] = useState<string | null>(null);
-    // The queued task survives a failed link, so a retry re-links it instead
-    // of queuing a second task for the same roadmap item.
-    const queuedTaskId = useRef<string | null>(null);
 
     const handle = async (): Promise<void> => {
         setLoading(true);
         setErr(null);
         try {
-            if (!queuedTaskId.current) {
+            if (!queuedHandoffs.has(item.id)) {
                 const taskRes = await fetch('/api/agent/tasks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -82,9 +87,9 @@ function HandoffButton({ repoName, item, onHandoff }: {
                 });
                 if (!taskRes.ok) throw new Error('Agent task queue error');
                 const { task } = await taskRes.json() as { task: { id: string } };
-                queuedTaskId.current = task.id;
+                queuedHandoffs.set(item.id, task.id);
             }
-            const taskId = queuedTaskId.current;
+            const taskId = queuedHandoffs.get(item.id)!;
 
             const patchRes = await fetch(`/api/repos/${repoName}/roadmap-items/${item.id}`, {
                 method: 'PATCH',
@@ -93,6 +98,7 @@ function HandoffButton({ repoName, item, onHandoff }: {
             });
             if (!patchRes.ok) throw new Error('Failed to link agent task; retry links the same task');
 
+            queuedHandoffs.delete(item.id);
             onHandoff(repoName, item, taskId);
             setDone(true);
         } catch (e) {

@@ -89,8 +89,21 @@ export function rollupOpenTasks(all: OpenTask[], filters: OpenTaskFilters = {}):
         kept = matched.filter((t) => (seen[t.full_name] = (seen[t.full_name] ?? 0) + 1) <= perRepo);
     }
 
+    // Under the global limit, reserve each repo's most urgent task first so a
+    // repo with matching work always appears; fill the rest in priority order.
+    let tasks = kept.slice(0, limit);
+    if (filters.perRepoLimit !== undefined && kept.length > limit) {
+        const chosen = new Set<number>();
+        const firstOfRepo = new Set<string>();
+        kept.forEach((t, i) => {
+            if (!firstOfRepo.has(t.full_name) && chosen.size < limit) { firstOfRepo.add(t.full_name); chosen.add(i); }
+        });
+        for (let i = 0; i < kept.length && chosen.size < limit; i++) chosen.add(i);
+        tasks = kept.filter((_, i) => chosen.has(i));
+    }
+
     return {
-        tasks: kept.slice(0, limit),
+        tasks,
         total: matched.length,
         truncated: kept.length > limit || kept.length < matched.length,
         by_priority,
