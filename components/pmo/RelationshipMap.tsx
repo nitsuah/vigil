@@ -176,17 +176,25 @@ function AddForm({ repos, kinds, onSaved, onCancel }: {
 
 function EdgeRow({ edge, onChanged }: { edge: Relationship; onChanged: () => void }): React.JSX.Element {
     const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
     const act = async (method: 'PATCH' | 'DELETE') => {
         if (method === 'DELETE' && edge.status === 'confirmed' &&
             !window.confirm(`Remove "${short(edge.source)} ${edge.kind} ${short(edge.target)}"?`)) return;
         setBusy(true);
+        setErr(null);
         try {
-            await fetch(`/api/relationships/${edge.id}`, {
+            const res = await fetch(`/api/relationships/${edge.id}`, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: method === 'PATCH' ? JSON.stringify({ confirm: true }) : undefined,
             });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { error?: string };
+                throw new Error(body.error ?? `${method === 'PATCH' ? 'Confirm' : 'Remove'} failed (${res.status})`);
+            }
             onChanged();
+        } catch (e) {
+            setErr(e instanceof Error ? e.message : 'Request failed');
         } finally {
             setBusy(false);
         }
@@ -212,6 +220,7 @@ function EdgeRow({ edge, onChanged }: { edge: Relationship; onChanged: () => voi
                             : edge.evidence}
                     </p>
                 )}
+                {err && <p role="alert" className="text-[10px] text-red-400">{err}</p>}
             </div>
             <span className="shrink-0 flex items-center gap-1">
                 {edge.status === 'proposed' && (
