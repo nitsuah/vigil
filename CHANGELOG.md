@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### PMO: combined repo/work grid and relationship map
+
+- **Changed:** the PMO page's separate "Open work" list and per-repo cards are one "Repos & open work" grid. Each card lists the repo's open TASKS.md items, most urgent first; cards are ordered by the urgency of their work; repos with nothing at the selected priorities collapse into one row.
+- **Added:** cross-repo relationship map. Directed edges with a kind, context and evidence (`repo_relationships` table, `/api/relationships`), added and confirmed on the PMO page. MCP tools `get_relationships` and `propose_relationship` (agents propose with evidence, people confirm); edges also appear in `GET /api/context`. MCP server version 0.4.0.
+- **Removed:** `GET /api/dependencies` and `DependencyGraph`, which linked repos by shared topics and primary language.
+
 ### MCP auth and error codes
 
 - **Fixed:** an MCP client with a missing or empty key (e.g. `Bearer $VIGIL_MCP_KEY` run from PowerShell, where it expands to nothing) was redirected to `/login` and reported "Unexpected content type: text/html". `/api/mcp` and `/api/context` now return a JSON `401` to non-browser clients; browsers still redirect.

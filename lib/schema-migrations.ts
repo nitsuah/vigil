@@ -246,4 +246,26 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
       granted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
       PRIMARY KEY (repo_id, github_user_id)
     )`,
+
+    // repo_relationships: durable, directed cross-repo edges ("agent-board
+    // calls bb-mcp") with the context and evidence behind them. Endpoints are
+    // lower-cased owner/repo TEXT, not repo FKs, so an edge can point at an
+    // untracked repo. See lib/relationships.ts.
+    `CREATE TABLE IF NOT EXISTS repo_relationships (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      source TEXT NOT NULL,
+      target TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('depends_on', 'calls', 'deploys', 'embeds', 'shares_data', 'tracks')),
+      context TEXT NOT NULL,
+      evidence TEXT,
+      status TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed', 'confirmed')),
+      origin TEXT NOT NULL DEFAULT 'manual' CHECK (origin IN ('manual', 'agent', 'import')),
+      created_by TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      confirmed_at TIMESTAMP WITH TIME ZONE,
+      CHECK (source <> target),
+      UNIQUE (source, target, kind)
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_repo_relationships_target ON repo_relationships(target)`,
 ];

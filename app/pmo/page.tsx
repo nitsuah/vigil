@@ -10,7 +10,7 @@ import {
 import type { PmoRepoSummary, PmoPortfolio, PmoInProgressItem } from '@/app/api/pmo/overview/route';
 import { PmoChat } from '@/components/pmo/PmoChat';
 import { RepoWorkGrid } from '@/components/pmo/RepoWorkGrid';
-import { DependencyGraph } from '@/components/dashboard/DependencyGraph';
+import { RelationshipMap } from '@/components/pmo/RelationshipMap';
 
 // ─── pipeline stage count cell ────────────────────────────────────────────────
 
@@ -203,10 +203,8 @@ export default function PmoDashboard(): React.JSX.Element | null {
                         <RepoWorkGrid repos={repos} refreshKey={lastFetched?.getTime()} onHandoff={handleHandoff} />
                     )}
 
-                    {/* Cross-Repo Dependencies */}
-                    <section className="space-y-3">
-                        <DependencyGraph />
-                    </section>
+                    {/* Durable cross-repo relationships (who uses whom, and how) */}
+                    {repos.length > 0 && <RelationshipMap repos={repos} />}
 
                     {!loading && repos.length === 0 && !error && (
                         <div className="text-center py-16 text-slate-600">

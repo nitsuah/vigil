@@ -85,12 +85,29 @@ const OPEN_TASKS = (() => {
   return { tasks, total: tasks.length, truncated: false, by_priority, by_repo };
 })();
 
+const RELATIONSHIPS = (() => {
+  const e = (source: string, kind: string, target: string, context: string, status = 'confirmed', evidence: string | null = null) => ({
+    id: `${source}-${kind}-${target}`, source: `nitsuah/${source}`, target: `nitsuah/${target}`, kind, context, evidence,
+    status, origin: status === 'confirmed' ? 'manual' : 'agent', created_by: null,
+    created_at: '2026-09-20T00:00:00Z', updated_at: '2026-09-20T00:00:00Z', confirmed_at: null,
+  });
+  return {
+    relationships: [
+      e('agent-board', 'calls', 'bb-mcp', 'Posts chat turns to the bb-mcp server over HTTP'),
+      e('vigil', 'tracks', 'skyview', 'PMO rollup of TASKS.md and roadmap'),
+      e('vigil', 'tracks', 'darkmoon', 'PMO rollup of TASKS.md and roadmap'),
+      e('skyview', 'depends_on', 'vigil', 'Reads the visual-docs CI recipe', 'proposed', '.github/workflows/visual-docs.yml'),
+    ],
+    kinds: { depends_on: 'Source installs or imports target.', calls: 'Source calls target at runtime.', deploys: 'Source deploys target.', embeds: 'Source embeds target.', shares_data: 'Both use the same data store.', tracks: 'Source tracks target.' },
+  };
+})();
+
 async function mockApi(target: Page | BrowserContext): Promise<void> {
   const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   await target.route('**/api/repos?*', (route) => route.fulfill(json(REPOS)));
   await target.route('**/api/repo-details/*/trend', (route) => route.fulfill(json({ success: true, snapshots: [] })));
   await target.route('**/api/repo-details/*', (route) => route.fulfill(json(DETAILS)));
-  await target.route('**/api/dependencies', (route) => route.fulfill(json({ success: true, nodes: [], edges: [] })));
+  await target.route('**/api/relationships', (route) => route.fulfill(json(RELATIONSHIPS)));
   await target.route('**/api/gemini-status', (route) => route.fulfill(json({ status: 'ok' })));
   await target.route('**/api/github-rate-limit', (route) => route.fulfill(json({ core: { remaining: 5000, limit: 5000, reset: 0 } })));
   await target.route('**/api/pmo/overview', (route) => route.fulfill(json(PMO)));

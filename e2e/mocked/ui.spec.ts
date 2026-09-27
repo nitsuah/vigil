@@ -68,7 +68,7 @@ async function mockApi(target: Page | BrowserContext): Promise<void> {
   await target.route('**/api/repos?*', (route) => route.fulfill(json([REPO])));
   await target.route('**/api/repo-details/*/trend', (route) => route.fulfill(json({ success: true, snapshots: [] })));
   await target.route('**/api/repo-details/*', (route) => route.fulfill(json(DETAILS)));
-  await target.route('**/api/dependencies', (route) => route.fulfill(json({ success: true, nodes: [], edges: [] })));
+  await target.route('**/api/relationships', (route) => route.fulfill(json({ relationships: [], kinds: {} })));
   await target.route('**/api/gemini-status', (route) => route.fulfill(json({ status: 'ok' })));
   await target.route('**/api/github-rate-limit', (route) => route.fulfill(json({ core: { remaining: 5000, limit: 5000, reset: 0 } })));
 }

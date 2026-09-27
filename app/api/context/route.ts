@@ -23,6 +23,7 @@ import { canAccessRepo, getAccessibleRepoIds } from '@/lib/repo-access';
 import logger from '@/lib/log';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
 import { loadOpenTasks, rollupOpenTasks } from '@/lib/task-rollup';
+import { describeRelationship, listRelationships } from '@/lib/relationships';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -97,6 +98,7 @@ export async function GET(req: NextRequest) {
           db`SELECT standard_type, status FROM community_standards WHERE repo_id = ${repo.id}`,
         ]);
 
+      const relationships = await listRelationships(db, { repos: [String(repo.full_name)] });
       const t  = tasks             as Row[];
       const ri = roadmapItems      as Row[];
       const bp = bestPractices     as Row[];
@@ -147,6 +149,8 @@ export async function GET(req: NextRequest) {
           summary: `${t.filter(x => x.status === 'todo').length} todo · ${t.filter(x => x.status === 'in-progress').length} in progress · ${t.filter(x => x.status === 'done').length} done`,
           items:   t,
         },
+        // Durable cross-repo edges touching this repo (get_relationships MCP tool for filters).
+        relationships: relationships.map(describeRelationship),
         roadmap: {
           summary: `${ri.filter(x => x.status === 'planned').length} planned · ${ri.filter(x => x.status === 'in-progress').length} in progress · ${ri.filter(x => x.status === 'completed').length} completed`,
           items:   ri,
@@ -194,6 +198,10 @@ export async function GET(req: NextRequest) {
     const openTasks = await loadOpenTasks(db, visibleIds);
     const urgent  = rollupOpenTasks(openTasks, { priorities: ['P0', 'P1'], limit: 25 });
     const allOpen = rollupOpenTasks(openTasks, { limit: 1 });
+    // Edges with at least one endpoint in a repo this caller can see.
+    const relationships = await listRelationships(db, {
+      repos: repos.map(r => String((r as unknown as { full_name: string }).full_name)),
+    });
 
     const avgHealth = repos.length
       ? Math.round(repos.reduce((s, r) => s + (r.health_score ?? 0), 0) / repos.length)
@@ -264,6 +272,11 @@ export async function GET(req: NextRequest) {
         })),
         p0_p1_truncated: urgent.truncated,
         more:         'Call the get_open_tasks MCP tool for P2/P3 and repo/owner/status filters.',
+      },
+      relationships: {
+        summary: `${relationships.filter(r => r.status === 'confirmed').length} confirmed · ${relationships.filter(r => r.status === 'proposed').length} proposed`,
+        edges:   relationships.map(describeRelationship),
+        more:    'Call the get_relationships MCP tool for ids, evidence and filters; propose_relationship to add one.',
       },
     });
   } catch (error) {

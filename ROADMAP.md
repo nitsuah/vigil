@@ -21,7 +21,7 @@ Next Review: 2026-10-24
 - [ ] **Chat-driven doc management, stage 3** — check items off in TASKS.md / move shipped items to FEATURES.md directly from chat (proposal/apply/dismiss already shipped).
 - [ ] **AI-assisted roadmap management** — auto-suggest items from repo health signals and auto-update progress from linked PR/issue state.
 - [ ] **Technical-debt trending + zombie-branch detection** — velocity trending shipped (`repo_snapshots`); debt signals and a stale-branch cleanup view remain.
-- [ ] **3D / click-to-detail cross-repo dependency graph** — upgrade of the shipped 2D SVG `DependencyGraph`.
+- [ ] **3D / click-to-detail relationship map** — after the 2D relationship map (`RelationshipMap`) holds real, confirmed edges.
 
 ### Exploratory _(carried from 2026 Q4)_
 
