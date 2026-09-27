@@ -8,6 +8,7 @@
 import { calculateDocHealth } from './doc-health';
 import type { HealthScoreInputs } from './health-score';
 import { isHealthProfileId } from './health-profiles';
+import { INFORMATIONAL_PRACTICES } from './visual-docs';
 
 /** The repos columns the score reads. */
 export interface RepoHealthFields {
@@ -60,14 +61,16 @@ export function buildHealthScoreInputs(
     // that carry open_issues_count's legacy DEFAULT 0, so NULL here means "no
     // scan": fall back to open_issues rather than scoring zero issues.
     const issuesScanned = repo.stale_issues_count != null;
+    // Informational practices (e.g. visual_docs) are shown but not scored.
+    const scoredPractices = rows.bestPractices.filter((bp) => !INFORMATIONAL_PRACTICES.includes(bp.practice_type));
 
     return {
         healthProfile: isHealthProfileId(repo.health_profile) ? repo.health_profile : undefined,
         docHealth: calculateDocHealth(rows.docStatuses, repo.repo_type || 'tool').score,
         hasTests: isHealthy(rows.bestPractices, 'testing_framework'),
         codeCoverage: Number.isFinite(coverageValue) ? coverageValue : undefined,
-        bestPracticesCount: rows.bestPractices.length,
-        bestPracticesHealthy: rows.bestPractices.filter((bp) => bp.status === 'healthy').length,
+        bestPracticesCount: scoredPractices.length,
+        bestPracticesHealthy: scoredPractices.filter((bp) => bp.status === 'healthy').length,
         communityStandardsCount: rows.communityStandards.length,
         communityStandardsHealthy: rows.communityStandards.filter((cs) => cs.status === 'healthy').length,
         hasCI: isHealthy(rows.bestPractices, 'ci_cd'),

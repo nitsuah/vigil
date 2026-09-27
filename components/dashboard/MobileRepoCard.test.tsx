@@ -95,8 +95,8 @@ describe('MobileRepoCard – collapsed', () => {
 
   it('shows the health grade letter when details are absent', () => {
     render(<MobileRepoCard {...baseProps()} />);
-    // getHealthGrade(75) → B (dashboard-utils thresholds differ from health-grade.ts)
-    expect(screen.getByText('B')).toBeTruthy();
+    // 75 → C on the shared scale (lib/health-grade.ts)
+    expect(screen.getByText('C')).toBeTruthy();
   });
 
   it('does not render the expanded row when isExpanded is false', () => {

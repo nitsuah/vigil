@@ -3,10 +3,9 @@ import logger from '@/lib/log';
 import { auth } from '@/auth';
 import { GitHubClient, RepoMetadata } from '@/lib/github';
 import { getNeonClient, ensureSchema } from '@/lib/db';
-import { DEFAULT_REPOS } from '@/lib/default-repos';
 import { syncRepo, syncRepoMetadata } from '@/lib/sync';
 import { grantRepoAccess } from '@/lib/repo-access';
-import { filterReposForSync, SyncFilters } from '@/lib/sync-filters';
+import { defaultReposNotIn, filterReposForSync, SyncFilters } from '@/lib/sync-filters';
 import { createSyncProgress, updateSyncProgress } from '@/lib/sync-progress';
 
 const GITHUB_API_TIMEOUT_MS = 10000;
@@ -131,7 +130,10 @@ export async function POST(request: Request): Promise<NextResponse> {
         );
 
         const reposToSync = filterReposForSync(repos, filters, dbRepoMap);
-        const totalRepos = reposToSync.length + DEFAULT_REPOS.length;
+        // Default repos the user already owns are in reposToSync; syncing them
+        // again doubled their work and made the total overshoot (13 vs 11 synced).
+        const defaultsToSync = defaultReposNotIn(reposToSync);
+        const totalRepos = reposToSync.length + defaultsToSync.length;
         logger.info(`Sync-repos: ${reposToSync.length}/${repos.length} repos match current filters`);
 
         // Check rate limits before starting background sync
@@ -184,13 +186,11 @@ export async function POST(request: Request): Promise<NextResponse> {
                     // (CWE-639) -- record it now that the row exists.
                     await grantRepoAccess(db, repo.fullName, String(githubUserId));
                     successCount++;
-                    await reportProgress({ completedRepos: successCount + errorCount });
                 } catch (repoError: unknown) {
                     const message = repoError instanceof Error ? repoError.message : 'Unknown error';
                     logger.warn(`Error syncing metadata for ${repo.name}:`, message);
                     errorCount++;
                     failedRepos.push(repo);
-                    await reportProgress({ completedRepos: successCount + errorCount });
                 }
             }
 
@@ -199,8 +199,21 @@ export async function POST(request: Request): Promise<NextResponse> {
             logger.info('Starting Phase 2: Detailed Health Sync (Background)');
             await reportProgress({ phase: 'health', currentRepo: 'Starting...' });
 
+            // completedRepos counts repos whose detailed sync finished (success or
+            // final failure). Counting metadata instead left the bar parked at
+            // "11/13" through the slow health phase, which looked frozen.
+            let detailsFinished = 0;
+            const markFinished = () => reportProgress({ completedRepos: ++detailsFinished });
+
             // Helper to sync details with delay and exponential backoff retry
             const syncDetailsWithDelay = async (repoMeta: RepoMetadata, client: GitHubClient, isFirstRepo: boolean) => {
+                try {
+                    await syncDetailsWithRetry(repoMeta, client, isFirstRepo);
+                } finally {
+                    await markFinished();
+                }
+            };
+            const syncDetailsWithRetry = async (repoMeta: RepoMetadata, client: GitHubClient, isFirstRepo: boolean) => {
                 let lastError: Error | null = null;
                 for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
                     try {
@@ -293,8 +306,8 @@ export async function POST(request: Request): Promise<NextResponse> {
             const systemUsername = process.env.GITHUB_SYSTEM_USERNAME || 'nitsuah';
             if (systemToken) {
                 const systemGithub = new GitHubClient(systemToken, systemUsername);
-                for (let i = 0; i < DEFAULT_REPOS.length; i++) {
-                    const defaultRepo = DEFAULT_REPOS[i];
+                for (let i = 0; i < defaultsToSync.length; i++) {
+                    const defaultRepo = defaultsToSync[i];
                     try {
                         logger.info(`Syncing default repo metadata: ${defaultRepo.fullName}`);
                         const repoMeta = await systemGithub.getRepo(defaultRepo.owner, defaultRepo.name);
@@ -312,8 +325,8 @@ export async function POST(request: Request): Promise<NextResponse> {
             } else {
                 // If no system token, try to sync using user's token (may fail for repos they don't own)
                 logger.info('No GITHUB_TOKEN found - attempting to sync default repos with user token');
-                for (let i = 0; i < DEFAULT_REPOS.length; i++) {
-                    const defaultRepo = DEFAULT_REPOS[i];
+                for (let i = 0; i < defaultsToSync.length; i++) {
+                    const defaultRepo = defaultsToSync[i];
                     try {
                         const repoMeta = await github.getRepo(defaultRepo.owner, defaultRepo.name);
                         // Metadata first

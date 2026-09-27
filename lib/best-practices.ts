@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { detectVisualDocs, VISUAL_DOCS_PRACTICE } from '@/lib/visual-docs';
 
 /**
  * Represents the health state of a best practice check.
@@ -421,6 +422,10 @@ export async function checkBestPractices(
             detected: detectedDockerFiles
         }
     });
+
+    // 11. Visual docs (diagrams + screenshots embedded in README) — informational, not scored
+    const visualDocs = detectVisualDocs(fileList, readmeContent);
+    practices.push({ type: VISUAL_DOCS_PRACTICE, ...visualDocs });
 
     return { practices };
 }

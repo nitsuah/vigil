@@ -1,12 +1,17 @@
-// Shared health-grade helpers — used by /api/mcp and /api/context routes.
-// Centralises the grade thresholds so a change in one place stays consistent.
+// The one health-grade scale — used by the dashboard (via lib/dashboard-utils),
+// /api/mcp and /api/context. Keep every letter grade going through healthGrade()
+// so the UI and agents can never disagree about what a score means.
 
 export interface HealthRow {
   health_score?: number | null;
   ci_status?: string | null;
 }
 
-export function healthGrade(score: number): string {
+export const HEALTH_GRADES = ['A+', 'A', 'B', 'C', 'D', 'F'] as const;
+export type HealthGradeLetter = (typeof HEALTH_GRADES)[number];
+
+export function healthGrade(score: number): HealthGradeLetter {
+  if (score >= 95) return 'A+';
   if (score >= 90) return 'A';
   if (score >= 80) return 'B';
   if (score >= 70) return 'C';
@@ -15,7 +20,7 @@ export function healthGrade(score: number): string {
 }
 
 export function buildGradeDist(rows: HealthRow[]): Record<string, number> {
-  const d: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+  const d = Object.fromEntries(HEALTH_GRADES.map((g) => [g, 0])) as Record<HealthGradeLetter, number>;
   rows.forEach(r => { d[healthGrade(r.health_score ?? 0)]++; });
   return d;
 }

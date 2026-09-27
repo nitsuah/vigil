@@ -210,6 +210,7 @@ function ExpandableRowContent({
             {/* Tasks */}
             <TasksSection 
               tasks={tasks}
+              tasksDocExists={docStatuses.some((d) => d.doc_type === 'tasks' && d.exists)}
               isExpanded={projectSectionsExpanded}
               onToggleExpanded={() => setProjectSectionsExpanded(!projectSectionsExpanded)}
             />
