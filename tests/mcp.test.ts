@@ -44,6 +44,8 @@ describe('GET /api/mcp', () => {
       'search_repos',
       'get_security_summary',
       'get_open_tasks',
+      'get_relationships',
+      'propose_relationship',
     ]);
   });
 
@@ -346,5 +348,36 @@ describe('tools/call — get_open_tasks', () => {
       name: 'get_open_tasks', arguments: { priority: ['P9'] },
     } }));
     expect((await res.json()).error.code).toBe(-32602);
+  });
+});
+
+describe('tools/call — relationships', () => {
+  const edge = {
+    source: 'nitsuah/agent-board', target: 'nitsuah/bb-mcp', kind: 'calls',
+    context: 'agent-board posts chat turns to the bb-mcp server', evidence: 'agent-board/src/mcp.ts',
+  };
+
+  it('get_relationships returns an empty list when there are none', async () => {
+    const data = await callResult('get_relationships', {});
+    expect(data.relationships).toEqual([]);
+    expect(data.count).toBe(0);
+  });
+
+  it('get_relationships rejects an unknown kind with -32602', async () => {
+    const body = await (await callTool('get_relationships', { kind: 'same_language' })).json();
+    expect(body.error.code).toBe(-32602);
+  });
+
+  it('propose_relationship requires evidence', async () => {
+    const body = await (await callTool('propose_relationship', { ...edge, evidence: '' })).json();
+    expect(body.error.code).toBe(-32602);
+    expect(body.error.message).toMatch(/evidence/);
+  });
+
+  it('propose_relationship needs at least one tracked endpoint', async () => {
+    // The mocked db tracks no repos.
+    const body = await (await callTool('propose_relationship', edge)).json();
+    expect(body.error.code).toBe(-32602);
+    expect(body.error.message).toMatch(/tracked repo/);
   });
 });

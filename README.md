@@ -31,7 +31,7 @@ Vigil bridges human intent and AI execution through enforced documentation stand
 - 🎯 **Interactive Onboarding** - 16-step guided tour with spotlight highlighting
 - 🔗 **GitHub Integration** - OAuth auth, full metadata sync, rate limit monitoring, custom repo paths
 - 📈 **Composite Metrics** - Testing (60%+ coverage), vulnerabilities, contributor analytics
-- 🤝 **MCP Server** - JSON-RPC 2.0 endpoint exposing 8 tools for agent clients (`get_open_tasks`, `get_repo_health`, `list_repos`, `get_repo_details`, `get_portfolio_overview`, `search_repos`, `list_tasks`, `get_security_summary`); connect Claude Code via [docs/MCP.md](./docs/MCP.md)
+- 🤝 **MCP Server** - JSON-RPC 2.0 endpoint exposing 10 tools for agent clients (`get_open_tasks`, `get_relationships`, `propose_relationship`, `get_repo_health`, `list_repos`, `get_repo_details`, `get_portfolio_overview`, `search_repos`, `list_tasks`, `get_security_summary`); connect Claude Code via [docs/MCP.md](./docs/MCP.md)
 - 📱 **Mobile Dashboard** - Responsive card layout for all screen sizes
 - 🗂️ **PMO Mode** - Portfolio-wide roadmap progress, plan execution, and DEV-flow handoff at `/pmo`
 
@@ -306,7 +306,8 @@ GET /api/mcp
 # MCP JSON-RPC 2.0 handler (Bearer: MCP_API_KEY)
 POST /api/mcp
 # Tools: get_repo_health, list_repos, get_repo_details,
-#        get_portfolio_overview, search_repos, list_tasks, get_security_summary
+#        get_portfolio_overview, search_repos, list_tasks, get_security_summary,
+#        get_open_tasks, get_relationships, propose_relationship
 ```
 
 ### Agent Task Queue
@@ -327,6 +328,15 @@ GET /api/agent/tasks/[id]
 ```bash
 # Portfolio-wide roadmap and plan execution overview
 GET /api/pmo/overview
+
+# Cross-repo open-task rollup (same filters as get_open_tasks)
+GET /api/pmo/tasks?priority=P0,P1&repos=vigil
+
+# Cross-repo relationship map (session-scoped)
+GET    /api/relationships
+POST   /api/relationships       { source, target, kind, context, evidence? } | { relationships: [...] }
+PATCH  /api/relationships/[id]  { confirm?: true, context?, evidence? }
+DELETE /api/relationships/[id]
 ```
 
 ## Deployment

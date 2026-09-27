@@ -64,15 +64,54 @@ const PMO = {
   portfolio: { repo_count: 4, roadmap_planned: 12, roadmap_in_progress: 4, roadmap_in_review: 2, roadmap_done: 6, tasks_in_progress: 4, stale_count: 1 },
 };
 
+const OPEN_TASKS = (() => {
+  const t = (name: string, title: string, priority: string | null, status = 'todo') => ({
+    repo: name, full_name: `nitsuah/${name}`, repo_url: `https://github.com/nitsuah/${name}`,
+    title, status, priority, owner: null, section: 'Todo', subsection: null,
+  });
+  const tasks = [
+    t('skyview', 'Bring the marketplace backend live in production', 'P0'),
+    t('skyview', 'Verify production auth/env end-to-end', 'P1', 'in-progress'),
+    t('skyview', 'Set up the email sending domain', 'P2'),
+    t('darkmoon', 'Open-source safety scrub', 'P1'),
+    t('darkmoon', 'UI/UX interactivity improvements', 'P1'),
+    t('vigil', 'Durable cross-repo relationship map', 'P1', 'in-progress'),
+    t('vigil', 'Chat-driven doc editing, stage 3', 'P2'),
+    t('agent-board', 'Wire the board to bb-mcp', 'P3'),
+  ];
+  const by_priority: Record<string, number> = { P0: 0, P1: 0, P2: 0, P3: 0, none: 0 };
+  const by_repo: Record<string, number> = {};
+  for (const x of tasks) { by_priority[x.priority ?? 'none']++; by_repo[x.full_name] = (by_repo[x.full_name] ?? 0) + 1; }
+  return { tasks, total: tasks.length, truncated: false, by_priority, by_repo };
+})();
+
+const RELATIONSHIPS = (() => {
+  const e = (source: string, kind: string, target: string, context: string, status = 'confirmed', evidence: string | null = null) => ({
+    id: `${source}-${kind}-${target}`, source: `nitsuah/${source}`, target: `nitsuah/${target}`, kind, context, evidence,
+    status, origin: status === 'confirmed' ? 'manual' : 'agent', created_by: null,
+    created_at: '2026-09-20T00:00:00Z', updated_at: '2026-09-20T00:00:00Z', confirmed_at: null,
+  });
+  return {
+    relationships: [
+      e('agent-board', 'calls', 'bb-mcp', 'Posts chat turns to the bb-mcp server over HTTP'),
+      e('vigil', 'tracks', 'skyview', 'PMO rollup of TASKS.md and roadmap'),
+      e('vigil', 'tracks', 'darkmoon', 'PMO rollup of TASKS.md and roadmap'),
+      e('skyview', 'depends_on', 'vigil', 'Reads the visual-docs CI recipe', 'proposed', '.github/workflows/visual-docs.yml'),
+    ],
+    kinds: { depends_on: 'Source installs or imports target.', calls: 'Source calls target at runtime.', deploys: 'Source deploys target.', embeds: 'Source embeds target.', shares_data: 'Both use the same data store.', tracks: 'Source tracks target.' },
+  };
+})();
+
 async function mockApi(target: Page | BrowserContext): Promise<void> {
   const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   await target.route('**/api/repos?*', (route) => route.fulfill(json(REPOS)));
   await target.route('**/api/repo-details/*/trend', (route) => route.fulfill(json({ success: true, snapshots: [] })));
   await target.route('**/api/repo-details/*', (route) => route.fulfill(json(DETAILS)));
-  await target.route('**/api/dependencies', (route) => route.fulfill(json({ success: true, nodes: [], edges: [] })));
+  await target.route('**/api/relationships', (route) => route.fulfill(json(RELATIONSHIPS)));
   await target.route('**/api/gemini-status', (route) => route.fulfill(json({ status: 'ok' })));
   await target.route('**/api/github-rate-limit', (route) => route.fulfill(json({ core: { remaining: 5000, limit: 5000, reset: 0 } })));
   await target.route('**/api/pmo/overview', (route) => route.fulfill(json(PMO)));
+  await target.route('**/api/pmo/tasks?*', (route) => route.fulfill(json(OPEN_TASKS)));
 }
 
 async function signedInContext(page: Page): Promise<void> {
@@ -123,5 +162,6 @@ test('pmo', async ({ page }) => {
   await signedInContext(page);
   await page.goto('/pmo');
   await expect(page.getByText('Portfolio Pipeline')).toBeVisible();
+  await expect(page.getByRole('article', { name: 'nitsuah/skyview' })).toBeVisible();
   await page.screenshot({ path: `${OUT}/pmo.png` });
 });

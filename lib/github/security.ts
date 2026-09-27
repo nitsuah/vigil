@@ -27,7 +27,9 @@ export async function getVulnerabilityAlerts(
 export async function getSecurityConfig(
   octokit: Octokit,
   owner: string,
-  repo: string
+  repo: string,
+  /** true/false when the caller already knows (repo file tree); null = probe. */
+  hasFile: (path: string) => Promise<boolean | null> = async () => null
 ): Promise<{
   hasSecurityPolicy: boolean;
   hasSecurityAdvisories: boolean;
@@ -53,13 +55,14 @@ export async function getSecurityConfig(
 
   try {
     let hasSecurityPolicy = false;
-    try {
-      await octokit.repos.getContent({ owner, repo, path: 'SECURITY.md' });
-      hasSecurityPolicy = true;
-    } catch {
+    for (const path of ['SECURITY.md', '.github/SECURITY.md']) {
+      const known = await hasFile(path);
+      if (known === false) continue;
+      if (known === true) { hasSecurityPolicy = true; break; }
       try {
-        await octokit.repos.getContent({ owner, repo, path: '.github/SECURITY.md' });
+        await octokit.repos.getContent({ owner, repo, path });
         hasSecurityPolicy = true;
+        break;
       } catch {
         // File doesn't exist
       }

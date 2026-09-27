@@ -281,9 +281,10 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
     }
 
     if (['auth-status', 'gemini-status', 'version-info'].includes(step.id)) {
+      // The status rows only exist while the profile menu is open.
       const authEl = document.querySelector('[data-tour="auth-status"]');
-      if (authEl && authEl.getBoundingClientRect().width === 0) {
-        clickAndWait('button[title="Toggle status indicators"]', 500, () => {
+      if ((!authEl || authEl.getBoundingClientRect().width === 0) && document.querySelector('[data-tour="profile-toggle"]')) {
+        clickAndWait('[data-tour="profile-toggle"]', 500, () => {
           updateHighlight();
           startAutoAdvance();
         });
@@ -306,7 +307,7 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
     clearTimers();
     setIsAutoAdvancing(false);
     if (isLastStep) {
-      const profilePicture = document.querySelector('button[title="Toggle status indicators"]');
+      const profilePicture = document.querySelector('[data-tour="profile-toggle"]');
       const statusPillsVisible = document
         .querySelector('[data-tour="auth-status"]')
         ?.getBoundingClientRect().width;
@@ -329,7 +330,7 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999]">
+    <div className="fixed inset-0 z-[9999]" data-guided-tour>
       <TourOverlay
         highlightRect={highlightRect}
         stepId={step.id}

@@ -19,6 +19,7 @@ vi.mock('@/lib/githubClient', () => ({
     git: {
       getRef: vi.fn(),
       createRef: vi.fn(),
+      getTree: vi.fn().mockRejectedValue({ status: 500 }),
     },
   })),
 }));
@@ -222,4 +223,47 @@ test('GitHubClient.createPrForFile creates branch and PR', async () => {
     ref: 'refs/heads/test-branch',
     sha: 'abc123',
   });
+});
+
+type TreeMock = { repos: { getContent: ReturnType<typeof vi.fn> }; git: { getTree: ReturnType<typeof vi.fn> } };
+const blob = (path: string) => ({ type: 'blob', path });
+
+test('GitHubClient.getFileContent skips the request for a file the repo tree does not have', async () => {
+  const client = new GitHubClient('fake-token', 'test-owner');
+  const mock = client.getOctokit() as unknown as TreeMock;
+  mock.git.getTree.mockResolvedValue({ data: { tree: [blob('README.md'), blob('docs/TASKS.md')], truncated: false }, headers: {} });
+  mock.repos.getContent.mockResolvedValue({ data: { type: 'file', content: Buffer.from('# hi').toString('base64'), encoding: 'base64' }, headers: {} });
+
+  expect(await client.getFileContent('tree-repo', 'TASKS.md')).toBeNull();
+  expect(await client.getFileContent('tree-repo', '.github/SECURITY.md')).toBeNull();
+  expect(mock.repos.getContent).not.toHaveBeenCalled();
+
+  expect(await client.getFileContent('tree-repo', 'docs/TASKS.md')).toBe('# hi');
+  expect(mock.repos.getContent).toHaveBeenCalledTimes(1);
+  // The tree is fetched once per repo for the client's lifetime.
+  expect(mock.git.getTree).toHaveBeenCalledTimes(1);
+});
+
+test('GitHubClient.getFileContent still probes when the tree is truncated', async () => {
+  const client = new GitHubClient('fake-token', 'test-owner');
+  const mock = client.getOctokit() as unknown as TreeMock;
+  mock.git.getTree.mockResolvedValue({ data: { tree: [blob('README.md')], truncated: true }, headers: {} });
+  mock.repos.getContent.mockRejectedValue({ status: 404 });
+
+  expect(await client.getFileContent('big-repo', 'TASKS.md')).toBeNull();
+  expect(mock.repos.getContent).toHaveBeenCalledTimes(1);
+});
+
+test('GitHubClient reuses a 304 tree from the ETag cache', async () => {
+  const mock1 = new GitHubClient('fake-token', 'test-owner');
+  const o1 = mock1.getOctokit() as unknown as TreeMock;
+  o1.git.getTree.mockResolvedValue({ data: { tree: [blob('ROADMAP.md')], truncated: false }, headers: { etag: 'W/"t1"' } });
+  expect(await mock1.getRepoFileList('etag-repo')).toEqual(['ROADMAP.md']);
+
+  // A new client (next sync) sends If-None-Match and gets a free 304.
+  const mock2 = new GitHubClient('fake-token', 'test-owner');
+  const o2 = mock2.getOctokit() as unknown as TreeMock;
+  o2.git.getTree.mockRejectedValue({ status: 304 });
+  expect(await mock2.getRepoFileList('etag-repo')).toEqual(['ROADMAP.md']);
+  expect(o2.git.getTree.mock.calls[0][0].headers).toEqual({ 'If-None-Match': 'W/"t1"' });
 });

@@ -14,6 +14,8 @@
  *   search_repos           — search by name, description, or language
  *   get_security_summary   — security posture for one repo or the whole portfolio
  *   get_open_tasks         — open TASKS.md work across every tracked repo, by priority
+ *   get_relationships      — durable cross-repo edges (who uses whom, and how)
+ *   propose_relationship   — agent-recognized edge; lands as "proposed" until a person confirms it
  *
  * Streamable HTTP: JSON responses only (no SSE stream), so `claude mcp add
  * --transport http` works directly. Notifications get 202, GET with
@@ -25,11 +27,16 @@ import { getNeonClient, ensureSchema } from '@/lib/db';
 import logger from '@/lib/log';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
 import { loadOpenTasks, parseOpenTaskFilters, rollupOpenTasks, DEFAULT_ROLLUP_LIMIT, MAX_ROLLUP_LIMIT } from '@/lib/task-rollup';
+import {
+  KIND_NAMES, RELATIONSHIP_KINDS, CONTEXT_MIN, CONTEXT_MAX,
+  RelationshipValidationError, describeRelationship, listRelationships, parseRelationshipInput,
+  resolveEndpoint, upsertRelationship, type RelationshipKind,
+} from '@/lib/relationships';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const SERVER_VERSION = '0.3.0';
+const SERVER_VERSION = '0.4.0';
 /** Newest first; initialize echoes the client's version when we support it. */
 const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'] as const;
 const FALLBACK_PROTOCOL_VERSION = '2024-11-05';
@@ -229,6 +236,43 @@ const TOOLS = [
           type: 'number',
           description: `Max items returned (default ${DEFAULT_ROLLUP_LIMIT}, max ${MAX_ROLLUP_LIMIT}); counts always cover every match`,
         },
+      },
+    },
+  },
+  {
+    name: 'get_relationships',
+    description:
+      'Durable, directed cross-repo relationships: how one repo actually uses another (calls its API, ' +
+      'depends on it, deploys it, ...), each with a one-line context and optional evidence. Use before ' +
+      'changing a repo to see what depends on it. "confirmed" edges were checked by a person; "proposed" ' +
+      'ones came from agents or imports and are unverified. Kinds: ' +
+      KIND_NAMES.map((k) => `${k} (${RELATIONSHIP_KINDS[k]})`).join(' '),
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repo:   { type: 'string', description: 'Only edges touching this repo (name or owner/repo). Omit for all.' },
+        kind:   { type: 'string', enum: KIND_NAMES, description: 'Only this kind' },
+        status: { type: 'string', enum: ['proposed', 'confirmed'], description: 'Only this status (omit for both)' },
+      },
+    },
+  },
+  {
+    name: 'propose_relationship',
+    description:
+      'Record a cross-repo relationship you have evidence for, e.g. a package.json dependency, an API ' +
+      'or MCP URL in config, a deploy script. It lands as "proposed" until a person confirms it in the ' +
+      'PMO view; proposing the same (source, target, kind) again refines a proposal but never rewrites ' +
+      'a confirmed edge. Do not propose edges from shared language, topics or repo type: those are not ' +
+      'relationships. Direction matters: source is the repo that uses target.',
+    inputSchema: {
+      type: 'object',
+      required: ['source', 'target', 'kind', 'context', 'evidence'],
+      properties: {
+        source:   { type: 'string', description: 'The repo that uses the other (tracked name or owner/repo)' },
+        target:   { type: 'string', description: 'The repo being used (owner/repo; may be untracked)' },
+        kind:     { type: 'string', enum: KIND_NAMES, description: 'How source uses target' },
+        context:  { type: 'string', description: `${CONTEXT_MIN}-${CONTEXT_MAX} chars: what the usage is and why it matters` },
+        evidence: { type: 'string', description: 'File path, URL or PR that shows the usage' },
       },
     },
   },
@@ -624,6 +668,67 @@ async function getOpenTasks(args: Row): Promise<string> {
   });
 }
 
+async function getRelationships(args: Row): Promise<string> {
+  const db = getNeonClient();
+  await ensureSchema(db);
+  let repo: string | undefined;
+  if (args.repo !== undefined) {
+    const known = await db`SELECT name, full_name FROM repos WHERE (is_hidden = FALSE OR is_hidden IS NULL)` as Array<{ name: string; full_name: string }>;
+    try {
+      repo = resolveEndpoint(args.repo, known, 'repo');
+    } catch (error) {
+      throw new InvalidParamsError(error instanceof Error ? error.message : 'Invalid repo');
+    }
+  }
+  if (args.kind !== undefined && !KIND_NAMES.includes(args.kind as RelationshipKind)) {
+    throw new InvalidParamsError(`kind must be one of: ${KIND_NAMES.join(', ')}`);
+  }
+  if (args.status !== undefined && args.status !== 'proposed' && args.status !== 'confirmed') {
+    throw new InvalidParamsError('status must be "proposed" or "confirmed"');
+  }
+  const rows = await listRelationships(db, {
+    repos: repo ? [repo] : undefined,
+    kind: args.kind as RelationshipKind | undefined,
+    status: args.status as 'proposed' | 'confirmed' | undefined,
+  });
+  return JSON.stringify({
+    relationships: rows.map((r) => ({
+      id: r.id, source: r.source, target: r.target, kind: r.kind, context: r.context,
+      evidence: r.evidence, status: r.status, origin: r.origin, summary: describeRelationship(r),
+    })),
+    count: rows.length,
+    filters_applied: { repo: repo ?? null, kind: args.kind ?? null, status: args.status ?? null },
+  });
+}
+
+async function proposeRelationship(args: Row): Promise<string> {
+  const db = getNeonClient();
+  await ensureSchema(db);
+  const known = await db`SELECT name, full_name FROM repos WHERE (is_hidden = FALSE OR is_hidden IS NULL)` as Array<{ name: string; full_name: string }>;
+  let input;
+  try {
+    input = parseRelationshipInput(args, known, { requireEvidence: true });
+  } catch (error) {
+    if (error instanceof RelationshipValidationError) throw new InvalidParamsError(error.message);
+    throw error;
+  }
+  const trackedNames = new Set(known.map((r) => r.full_name.toLowerCase()));
+  if (!trackedNames.has(input.source) && !trackedNames.has(input.target)) {
+    throw new InvalidParamsError('at least one of source/target must be a tracked repo');
+  }
+  const { relationship, created } = await upsertRelationship(db, input, 'agent', 'mcp');
+  return JSON.stringify({
+    created,
+    relationship: {
+      id: relationship.id, source: relationship.source, target: relationship.target, kind: relationship.kind,
+      context: relationship.context, evidence: relationship.evidence, status: relationship.status,
+    },
+    note: relationship.status === 'confirmed'
+      ? 'This edge was already confirmed by a person; its wording was left unchanged.'
+      : 'Recorded as proposed; a person confirms or rejects it in the PMO view.',
+  });
+}
+
 // ---------------------------------------------------------------------------
 // JSON-RPC dispatch
 // ---------------------------------------------------------------------------
@@ -746,6 +851,8 @@ export async function POST(req: NextRequest) {
           case 'search_repos':           text = await searchRepos(toolArgs);          break;
           case 'get_security_summary':   text = await getSecuritySummary(toolArgs);   break;
           case 'get_open_tasks':         text = await getOpenTasks(toolArgs);         break;
+          case 'get_relationships':      text = await getRelationships(toolArgs);     break;
+          case 'propose_relationship':   text = await proposeRelationship(toolArgs);  break;
           default:
             return rpcError(id, -32601, `Unknown tool: "${toolName}"`);
         }

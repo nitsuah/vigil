@@ -262,18 +262,50 @@ export async function getFileLastModified(
   }
 }
 
+export interface RepoFileTree {
+  paths: string[];
+  /** GitHub caps recursive trees; a truncated list can't prove a file is absent. */
+  truncated: boolean;
+}
+
+/**
+ * Every file path in the default branch, from one recursive tree request.
+ * ETag-cached: an unchanged repo answers 304, which doesn't count against the
+ * rate limit.
+ */
+export async function getRepoFileTree(
+  octokit: Octokit,
+  owner: string,
+  repo: string
+): Promise<RepoFileTree> {
+  const cacheKey = `tree:${owner}/${repo}`;
+  const cached = githubCache.get(cacheKey);
+  try {
+    const { data, headers } = await octokit.git.getTree({
+      owner, repo, tree_sha: 'HEAD', recursive: '1',
+      headers: cached?.etag ? { 'If-None-Match': cached.etag } : {},
+    });
+    const tree: RepoFileTree = {
+      paths: data.tree.filter((item) => item.type === 'blob' && item.path).map((item) => item.path as string),
+      truncated: !!data.truncated,
+    };
+    if (tree.truncated) {
+      logger.warn(`[getRepoFileTree] Tree for ${owner}/${repo} is truncated — file list is incomplete`);
+    }
+    if (headers?.etag) githubCache.set(cacheKey, tree, headers.etag);
+    return tree;
+  } catch (error: unknown) {
+    if ((error as { status?: number }).status === 304 && cached) return cached.data as RepoFileTree;
+    throw error;
+  }
+}
+
 export async function getRepoFileList(
   octokit: Octokit,
   owner: string,
   repo: string
 ): Promise<string[]> {
-  const { data } = await octokit.git.getTree({ owner, repo, tree_sha: 'HEAD', recursive: '1' });
-  if (data.truncated) {
-    logger.warn(`[getRepoFileList] Tree for ${owner}/${repo} is truncated — file list is incomplete`);
-  }
-  return data.tree
-    .filter((item) => item.type === 'blob' && item.path)
-    .map((item) => item.path as string);
+  return (await getRepoFileTree(octokit, owner, repo)).paths;
 }
 
 export async function getLanguageStats(

@@ -68,7 +68,7 @@ async function mockApi(target: Page | BrowserContext): Promise<void> {
   await target.route('**/api/repos?*', (route) => route.fulfill(json([REPO])));
   await target.route('**/api/repo-details/*/trend', (route) => route.fulfill(json({ success: true, snapshots: [] })));
   await target.route('**/api/repo-details/*', (route) => route.fulfill(json(DETAILS)));
-  await target.route('**/api/dependencies', (route) => route.fulfill(json({ success: true, nodes: [], edges: [] })));
+  await target.route('**/api/relationships', (route) => route.fulfill(json({ relationships: [], kinds: {} })));
   await target.route('**/api/gemini-status', (route) => route.fulfill(json({ status: 'ok' })));
   await target.route('**/api/github-rate-limit', (route) => route.fulfill(json({ core: { remaining: 5000, limit: 5000, reset: 0 } })));
 }
@@ -185,5 +185,94 @@ test.describe('Repo chat authentication boundary (browser)', () => {
     });
     expect(res.status()).toBe(401);
     expect((await res.json()).error).toBe('Unauthorized');
+  });
+});
+
+test.describe('Sync All', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('progress follows the server phase, reloads repos on completion, and ends with one summary toast', async ({ browser }) => {
+    const context = await authenticatedContext(browser);
+    await mockApi(context);
+    let repoLoads = 0;
+    await context.route('**/api/repos?*', (route) => {
+      repoLoads++;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([REPO]) });
+    });
+    await context.route('**/api/sync-repos', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ success: true, message: 'Sync started in background', totalRepos: 2, sessionId: 'sync-e2e' }),
+    }));
+    // Each poll advances one step: metadata → health 1/2 → complete.
+    const steps = [
+      { phase: 'metadata', completedRepos: 0, currentRepo: 'acme/demo-repo', progressPercentage: 0 },
+      { phase: 'health', completedRepos: 1, currentRepo: 'acme/other-repo', progressPercentage: 50 },
+      { phase: 'complete', completedRepos: 2, currentRepo: 'Complete', progressPercentage: 100 },
+    ];
+    let poll = 0;
+    await context.route('**/api/sync-progress?*', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ sessionId: 'sync-e2e', totalRepos: 2, ...steps[Math.min(poll++, steps.length - 1)] }),
+    }));
+
+    const page = await context.newPage();
+    const errors = trackPageErrors(page);
+    await page.goto('/');
+    await expect(page.locator('table tbody')).toContainText('demo-repo', { timeout: 30_000 });
+    const loadsBeforeSync = repoLoads;
+
+    await page.getByTitle('Sync all repositories').click();
+    const panel = page.getByRole('status', { name: 'Sync progress' });
+    await expect(panel.getByTestId('sync-step')).toHaveText('Step 1 of 2 · Updating repo list');
+    await expect(panel.getByTestId('sync-step')).toHaveText('Step 2 of 2 · Health checks', { timeout: 5_000 });
+    await expect(panel.getByTestId('sync-count')).toHaveText('1 / 2 health checks');
+
+    await expect(page.getByText('Sync complete · 2 repositories updated')).toBeVisible({ timeout: 10_000 });
+    await expect(panel).toBeHidden();
+    expect(repoLoads).toBeGreaterThan(loadsBeforeSync);
+    await expect(page.getByText('Sync started in background')).toHaveCount(0);
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+
+  test('a failed sync says so instead of ending silently', async ({ browser }) => {
+    const context = await authenticatedContext(browser);
+    await mockApi(context);
+    await context.route('**/api/sync-repos', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ success: true, totalRepos: 1, sessionId: 'sync-e2e-fail' }),
+    }));
+    await context.route('**/api/sync-progress?*', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ sessionId: 'sync-e2e-fail', totalRepos: 1, completedRepos: 0, phase: 'error', currentRepo: 'Sync failed', progressPercentage: 0 }),
+    }));
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('table tbody')).toContainText('demo-repo', { timeout: 30_000 });
+    await page.getByTitle('Sync all repositories').click();
+    await expect(page.getByText(/Sync failed\. Check the server logs/)).toBeVisible({ timeout: 10_000 });
+    await context.close();
+  });
+
+  test('a sync stopped by the rate limit says when the quota resets', async ({ browser }) => {
+    const context = await authenticatedContext(browser);
+    await mockApi(context);
+    await context.route('**/api/sync-repos', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ success: true, totalRepos: 14, sessionId: 'sync-e2e-rl' }),
+    }));
+    await context.route('**/api/sync-progress?*', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        sessionId: 'sync-e2e-rl', totalRepos: 14, completedRepos: 9, phase: 'error', progressPercentage: 64,
+        currentRepo: 'GitHub rate limit reached after 9 of 14 repos · resets in 23 min',
+      }),
+    }));
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('table tbody')).toContainText('demo-repo', { timeout: 30_000 });
+    await page.getByTitle('Sync all repositories').click();
+    await expect(page.getByText('Sync stopped: GitHub rate limit reached after 9 of 14 repos · resets in 23 min')).toBeVisible({ timeout: 10_000 });
+    await context.close();
   });
 });

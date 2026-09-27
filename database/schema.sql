@@ -281,3 +281,22 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY allow_access_to_own_user_record ON users
 FOR ALL
 USING (github_id = current_setting('app.current_github_id', true));
+
+-- Durable, directed cross-repo relationships (lib/relationships.ts).
+CREATE TABLE IF NOT EXISTS repo_relationships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  source TEXT NOT NULL,
+  target TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('depends_on', 'calls', 'deploys', 'embeds', 'shares_data', 'tracks')),
+  context TEXT NOT NULL,
+  evidence TEXT,
+  status TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed', 'confirmed')),
+  origin TEXT NOT NULL DEFAULT 'manual' CHECK (origin IN ('manual', 'agent', 'import')),
+  created_by TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  confirmed_at TIMESTAMP WITH TIME ZONE,
+  CHECK (source <> target),
+  UNIQUE (source, target, kind)
+);
+CREATE INDEX IF NOT EXISTS idx_repo_relationships_target ON repo_relationships(target);

@@ -24,11 +24,13 @@ _None open — see CHANGELOG for the #221–#233 work._
   - Acceptance Criteria: broken into stages — (1) chat can propose a specific, diffable edit to one doc file and show it inline before applying; (2) accepting the proposal opens a PR via the existing fix-doc PR flow rather than writing directly; (3) the chat can check an item off in TASKS.md or move it to FEATURES.md when the user confirms it's shipped, referencing the same parser the dashboard already uses so state never diverges from what's rendered elsewhere; (4) before calling `createPrForFile`, the caller-supplied target path must be validated against the approved doc list (TASKS.md/ROADMAP.md/FEATURES.md, matching the existing `TARGET_PATHS` mapping) — never pass a chat-supplied path straight through unchecked.
   - Status: stages (1), (2), and (4) ✅ SHIPPED — `parseDocEditProposal` in `lib/repo-chat.ts` extracts a fenced ` ```proposal``` ` JSON block from the assistant's reply; `RepoChatPanel` renders it as an inline card with Apply/Dismiss; Apply routes the proposed content into the existing preview-and-PR modal (`onApplyProposal` in `app/page.tsx`) rather than writing directly; `fix-doc`'s `TARGET_PATHS` validation (already hardened in this branch) covers the PR path. Stage (3) — checking off/moving items directly from chat — still open.
 
-- [ ] **[2027-Q1]** Upgrade cross-repo dependency mapping to the 3D / click-to-detail graph (2D SVG graph shipped in PR #204).
+- [ ] Grow the cross-repo relationship map (foundation shipped: `repo_relationships`, `/api/relationships`, `get_relationships` / `propose_relationship` MCP tools, PMO map).
   - Priority: P2
-  - Context: agent-board, bb-mcp, nitsuah-io, and vigil share overlapping stacks and could benefit from surfaced cross-repo links.
-  - Acceptance Criteria: the dashboard shows inferred or declared connections between related repos and surfaces shared-stack signals; visualized as an interactive 3D graph with filter and click-to-detail interactions.
-  - Status: 🟡 PARTIAL (PR #204) — `GET /api/dependencies` infers connections from shared topics + primary language; rendered as a collapsible SVG graph + connection list (`DependencyGraph.tsx`) on the dashboard. The 3D/click-to-detail visualization from the original acceptance criteria is not implemented — current graph is 2D SVG.
+  - Next: (1) seed the real edges (confirm or reject what agents propose); (2) an Obsidian import that reads relationship lines from the vault and posts them to `POST /api/relationships` as proposals; (3) a PMO audit / agent pass that proposes edges from real evidence (package.json deps, MCP/API URLs in config, deploy scripts); (4) surface "what depends on this repo" on the repo details panel.
+  - Acceptance Criteria: the map reflects real usage for every tracked repo, and agents consult `get_relationships` before cross-repo changes.
+
+- [ ] **[2027-Q1]** 3D / click-to-detail view of the relationship map, once the 2D map's data is right.
+  - Priority: P3
 
 - [ ] Thread `full_name` through to the trend endpoint instead of matching by short `name`.
   - Priority: P2
