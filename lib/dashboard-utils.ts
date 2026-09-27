@@ -1,12 +1,19 @@
 // Utility functions for dashboard display
+import { healthGrade, type HealthGradeLetter } from '@/lib/health-grade';
 
-export function getHealthGrade(score: number): { grade: string; color: string } {
-  if (score >= 90) return { grade: 'A+', color: 'text-green-400' };
-  if (score >= 80) return { grade: 'A', color: 'text-green-400' };
-  if (score >= 70) return { grade: 'B', color: 'text-blue-400' };
-  if (score >= 60) return { grade: 'C', color: 'text-yellow-400' };
-  if (score >= 50) return { grade: 'D', color: 'text-orange-400' };
-  return { grade: 'F', color: 'text-red-400' };
+const GRADE_COLORS: Record<HealthGradeLetter, string> = {
+  'A+': 'text-green-400',
+  A: 'text-green-400',
+  B: 'text-blue-400',
+  C: 'text-yellow-400',
+  D: 'text-orange-400',
+  F: 'text-red-400',
+};
+
+/** Display grade + color. The letter comes from the shared scale in lib/health-grade. */
+export function getHealthGrade(score: number): { grade: HealthGradeLetter; color: string } {
+  const grade = healthGrade(score);
+  return { grade, color: GRADE_COLORS[grade] };
 }
 
 export function formatTimeAgo(dateString: string | null): string {

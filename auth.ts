@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import logger from './lib/log';
+import { applyJwt, sessionUserId } from '@/lib/auth-session';
 
 // Exact-match check (not substring) so a host like "notlocalhost.example.com" doesn't
 // falsely qualify for the localhost HTTP exemption below.
@@ -90,22 +91,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     callbacks: {
         async jwt({ token, account }) {
             logger.debug('JWT callback', { token, account });
-            if (account) {
-                token.accessToken = account.access_token;
-            }
-            return token;
+            return applyJwt(token, account);
         },
         async session({ session, token }) {
             logger.debug('Session callback', { session, token });
             // Extend session with accessToken (type augmentation)
             (session as typeof session & { accessToken?: string }).accessToken = token.accessToken as string;
-            // token.sub is the GitHub user's numeric id, set from `profile.id`
-            // (see the GitHub provider's profile() above) and always present --
-            // unlike session.user.email, which GitHub omits for accounts with
-            // no public email when the /user/emails fallback also fails.
-            // Callers that need a metering/identity key that can never be
-            // silently absent should prefer this over session.user.email.
-            (session as typeof session & { userId?: string }).userId = token.sub as string;
+            // userId is the GitHub numeric id captured at sign-in (lib/auth-session.ts).
+            // NOT token.sub: without an adapter Auth.js makes that a random UUID per
+            // login, which matched no repo_access grant or sync_progress row.
+            const userId = sessionUserId(token);
+            if (userId) (session as typeof session & { userId?: string }).userId = userId;
             return session;
         },
         async redirect({ url, baseUrl }) {

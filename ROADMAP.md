@@ -2,7 +2,7 @@
 
 > 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · **Roadmap** · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
 
-updated: 2026-09-24
+updated: 2026-09-25
 
 Next Review: 2026-10-24
 
@@ -31,6 +31,7 @@ Next Review: 2026-10-24
 - [ ] Add mobile-responsive adjustments and lightweight PWA packaging
 - [ ] **Repo "mood" signal** — lightweight sentiment from recent PR descriptions, commit messages, and TASKS.md tone (grind / cleanup / blocked).
 - [ ] **AI PR pairing suggestions** — when promoting a ROADMAP/TASKS item to a PR, surface related items in other repos that should co-land.
+- [ ] **Visual-docs rollout** — adopt the CI diagram/screenshot recipe across web-app repos, then promote `visual_docs` from informational to scored (see TASKS P3).
 - [ ] **Agent session receipts** — per-repo log (chat panel + PMO view) of what an AI session actually did: commits, PRs, files touched, findings fixed vs. skipped-with-reason.
 
 ## Notes

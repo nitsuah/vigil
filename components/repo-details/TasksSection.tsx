@@ -7,6 +7,8 @@ import { useState } from 'react';
 
 interface TasksSectionProps {
   tasks: Task[];
+  /** TASKS.md exists (doc_status). With zero parsed items, show an empty card rather than nothing. */
+  tasksDocExists?: boolean;
   isExpanded?: boolean;
   onToggleExpanded?: () => void;
 }
@@ -23,7 +25,7 @@ function getStatusDisplay(status: string) {
   }
 }
 
-export function TasksSection({ tasks, isExpanded: isExpandedProp, onToggleExpanded }: TasksSectionProps) {
+export function TasksSection({ tasks, tasksDocExists = false, isExpanded: isExpandedProp, onToggleExpanded }: TasksSectionProps) {
   const [internalExpanded, setInternalExpanded] = useState(true);
   const isMainExpanded = isExpandedProp !== undefined ? isExpandedProp : internalExpanded;
   const setIsMainExpanded = onToggleExpanded || (() => setInternalExpanded(!internalExpanded));
@@ -32,9 +34,23 @@ export function TasksSection({ tasks, isExpanded: isExpandedProp, onToggleExpand
   const [showDone, setShowDone] = useState(false);
   const [showAllTodo, setShowAllTodo] = useState(false);
 
-  // Hide section if no tasks
   if (!tasks || tasks.length === 0) {
-    return null;
+    // A missing TASKS.md is flagged by the Documentation card; nothing to show here.
+    if (!tasksDocExists) return null;
+    // The file exists but has no "- [ ]" items (e.g. every section says "None"):
+    // say so, instead of the card vanishing as if the file were missing.
+    return (
+      <div className="bg-gradient-to-br from-blue-900/30 via-slate-800/50 to-blue-800/20 rounded-lg overflow-hidden border border-blue-500/40 shadow-lg shadow-blue-500/10" data-tour="tasks-section">
+        <div className="w-full px-4 py-3 flex items-center gap-2">
+          <ListTodo className="h-4 w-4 text-blue-400" />
+          <h4 className="text-sm font-semibold text-slate-200">Tasks</h4>
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium ml-1 bg-slate-500/20 text-slate-400">0</span>
+        </div>
+        <p className="px-4 pb-3 text-xs text-slate-400">
+          TASKS.md found, but it has no task items. Vigil reads <code className="text-slate-300">- [ ]</code> / <code className="text-slate-300">- [x]</code> checklist lines.
+        </p>
+      </div>
+    );
   }
 
   const toggleCard = (cardKey: string) => {

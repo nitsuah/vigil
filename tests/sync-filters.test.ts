@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filterReposForSync, SyncFilters } from '@/lib/sync-filters';
+import { defaultReposNotIn, filterReposForSync, SyncFilters } from '@/lib/sync-filters';
 import type { RepoMetadata } from '@/lib/github';
 
 function repo(overrides: Partial<RepoMetadata> & { name: string }): RepoMetadata {
@@ -95,4 +95,19 @@ describe('filterReposForSync', () => {
     );
     expect(result.map((r) => r.name)).toEqual(['web-app']);
   });
+});
+describe('defaultReposNotIn', () => {
+    const DEFAULTS = [
+        { owner: 'nitsuah', name: 'vigil', fullName: 'nitsuah/vigil' },
+        { owner: 'Nitsuah-Labs', name: 'nitsuah-io', fullName: 'Nitsuah-Labs/nitsuah-io' },
+    ];
+
+    it('drops defaults the user already syncs, case-insensitively (regression: 13 counted, 11 synced)', () => {
+        const mine = [{ fullName: 'nitsuah/vigil' }, { fullName: 'nitsuah-labs/NITSUAH-IO' }, { fullName: 'nitsuah/fire' }];
+        expect(defaultReposNotIn(mine, DEFAULTS)).toEqual([]);
+    });
+
+    it('keeps defaults for a user who does not own them', () => {
+        expect(defaultReposNotIn([{ fullName: 'someone/else' }], DEFAULTS)).toEqual(DEFAULTS);
+    });
 });

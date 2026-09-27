@@ -1,0 +1,31 @@
+%% Vigil architecture — rendered to architecture.svg by .github/workflows/visual-docs.yml
+flowchart LR
+  subgraph GH[GitHub]
+    repos[(Tracked repos<br/>README · TASKS · ROADMAP<br/>FEATURES · METRICS)]
+    api[REST + GraphQL<br/>Actions · Dependabot · security]
+  end
+
+  subgraph Vigil[Vigil — Next.js on Netlify]
+    sync[lib/sync.ts<br/>parsers · best practices<br/>community standards · health score]
+    ui[Dashboard + PMO<br/>app/page.tsx · app/pmo]
+    routes[API routes<br/>/api/repos · /api/pmo · /api/agent]
+    mcp[MCP server<br/>POST /api/mcp · 8 tools]
+    ctx[LLM context<br/>GET /api/context]
+    ai[AI failover<br/>Gemini · OpenAI · Anthropic]
+  end
+
+  db[(Neon Postgres<br/>repos · tasks · roadmap_items<br/>best_practices · repo_snapshots)]
+  agents[Claude Code / MCP agents]
+  user[Owner in browser]
+
+  repos --> sync
+  api --> sync
+  sync --> db
+  db --> routes --> ui
+  db --> mcp
+  db --> ctx
+  routes --> ai
+  routes -- fix-doc / fix-practice PRs --> repos
+  user --> ui
+  agents -- Bearer MCP_API_KEY --> mcp
+  agents --> ctx

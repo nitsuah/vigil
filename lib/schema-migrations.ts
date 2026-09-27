@@ -116,6 +116,9 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
 
     // tasks
     `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS subsection TEXT`,
+    // cross-repo open-task rollup (get_open_tasks / PMO Open work)
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT CHECK (priority IN ('P0', 'P1', 'P2', 'P3'))`,
+    `ALTER TABLE tasks ADD COLUMN IF NOT EXISTS owner TEXT`,
 
     // roadmap_items: DEV-flow handoff linkage (link a roadmap item to a
     // tracked PR and/or an Agent Task Queue entry)
@@ -146,6 +149,7 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
     `CREATE INDEX IF NOT EXISTS idx_repos_security_policy ON repos(has_security_policy)`,
     `CREATE INDEX IF NOT EXISTS idx_repos_security_last_checked ON repos(security_last_checked)`,
     `CREATE INDEX IF NOT EXISTS idx_tasks_subsection ON tasks(subsection)`,
+    `CREATE INDEX IF NOT EXISTS idx_tasks_open_priority ON tasks(priority) WHERE status <> 'done'`,
 
     // agent_task_receipts: persistent log of agent task queue runs (session
     // receipts). The in-memory queue in app/api/agent/tasks/route.ts is lost on
