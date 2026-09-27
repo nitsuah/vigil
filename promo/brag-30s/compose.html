@@ -1,0 +1,327 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: #020617; font-family: Inter, sans-serif; color: #e2e8f0; }
+  #bg, #glowA, #glowB, #dots { position: absolute; inset: -200px; }
+  #bg { background: #020617; }
+  #glowA { background: radial-gradient(700px 520px at 50% 50%, rgba(128,45,255,0.20), transparent 70%); }
+  #glowB { background: radial-gradient(760px 560px at 50% 50%, rgba(59,0,128,0.24), transparent 70%); }
+  #dots { background-image: radial-gradient(rgba(165,180,252,0.10) 1.2px, transparent 1.2px); background-size: 34px 34px; mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%); }
+  .layer { position: absolute; inset: 0; opacity: 0; transform-origin: 50% 50%; }
+  .grad { background: linear-gradient(90deg, #a5b4fc, #d8b4fe 55%, #f0abfc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .kicker { position: absolute; left: 0; right: 0; top: 58px; text-align: center; font-size: 22px; font-weight: 700; letter-spacing: 0.32em; text-transform: uppercase; color: #a5b4fc; }
+  .kicker b { color: #f0abfc; font-weight: 800; }
+  .head { position: absolute; left: 0; right: 0; top: 96px; text-align: center; font-size: 62px; font-weight: 800; letter-spacing: -0.025em; }
+  .w { display: inline-block; white-space: pre; }
+  .shot { position: absolute; border-radius: 18px; overflow: hidden; box-shadow: 0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); background: #020617; }
+  .shot img { display: block; width: 100%; }
+  .cursor { position: absolute; left: 0; top: 0; width: 40px; height: 40px; filter: drop-shadow(0 6px 10px rgba(0,0,0,0.55)); }
+  .ring { position: absolute; left: 0; top: 0; width: 64px; height: 64px; border-radius: 50%; border: 3px solid #d8b4fe; opacity: 0; }
+  .pulse { position: absolute; left: 0; top: 0; border-radius: 10px; border: 2px solid #f0abfc; box-shadow: 0 0 24px rgba(240,171,252,0.6); opacity: 0; }
+  .pill { position: absolute; padding: 12px 24px; border-radius: 999px; background: rgba(16,185,129,0.16); border: 1px solid rgba(52,211,153,0.6); color: #6ee7b7; font-weight: 700; font-size: 28px; opacity: 0; white-space: nowrap; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+  /* hook */
+  #chips { position: absolute; left: 50%; top: 190px; transform: translateX(-50%); display: grid; grid-template-columns: repeat(5, 300px); gap: 18px; }
+  .chip { height: 76px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.10); background: rgba(15,23,42,0.85); display: flex; align-items: center; justify-content: space-between; padding: 0 22px; font-size: 26px; font-weight: 600; color: #cbd5e1; }
+  .chip b { font-size: 30px; font-weight: 900; }
+  #count { position: absolute; left: 0; right: 0; top: 470px; text-align: center; font-size: 38px; color: #94a3b8; font-weight: 500; }
+  #count em { font-style: normal; color: #e2e8f0; font-weight: 700; }
+  #count .bad { color: #f87171; }
+  #question { position: absolute; left: 0; right: 0; top: 600px; text-align: center; font-size: 104px; font-weight: 900; letter-spacing: -0.03em; }
+  .caret { display: inline-block; width: 6px; height: 0.9em; background: #d8b4fe; vertical-align: -0.08em; margin-left: 6px; }
+  /* brand */
+  .brand { display: flex; align-items: center; gap: 28px; }
+  .brand svg { color: #a5b4fc; filter: drop-shadow(0 0 18px rgba(168,85,247,0.55)); }
+  .brand span { font-weight: 800; letter-spacing: -0.02em; }
+  /* reveal */
+  #revLeft { position: absolute; left: 110px; top: 330px; width: 640px; }
+  #revLeft .line { font-size: 58px; font-weight: 800; line-height: 1.12; letter-spacing: -0.02em; margin-top: 40px; }
+  #revStage { position: absolute; inset: 0; perspective: 1800px; }
+  #revShot { left: 770px; top: 230px; width: 1060px; }
+  /* inspect */
+  .card { position: absolute; top: 250px; width: 540px; }
+  /* fix */
+  #fixWrap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 960px 540px; }
+  #fixWrap img { width: 1920px; display: block; }
+  #fixScrim { position: absolute; left: 0; right: 0; top: 0; height: 330px; background: linear-gradient(#020617 30%, rgba(2,6,23,0)); }
+  /* prioritize / connect */
+  #priShot { left: 80px; top: 230px; width: 1760px; height: 640px; }
+  #priShot img { width: 2483px; max-width: none; }
+  #conShot { left: 40px; top: 210px; width: 1840px; }
+  /* ask */
+  #term { position: absolute; left: 260px; top: 250px; width: 1400px; height: 540px; border-radius: 18px; background: #0b1020; box-shadow: 0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08); font-family: 'JetBrains Mono', monospace; font-size: 30px; padding: 70px 56px 40px; overflow: hidden; }
+  #term .bar { position: absolute; left: 0; right: 0; top: 0; height: 46px; background: rgba(255,255,255,0.04); display: flex; align-items: center; gap: 10px; padding-left: 20px; }
+  #term .bar i { width: 14px; height: 14px; border-radius: 50%; background: #334155; display: block; }
+  #term .bar span { margin-left: 16px; font-size: 18px; color: #64748b; font-family: Inter, sans-serif; }
+  .tl { white-space: pre; line-height: 1.55; opacity: 0; }
+  .p0 { color: #f87171; font-weight: 600; } .p1 { color: #fbbf24; font-weight: 600; }
+  .dim { color: #64748b; } .tool { color: #a5b4fc; } .you { color: #e2e8f0; } .ok { color: #6ee7b7; }
+  /* outro */
+  #outro { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #outro .brand span { font-size: 150px; }
+  #outro .tag { font-size: 58px; font-weight: 700; margin-top: 30px; }
+  #outro .feats { font-size: 28px; color: #94a3b8; margin-top: 22px; letter-spacing: 0.02em; }
+  #outro .chips { display: flex; gap: 20px; margin-top: 48px; }
+  #outro .chips div { font-family: 'JetBrains Mono', monospace; font-size: 30px; padding: 14px 26px; border-radius: 12px; background: rgba(15,23,42,0.9); border: 1px solid rgba(165,180,252,0.3); color: #c7d2fe; }
+</style>
+</head>
+<body>
+<div id="bg"></div><div id="glowA"></div><div id="glowB"></div><div id="dots"></div>
+
+<div id="hook" class="layer">
+  <div id="chips"></div>
+  <div id="count"></div>
+  <div id="question"><span class="grad" id="qtext"></span><span class="caret" id="qcaret"></span></div>
+</div>
+
+<div id="reveal" class="layer">
+  <div id="revLeft">
+    <div class="brand" id="revBrand"></div>
+    <div class="line"><span class="grad">Every repo, graded.</span><br />One dashboard.</div>
+  </div>
+  <div id="revStage"><div class="shot" id="revShot"><img src="crops/dashboard.png" /></div></div>
+</div>
+
+<div id="inspect" class="layer">
+  <div class="kicker"><b>01</b> · Inspect</div>
+  <div class="head" data-words>Docs. Best practices. <span class="grad">Community standards.</span></div>
+  <div class="shot card" id="c0" style="left:110px"><img src="crops/card-docs.png" /></div>
+  <div class="shot card" id="c1" style="left:690px"><img src="crops/card-practices.png" /></div>
+  <div class="shot card" id="c2" style="left:1270px"><img src="crops/card-standards.png" /></div>
+  <div class="pulse" id="pulseFix"></div>
+  <div class="ring" id="ringFix"></div>
+  <svg class="cursor" id="curFix" viewBox="0 0 24 24"><path d="M4 2l16 10-7 1.5L9.5 21z" fill="#fff" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="round"/></svg>
+</div>
+
+<div id="fix" class="layer">
+  <div id="fixWrap"><img src="crops/fix-modal.png" /></div>
+  <div id="fixScrim"></div>
+  <div class="kicker"><b>02</b> · Fix</div>
+  <div class="head" data-words>One click. <span class="grad">One pull request.</span></div>
+  <div class="pulse" id="pulsePr"></div>
+  <div class="ring" id="ringPr"></div>
+  <svg class="cursor" id="curPr" viewBox="0 0 24 24"><path d="M4 2l16 10-7 1.5L9.5 21z" fill="#fff" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="round"/></svg>
+  <div class="pill" id="prPill">✓ Pull request opened on acme/mobile-app</div>
+</div>
+
+<div id="prioritize" class="layer">
+  <div class="kicker"><b>03</b> · Prioritize</div>
+  <div class="head" data-words>Open work. <span class="grad">Most urgent first.</span></div>
+  <div class="shot" id="priShot"><img id="priA" src="crops/pmo-p01.png" /><img id="priB" src="crops/pmo-p012.png" style="position:absolute;left:0;top:0" /></div>
+  <div class="ring" id="ringP2"></div>
+  <svg class="cursor" id="curP2" viewBox="0 0 24 24"><path d="M4 2l16 10-7 1.5L9.5 21z" fill="#fff" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="round"/></svg>
+</div>
+
+<div id="connect" class="layer">
+  <div class="kicker"><b>04</b> · Connect</div>
+  <div class="head" data-words>Which repo uses which. <span class="grad">And why.</span></div>
+  <div class="shot" id="conShot"><img src="crops/relationships.png" /></div>
+  <div class="pill" id="confirmPill" style="font-size:24px;padding:8px 18px">✓ Confirmed</div>
+  <div class="ring" id="ringCon"></div>
+  <svg class="cursor" id="curCon" viewBox="0 0 24 24"><path d="M4 2l16 10-7 1.5L9.5 21z" fill="#fff" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="round"/></svg>
+</div>
+
+<div id="ask" class="layer">
+  <div class="kicker"><b>05</b> · Ask</div>
+  <div class="head" data-words>Your agents <span class="grad">read it too.</span></div>
+  <div id="term"><div class="bar"><i></i><i></i><i></i><span>claude — vigil MCP</span></div><div id="tlines"></div></div>
+</div>
+
+<div id="outro" class="layer">
+  <div class="brand" id="outBrand"></div>
+  <div class="tag">Keep watch over <span class="grad">every repo.</span></div>
+  <div class="feats">Health · Docs · Best practices · Community standards · Open work · Relationships · MCP</div>
+  <div class="chips"><div>github.com/nitsuah/vigil</div><div>MCP for Claude Code</div></div>
+</div>
+
+<script>
+const P = window.PROMO, S = window.SPOT;
+const $ = (id) => document.getElementById(id);
+const ICON = (px) => `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="3.5" x2="12" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="17" x2="12" y2="20.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="3.5" y1="12" x2="7" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="17" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>`;
+$('revBrand').innerHTML = ICON(100) + '<span class="grad" style="font-size:110px">Vigil</span>';
+$('outBrand').innerHTML = ICON(170) + '<span class="grad">Vigil</span>';
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = (x) => 1 - Math.pow(1 - x, 3);
+const eInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const eBack = (x) => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const lerp = (a, b, x) => a + (b - a) * x;
+const grade = (h) => (h >= 95 ? 'A+' : h >= 90 ? 'A' : h >= 80 ? 'B' : h >= 70 ? 'C' : h >= 60 ? 'D' : 'F');
+const gcol = (h) => (h >= 90 ? '#34d399' : h >= 80 ? '#60a5fa' : h >= 70 ? '#facc15' : h >= 60 ? '#fb923c' : '#f87171');
+const scene = Object.fromEntries(S.scenes.map(([id, a, b]) => [id, { a, b }]));
+
+// Headline words rise in one after another.
+const heads = [...document.querySelectorAll('[data-words]')].map((h) => {
+  const wrap = (node) => {
+    [...node.childNodes].forEach((c) => {
+      if (c.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        // Inline-block words break a parent's background-clip: text, so each word carries the gradient itself.
+        const g = node.classList && node.classList.contains('grad');
+        c.textContent.split(/(\s+)/).forEach((w) => { if (!w) return; const s = document.createElement('span'); s.className = g ? 'w grad' : 'w'; s.textContent = w; frag.appendChild(s); });
+        node.replaceChild(frag, c);
+      } else wrap(c);
+    });
+  };
+  wrap(h);
+  return { el: h, words: [...h.querySelectorAll('.w')], sceneId: h.closest('.layer').id };
+});
+
+// Scene look: blur + scale through each cut instead of a flat dip.
+function sceneStyle(t, id, first, last) {
+  const { a, b } = scene[id];
+  if (t < a - 1e-6 || t > b + 1e-6) return { o: 0 };
+  const i = first ? 1 : eOut(prog(t, a, a + 0.4));
+  const o = last ? 1 : 1 - eInOut(prog(t, b - 0.32, b));
+  return { o: Math.min(i, o), s: (1 + (1 - i) * 0.02) * (1 - (1 - o) * 0.015), blur: (1 - i) * 10 + (1 - o) * 8 };
+}
+
+// hook content
+const chipEls = P.repos.map((r) => { const d = document.createElement('div'); d.className = 'chip'; d.innerHTML = `<span>${r.name}</span><b style="color:${gcol(r.health)}">${grade(r.health)}</b>`; $('chips').appendChild(d); return d; });
+const N = P.hook, H = S.hook;
+$('count').innerHTML = `<em>${N.repos} repos</em> · <em>${N.openTasks} open tasks</em> · <em class="bad">${N.failingCi} failing build</em>`;
+
+// ask content
+const pad = (s, n) => (s + ' '.repeat(n)).slice(0, n);
+const m = P.mcp;
+const lines = [
+  { at: S.questionAt, html: '<span class="dim">&gt; </span><span class="you" data-type></span>' },
+  { at: S.toolAt, html: `<span class="tool">● vigil · get_open_tasks</span><span class="dim">(priority: ["P0", "P1"])</span>` },
+  { at: S.resultAt, html: `<span class="dim">  ⎿ </span><span class="ok">${m.total} open</span><span class="dim"> · P0 ${m.by_priority.P0} · P1 ${m.by_priority.P1}</span>` },
+  ...m.tasks.map((x, i) => ({ at: S.resultAt + 0.3 + i * 0.28, html: `<span class="dim">    </span><span class="${x.priority.toLowerCase()}">${x.priority}</span>  <span class="you">${pad(x.repo, 13)}</span> <span class="dim">${x.title}</span>` })),
+];
+const lineEls = lines.map((l) => { const d = document.createElement('div'); d.className = 'tl'; d.innerHTML = l.html; $('tlines').appendChild(d); return d; });
+const typeEl = lineEls[0].querySelector('[data-type]');
+
+// Targets from the capture (CSS px of each crop → screen px).
+const CARD_SCALE = 540 / 370;
+const fixAll = { x: 690 + P.fixAll.x * CARD_SCALE, y: 250 + P.fixAll.y * CARD_SCALE };
+const PRI_SCALE = 2483 / 1552;
+const p2 = { x: 80 + P.p2Chip.x * PRI_SCALE, y: 230 + P.p2Chip.y * PRI_SCALE };
+const CON_SCALE = 1840 / 1552;
+const confirmAt = { x: 40 + 1502 * CON_SCALE, y: 210 + 75 * CON_SCALE };
+
+function cursor(el, ring, t, t0, from, to, clickAt, shown) {
+  const k = eInOut(prog(t, t0, clickAt - 0.1));
+  const x = lerp(from.x, to.x, k), y = lerp(from.y, to.y, k);
+  const press = 1 - 0.18 * Math.sin(Math.PI * prog(t, clickAt - 0.05, clickAt + 0.15));
+  el.style.opacity = shown;
+  el.style.transform = `translate(${x - 6}px, ${y - 4}px) scale(${press})`;
+  const r = prog(t, clickAt, clickAt + 0.55);
+  ring.style.opacity = r > 0 && r < 1 ? 1 - r : 0;
+  ring.style.transform = `translate(${to.x - 32}px, ${to.y - 32}px) scale(${0.4 + r * 1.3})`;
+}
+function pulse(el, t, a, b, center, w, h) {
+  const k = prog(t, a, b);
+  el.style.opacity = k > 0 && k < 1 ? 0.35 + 0.65 * Math.abs(Math.sin(k * Math.PI * 2)) : 0;
+  el.style.width = `${w}px`; el.style.height = `${h}px`;
+  el.style.transform = `translate(${center.x - w / 2}px, ${center.y - h / 2}px)`;
+}
+
+window.render = (t) => {
+  // background drift
+  $('glowA').style.transform = `translate(${Math.sin(t * 0.21) * 160 - 380}px, ${Math.cos(t * 0.17) * 90 - 160}px)`;
+  $('glowB').style.transform = `translate(${Math.cos(t * 0.15) * 180 + 420}px, ${Math.sin(t * 0.19) * 110 + 220}px)`;
+  $('dots').style.transform = `translate(${(t * 6) % 34}px, ${(t * 3) % 34}px)`;
+
+  S.scenes.forEach(([id], i) => {
+    const st = sceneStyle(t, id, i === 0, i === S.scenes.length - 1);
+    const el = $(id);
+    el.style.opacity = st.o;
+    el.style.transform = st.o ? `scale(${st.s})` : '';
+    el.style.filter = st.o && st.blur > 0.05 ? `blur(${st.blur}px)` : 'none';
+  });
+  heads.forEach(({ words, sceneId }) => {
+    const a = scene[sceneId].a;
+    words.forEach((w, i) => {
+      const k = eOut(prog(t, a + 0.12 + i * 0.07, a + 0.5 + i * 0.07));
+      w.style.opacity = k; w.style.transform = `translateY(${(1 - k) * 26}px)`;
+    });
+  });
+
+  // hook
+  chipEls.forEach((c, i) => {
+    const k = prog(t, H.chipsStart + i * H.chipGap, H.chipsStart + i * H.chipGap + 0.35);
+    c.style.opacity = k; c.style.transform = `translateY(${(1 - eOut(k)) * 30}px) scale(${lerp(0.8, 1, eBack(k))})`;
+  });
+  const ck = prog(t, H.countAt, H.countAt + 0.3);
+  $('count').style.opacity = ck; $('count').style.transform = `translateY(${(1 - eOut(ck)) * 16}px)`;
+  const q = 'What do I work on next?';
+  const nq = clamp(Math.floor((t - H.typeAt) * H.typeCps), 0, q.length);
+  $('qtext').textContent = q.slice(0, nq);
+  $('qcaret').style.opacity = t < H.typeAt ? 0 : (nq < q.length || Math.floor(t * 2.5) % 2 === 0 ? 1 : 0);
+
+  // reveal
+  const b2 = eOut(prog(t, 3.1, 3.7));
+  $('revLeft').style.transform = `translateX(${(1 - b2) * -40}px)`; $('revLeft').style.opacity = b2;
+  const d2 = eOut(prog(t, 3.3, 4.4)), drift = prog(t, 4.4, 7);
+  $('revShot').style.transform = `rotateY(${lerp(34, -7, d2) - drift * 2}deg) translateX(${(1 - d2) * 260}px) scale(${lerp(0.9, 1, d2) + drift * 0.025})`;
+  $('revShot').style.opacity = d2;
+
+  // inspect: three checklist cards, then Fix All pulses and gets clicked
+  S.cards.forEach((at, i) => {
+    const k = eOut(prog(t, at, at + 0.55));
+    const kb = prog(t, 8.6, 11);
+    const c = $('c' + i);
+    c.style.opacity = k;
+    c.style.transform = `translateY(${(1 - k) * 70 - kb * 6}px) scale(${lerp(0.94, 1, k) + kb * 0.012})`;
+  });
+  pulse($('pulseFix'), t, 9.7, 10.5, fixAll, 170, 62);
+  cursor($('curFix'), $('ringFix'), t, 9.4, { x: 1540, y: 1000 }, fixAll, S.clicks.fixAll, prog(t, 9.2, 9.5));
+
+  // fix: the real PR preview, slow push-in, Create PR is clicked
+  const fk = 1 + 0.05 * eInOut(prog(t, 11, 15));
+  $('fixWrap').style.transform = `scale(${fk})`;
+  const prRaw = { x: P.createPr.x * 1.2, y: P.createPr.y * 1.2 };
+  const pr = { x: 960 + (prRaw.x - 960) * fk, y: 540 + (prRaw.y - 540) * fk };
+  pulse($('pulsePr'), t, 13.0, 13.8, pr, 210, 72);
+  cursor($('curPr'), $('ringPr'), t, 12.4, { x: 1300, y: 1040 }, pr, S.clicks.createPr, prog(t, 12.2, 12.5));
+  const pp = prog(t, S.prOpenedAt, S.prOpenedAt + 0.35);
+  $('prPill').style.opacity = pp;
+  $('prPill').style.transform = `translate(${960 - 290}px, ${880}px) scale(${lerp(0.8, 1, eBack(pp))})`;
+
+  // prioritize
+  const g3 = eOut(prog(t, 15.1, 15.7)), kb3 = prog(t, 15.7, 19);
+  $('priShot').style.transform = `translateY(${(1 - g3) * 50}px) scale(${1 + kb3 * 0.012})`;
+  $('priB').style.opacity = prog(t, S.clicks.p2 + 0.05, S.clicks.p2 + 0.35);
+  cursor($('curP2'), $('ringP2'), t, 15.9, { x: 1500, y: 980 }, p2, S.clicks.p2, prog(t, 15.7, 16.0));
+
+  // connect
+  const g4 = eOut(prog(t, 19.1, 19.7)), kb4 = prog(t, 19.7, 23);
+  $('conShot').style.transform = `translateY(${(1 - g4) * 50}px) scale(${1 + kb4 * 0.01})`;
+  cursor($('curCon'), $('ringCon'), t, 20.3, { x: 1200, y: 1000 }, confirmAt, S.clicks.confirm, prog(t, 20.1, 20.4));
+  const cp = prog(t, S.clicks.confirm + 0.05, S.clicks.confirm + 0.35);
+  $('confirmPill').style.opacity = cp;
+  $('confirmPill').style.transform = `translate(${confirmAt.x - 250}px, ${confirmAt.y - 22}px) scale(${lerp(0.7, 1, eBack(cp))})`;
+
+  // ask
+  const tm = eOut(prog(t, 23.05, 23.5));
+  $('term').style.transform = `translateY(${(1 - tm) * 40}px)`;
+  const typed = clamp(Math.floor((t - S.questionAt - 0.1) * 34), 0, S.question.length);
+  typeEl.textContent = S.question.slice(0, typed);
+  lineEls.forEach((el, i) => { const k = prog(t, lines[i].at, lines[i].at + 0.2); el.style.opacity = k; el.style.transform = `translateY(${(1 - k) * 8}px)`; });
+
+  // outro
+  const O = S.outroAt;
+  const o1 = eBack(prog(t, O + 0.1, O + 0.7));
+  $('outBrand').style.transform = `scale(${lerp(0.85, 1, o1)})`; $('outBrand').style.opacity = prog(t, O + 0.1, O + 0.4);
+  document.querySelector('#outro .tag').style.opacity = prog(t, O + 0.55, O + 0.9);
+  document.querySelector('#outro .feats').style.opacity = prog(t, O + 0.85, O + 1.2);
+  const o3 = prog(t, O + 1.15, O + 1.5);
+  document.querySelector('#outro .chips').style.opacity = o3;
+  document.querySelector('#outro .chips').style.transform = `translateY(${(1 - eOut(o3)) * 14}px)`;
+};
+
+window.ready = (async () => {
+  await Promise.all(['500 20px Inter', '600 20px Inter', '700 20px Inter', '800 20px Inter', '900 20px Inter', '400 20px "JetBrains Mono"', '600 20px "JetBrains Mono"'].map((f) => document.fonts.load(f)));
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((i) => (i.complete ? null : new Promise((r) => { i.onload = r; i.onerror = r; }))));
+  window.render(0);
+})();
+</script>
+</body>
+</html>
