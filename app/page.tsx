@@ -204,7 +204,8 @@ export default function Dashboard() {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
           }
-          if (progress.phase === 'complete') await reloadAfterSync();
+          // A stopped sync still wrote the repos it finished; show them either way.
+          await reloadAfterSync();
           // Leave the finished panel up briefly, then swap it for a one-line summary.
           setTimeout(() => {
             if (!isActive()) return;
