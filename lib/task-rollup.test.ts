@@ -104,3 +104,20 @@ describe('parseOpenTaskFilters', () => {
         expect(() => parseOpenTaskFilters({ limit: 'lots' })).toThrow(/limit/);
     });
 });
+
+describe('rollupOpenTasks per-repo cap', () => {
+    it('keeps each repo\'s most urgent tasks so a busy repo cannot crowd another out', () => {
+        const busy = Array.from({ length: 10 }, (_, i) => task({ repo: 'busy', full_name: 'o/busy', title: `b${i}`, priority: 'P0' }));
+        const quiet = [task({ repo: 'quiet', full_name: 'o/quiet', title: 'q', priority: 'P1' })];
+        const r = rollupOpenTasks([...busy, ...quiet], { perRepoLimit: 3, limit: 4 });
+        expect(r.tasks.map((t) => t.title)).toEqual(['b0', 'b1', 'b2', 'q']);
+        expect(r.total).toBe(11);
+        expect(r.by_repo).toEqual({ 'o/busy': 10, 'o/quiet': 1 });
+        expect(r.truncated).toBe(true);
+    });
+
+    it('parses per_repo_limit and rejects junk', () => {
+        expect(parseOpenTaskFilters({ per_repo_limit: '25' }).perRepoLimit).toBe(25);
+        expect(() => parseOpenTaskFilters({ per_repo_limit: 'many' })).toThrow(/per_repo_limit/);
+    });
+});
