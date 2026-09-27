@@ -253,4 +253,26 @@ test.describe('Sync All', () => {
     await expect(page.getByText(/Sync failed\. Check the server logs/)).toBeVisible({ timeout: 10_000 });
     await context.close();
   });
+
+  test('a sync stopped by the rate limit says when the quota resets', async ({ browser }) => {
+    const context = await authenticatedContext(browser);
+    await mockApi(context);
+    await context.route('**/api/sync-repos', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({ success: true, totalRepos: 14, sessionId: 'sync-e2e-rl' }),
+    }));
+    await context.route('**/api/sync-progress?*', (route) => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify({
+        sessionId: 'sync-e2e-rl', totalRepos: 14, completedRepos: 9, phase: 'error', progressPercentage: 64,
+        currentRepo: 'GitHub rate limit reached after 9 of 14 repos · resets in 23 min',
+      }),
+    }));
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('table tbody')).toContainText('demo-repo', { timeout: 30_000 });
+    await page.getByTitle('Sync all repositories').click();
+    await expect(page.getByText('Sync stopped: GitHub rate limit reached after 9 of 14 repos · resets in 23 min')).toBeVisible({ timeout: 10_000 });
+    await context.close();
+  });
 });

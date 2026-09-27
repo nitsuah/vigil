@@ -252,22 +252,25 @@ export async function POST(request: Request): Promise<NextResponse> {
                 }
             };
 
+            // Set when the quota runs low: the sync stops instead of sleeping
+            // until the hourly reset (up to an hour, with no progress shown).
+            let rateLimitedUntil: number | null = null;
+
             // Sync user repos details with concurrency control
             const queue = [...reposToSync];
             const workers: Promise<void>[] = [];
             for (let w = 0; w < Math.min(CONCURRENCY_LIMIT, queue.length); w++) {
                 workers.push((async () => {
                     while (queue.length > 0) {
+                        if (rateLimitedUntil !== null) break;
                         const repoMeta = queue.shift()!;
-                        // Check rate limit before each repo
+                        // Check rate limit before each repo (header-based, see GitHubClient.getRateLimit)
                         const remaining = await checkRateLimit();
                         if (remaining < RATE_LIMIT_THRESHOLD) {
-                            logger.warn(`Sync pausing: rate limit low (${remaining})`);
-                            // Wait until reset
-                            const rl = await github.getRateLimit();
-                            const waitMs = Math.max(0, rl.reset * 1000 - Date.now()) + 1000;
-                            logger.info(`Waiting ${Math.round(waitMs / 1000)}s for rate limit reset`);
-                            await new Promise(r => setTimeout(r, waitMs));
+                            const rl = await github.getRateLimit().catch(() => null);
+                            rateLimitedUntil = rl ? rl.reset * 1000 : Date.now() + 3_600_000;
+                            logger.warn(`Sync stopping: rate limit low (${remaining}); ${queue.length + 1} repos left unsynced`);
+                            break;
                         }
                         const idx = reposToSync.indexOf(repoMeta);
                         await syncDetailsWithDelay(repoMeta, github, idx === 0);
@@ -304,7 +307,9 @@ export async function POST(request: Request): Promise<NextResponse> {
             // Always sync default repos (using system token from environment)
             const systemToken = process.env.GITHUB_TOKEN;
             const systemUsername = process.env.GITHUB_SYSTEM_USERNAME || 'nitsuah';
-            if (systemToken) {
+            if (rateLimitedUntil !== null) {
+                logger.warn(`Skipping ${defaultsToSync.length} default repos: rate limit low`);
+            } else if (systemToken) {
                 const systemGithub = new GitHubClient(systemToken, systemUsername);
                 for (let i = 0; i < defaultsToSync.length; i++) {
                     const defaultRepo = defaultsToSync[i];
@@ -351,6 +356,14 @@ export async function POST(request: Request): Promise<NextResponse> {
                 db`UPDATE users SET last_sync_at = ${syncStartTime} WHERE id = ${userId}`,
             ]);
             
+            if (rateLimitedUntil !== null) {
+                const minutes = Math.max(1, Math.ceil((rateLimitedUntil - Date.now()) / 60_000));
+                await reportProgress({
+                    phase: 'error',
+                    currentRepo: `GitHub rate limit reached after ${detailsFinished} of ${totalRepos} repos · resets in ${minutes} min`,
+                });
+                return;
+            }
             await reportProgress({ phase: 'complete', currentRepo: 'Complete' });
         })().catch(async (error) => {
             logger.error('Background sync failed:', error);

@@ -1,6 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { createOctokitClient } from '@/lib/githubClient';
 import { githubCache } from '@/lib/github-cache';
+import { coreFromHeaders, type RateBucket } from '@/lib/rate-limit-headers';
 
 export { githubCache };
 export type { RepoMetadata, BranchInfo, PullRequestInfo } from './github/types';
@@ -24,17 +25,42 @@ export class GitHubClient {
    * on every sync. null = tree unavailable or truncated; probe as before.
    */
   private fileSets = new Map<string, Promise<Set<string> | null>>();
+  /**
+   * The core quota as of the latest response, from its x-ratelimit-* headers.
+   * GET /rate_limit can report core as untouched (lib/rate-limit-headers.ts),
+   * so the sync's low-quota guard reads this instead.
+   */
+  private lastCore: { bucket: RateBucket; at: number } | null = null;
 
   constructor(token: string, owner: string) {
     this.octokit = createOctokitClient(token);
     this.owner = owner;
+    const record = (headers: unknown) => {
+      const bucket = headers ? coreFromHeaders(headers as Record<string, string | number | undefined>) : null;
+      if (bucket) this.lastCore = { bucket, at: Date.now() };
+    };
+    // Test doubles may not implement hooks.
+    this.octokit.hook?.after?.('request', (res) => record(res.headers));
+    this.octokit.hook?.error?.('request', (err) => {
+      record((err as { response?: { headers?: unknown } }).response?.headers);
+      throw err;
+    });
   }
 
   public getOctokit(): Octokit {
     return this.octokit;
   }
 
+  /** Core quota; reset is epoch seconds. Uses the latest response headers when under a minute old. */
   async getRateLimit(): Promise<{ limit: number; remaining: number; reset: number }> {
+    if (!this.lastCore || Date.now() - this.lastCore.at > 60_000) {
+      // A real core request (costs 1); the hook records its headers.
+      await this.octokit.rest.users.getAuthenticated().catch(() => undefined);
+    }
+    if (this.lastCore) {
+      const { limit, remaining, reset } = this.lastCore.bucket;
+      return { limit, remaining, reset: Math.floor(new Date(reset).getTime() / 1000) };
+    }
     const { data } = await this.octokit.rateLimit.get();
     return {
       limit: data.resources.core.limit,
@@ -161,7 +187,11 @@ export class GitHubClient {
   }
 
   getSecurityConfig(repo: string, owner?: string): ReturnType<typeof Security.getSecurityConfig> {
-    return Security.getSecurityConfig(this.octokit, owner || this.owner, repo);
+    const o = owner || this.owner;
+    return Security.getSecurityConfig(this.octokit, o, repo, async (path) => {
+      const files = await this.fileSet(o, repo);
+      return files ? files.has(path) : null;
+    });
   }
 
   // Contributor operations

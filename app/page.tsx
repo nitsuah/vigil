@@ -211,7 +211,10 @@ export default function Dashboard() {
             setSyncProgress(null);
             setToastMessage(progress.phase === 'complete'
               ? `Sync complete · ${progress.totalRepos ?? 0} repositories updated`
-              : 'Sync failed. Check the server logs, then try again.');
+              // The server puts the reason (e.g. the rate-limit reset) in currentRepo.
+              : progress.currentRepo && progress.currentRepo !== 'Sync failed'
+                ? `Sync stopped: ${progress.currentRepo}`
+                : 'Sync failed. Check the server logs, then try again.');
           }, 1500);
         }
       } catch {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { coreFromHeaders } from '@/lib/rate-limit-headers';
+import { shouldRetryAfterThrottle, MAX_THROTTLE_WAIT_SECONDS } from '@/lib/githubClient';
 
 describe('coreFromHeaders', () => {
     it('reads the enforced core bucket from x-ratelimit-* headers', () => {
@@ -23,5 +24,17 @@ describe('coreFromHeaders', () => {
         expect(coreFromHeaders({
             'x-ratelimit-resource': 'search', 'x-ratelimit-limit': '30', 'x-ratelimit-remaining': '29', 'x-ratelimit-reset': '1',
         })).toBeNull();
+    });
+});
+
+describe('shouldRetryAfterThrottle', () => {
+    it('waits out short pauses once', () => {
+        expect(shouldRetryAfterThrottle(5, 0)).toBe(true);
+        expect(shouldRetryAfterThrottle(MAX_THROTTLE_WAIT_SECONDS, 0)).toBe(true);
+        expect(shouldRetryAfterThrottle(5, 1)).toBe(false);
+    });
+
+    it('never sleeps until an hourly reset (the 25-minute sync freeze)', () => {
+        expect(shouldRetryAfterThrottle(1396, 0)).toBe(false);
     });
 });
