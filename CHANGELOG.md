@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Project page and launch video
 
 - **Added:** GitHub Pages landing page in `site/` (hero video, real UI captures, MCP tool list, install steps), deployed by `.github/workflows/pages.yml` on pushes to `main` that touch `site/`.
-- **Added:** `promo/`, a reproducible 22s launch video. It captures the real app against a fictional demo portfolio (`promo/demo-seed.ts`) with mocked APIs, renders frames in Chromium, synthesizes the score and encodes with ffmpeg, all in Docker (`promo/build.sh`).
+- **Added:** `promo/`, a reproducible 30s launch video. It captures the real app against a fictional demo portfolio (`promo/demo-seed.ts`) with mocked APIs, renders frames in Chromium, synthesizes the score and encodes with ffmpeg, all in Docker (`promo/build.sh`).
 
 ### PMO: combined repo/work grid and relationship map
 
