@@ -7,6 +7,7 @@ import { syncRepo, syncRepoMetadata } from '@/lib/sync';
 import { grantRepoAccess } from '@/lib/repo-access';
 import { defaultReposNotIn, filterReposForSync, SyncFilters } from '@/lib/sync-filters';
 import { createSyncProgress, updateSyncProgress } from '@/lib/sync-progress';
+import { rateLimitExhausted } from '@/lib/rate-limit-headers';
 
 const GITHUB_API_TIMEOUT_MS = 10000;
 const SYNC_DELAY_MS = 1000; // Reduced delay — rate limit check handles throttling
@@ -79,6 +80,11 @@ export async function POST(request: Request): Promise<NextResponse> {
             logger.info('Sync-repos: Got GitHub user');
         } catch (error) {
             logger.error('Sync-repos: Failed to get GitHub user:', error);
+            // An exhausted quota is not an auth failure: say so, and when it resets.
+            const quota = rateLimitExhausted(error);
+            if (quota) {
+                return NextResponse.json({ error: `GitHub rate limit reached · resets in ${quota.minutes} min` }, { status: 429 });
+            }
             return NextResponse.json({ error: 'Failed to authenticate with GitHub' }, { status: 401 });
         }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { coreFromHeaders } from '@/lib/rate-limit-headers';
+import { coreFromHeaders, rateLimitExhausted } from '@/lib/rate-limit-headers';
 import { shouldRetryAfterThrottle, MAX_THROTTLE_WAIT_SECONDS } from '@/lib/githubClient';
 
 describe('coreFromHeaders', () => {
@@ -36,5 +36,22 @@ describe('shouldRetryAfterThrottle', () => {
 
     it('never sleeps until an hourly reset (the 25-minute sync freeze)', () => {
         expect(shouldRetryAfterThrottle(1396, 0)).toBe(false);
+    });
+});
+
+describe('rateLimitExhausted', () => {
+    const headers = (remaining: string) => ({
+        'x-ratelimit-limit': '5000', 'x-ratelimit-remaining': remaining, 'x-ratelimit-used': '5000',
+        'x-ratelimit-reset': String(1_000 + 17 * 60), 'x-ratelimit-resource': 'core',
+    });
+
+    it('recognizes an exhausted hourly quota and returns minutes to reset', () => {
+        expect(rateLimitExhausted({ status: 403, response: { headers: headers('0') } }, 1_000_000)).toEqual({ minutes: 17 });
+    });
+
+    it('ignores real auth failures and 403s with quota left', () => {
+        expect(rateLimitExhausted({ status: 401, response: { headers: headers('0') } })).toBeNull();
+        expect(rateLimitExhausted({ status: 403, response: { headers: headers('12') } })).toBeNull();
+        expect(rateLimitExhausted(new Error('boom'))).toBeNull();
     });
 });

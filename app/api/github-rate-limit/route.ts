@@ -16,7 +16,10 @@ export async function GET() {
         // bucket, because /rate_limit can report core as unused (see lib/rate-limit-headers.ts).
         const [{ data }, probe] = await Promise.all([
             octokit.rateLimit.get(),
+            // A 403 for an exhausted quota still carries the real x-ratelimit-* headers.
             octokit.rest.users.getAuthenticated().catch((e: unknown) => {
+                const headers = (e as { response?: { headers?: unknown } }).response?.headers;
+                if (headers) return { headers };
                 logger.warn('Rate limit probe failed; falling back to /rate_limit:', e instanceof Error ? e.message : e);
                 return null;
             }),

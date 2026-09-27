@@ -32,3 +32,15 @@ export function coreFromHeaders(headers: Headers): RateBucket | null {
     const used = num(headers['x-ratelimit-used']) ?? limit - remaining;
     return { limit, remaining, used, reset: new Date(reset * 1000).toISOString() };
 }
+
+/**
+ * For an Octokit error: the reset countdown if it is GitHub's hourly quota
+ * running out (403/429 with x-ratelimit-remaining: 0), else null.
+ */
+export function rateLimitExhausted(error: unknown, now: number = Date.now()): { minutes: number } | null {
+    const e = error as { status?: number; response?: { headers?: Headers } };
+    if (e?.status !== 403 && e?.status !== 429) return null;
+    const bucket = e.response?.headers ? coreFromHeaders(e.response.headers) : null;
+    if (!bucket || bucket.remaining > 0) return null;
+    return { minutes: Math.max(1, Math.ceil((new Date(bucket.reset).getTime() - now) / 60_000)) };
+}
