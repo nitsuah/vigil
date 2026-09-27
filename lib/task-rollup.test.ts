@@ -104,3 +104,34 @@ describe('parseOpenTaskFilters', () => {
         expect(() => parseOpenTaskFilters({ limit: 'lots' })).toThrow(/limit/);
     });
 });
+
+describe('rollupOpenTasks per-repo cap', () => {
+    it('keeps each repo\'s most urgent tasks so a busy repo cannot crowd another out', () => {
+        const busy = Array.from({ length: 10 }, (_, i) => task({ repo: 'busy', full_name: 'o/busy', title: `b${i}`, priority: 'P0' }));
+        const quiet = [task({ repo: 'quiet', full_name: 'o/quiet', title: 'q', priority: 'P1' })];
+        const r = rollupOpenTasks([...busy, ...quiet], { perRepoLimit: 3, limit: 4 });
+        expect(r.tasks.map((t) => t.title)).toEqual(['b0', 'b1', 'b2', 'q']);
+        expect(r.total).toBe(11);
+        expect(r.by_repo).toEqual({ 'o/busy': 10, 'o/quiet': 1 });
+        expect(r.truncated).toBe(true);
+    });
+
+    it('parses per_repo_limit and rejects junk', () => {
+        expect(parseOpenTaskFilters({ per_repo_limit: '25' }).perRepoLimit).toBe(25);
+        expect(() => parseOpenTaskFilters({ per_repo_limit: 'many' })).toThrow(/per_repo_limit/);
+    });
+});
+
+describe('rollupOpenTasks global limit with a per-repo cap', () => {
+    it('still returns every matching repo when the global limit is tight', () => {
+        const repo = (n: string, count: number, priority: 'P0' | 'P1') =>
+            Array.from({ length: count }, (_, i) => task({ repo: n, full_name: `o/${n}`, title: `${n}${i}`, priority }));
+        const all = [...repo('a', 5, 'P0'), ...repo('b', 5, 'P0'), ...repo('c', 5, 'P1')];
+        const r = rollupOpenTasks(all, { perRepoLimit: 5, limit: 6 });
+        expect(r.tasks).toHaveLength(6);
+        expect(new Set(r.tasks.map((t) => t.full_name))).toEqual(new Set(['o/a', 'o/b', 'o/c']));
+        // Output keeps priority order.
+        expect(r.tasks.at(-1)?.full_name).toBe('o/c');
+        expect(r.truncated).toBe(true);
+    });
+});

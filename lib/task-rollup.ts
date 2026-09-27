@@ -37,6 +37,8 @@ export interface OpenTaskFilters {
     /** Case-insensitive substring match on the task's owner. */
     owner?: string;
     limit?: number;
+    /** Keep at most this many (most urgent) tasks per repo before `limit` applies. */
+    perRepoLimit?: number;
 }
 
 export interface OpenTaskRollup {
@@ -80,10 +82,30 @@ export function rollupOpenTasks(all: OpenTask[], filters: OpenTaskFilters = {}):
         by_repo[t.full_name] = (by_repo[t.full_name] ?? 0) + 1;
     }
 
+    let kept = matched;
+    if (filters.perRepoLimit !== undefined) {
+        const perRepo = Math.max(1, Math.floor(filters.perRepoLimit));
+        const seen: Record<string, number> = {};
+        kept = matched.filter((t) => (seen[t.full_name] = (seen[t.full_name] ?? 0) + 1) <= perRepo);
+    }
+
+    // Under the global limit, reserve each repo's most urgent task first so a
+    // repo with matching work always appears; fill the rest in priority order.
+    let tasks = kept.slice(0, limit);
+    if (filters.perRepoLimit !== undefined && kept.length > limit) {
+        const chosen = new Set<number>();
+        const firstOfRepo = new Set<string>();
+        kept.forEach((t, i) => {
+            if (!firstOfRepo.has(t.full_name) && chosen.size < limit) { firstOfRepo.add(t.full_name); chosen.add(i); }
+        });
+        for (let i = 0; i < kept.length && chosen.size < limit; i++) chosen.add(i);
+        tasks = kept.filter((_, i) => chosen.has(i));
+    }
+
     return {
-        tasks: matched.slice(0, limit),
+        tasks,
         total: matched.length,
-        truncated: matched.length > limit,
+        truncated: kept.length > limit || kept.length < matched.length,
         by_priority,
         by_repo,
     };
@@ -150,8 +172,10 @@ export function parseOpenTaskFilters(input: Record<string, unknown>): OpenTaskFi
     for (const key of ['status', 'owner'] as const) {
         if (!omitted(input[key]) && typeof input[key] !== 'string') throw new Error(`"${key}" must be a string`);
     }
-    if (!omitted(input.limit) && typeof input.limit !== 'number' && typeof input.limit !== 'string') {
-        throw new Error('"limit" must be a number');
+    for (const key of ['limit', 'per_repo_limit'] as const) {
+        if (!omitted(input[key]) && typeof input[key] !== 'number' && typeof input[key] !== 'string') {
+            throw new Error(`"${key}" must be a number`);
+        }
     }
 
     const status = omitted(input.status) ? undefined : (input.status as string);
@@ -161,6 +185,8 @@ export function parseOpenTaskFilters(input: Record<string, unknown>): OpenTaskFi
 
     const limitNum = omitted(input.limit) ? undefined : Number(input.limit);
     if (limitNum !== undefined && !Number.isFinite(limitNum)) throw new Error('"limit" must be a number');
+    const perRepoNum = omitted(input.per_repo_limit) ? undefined : Number(input.per_repo_limit);
+    if (perRepoNum !== undefined && !Number.isFinite(perRepoNum)) throw new Error('"per_repo_limit" must be a number');
 
     return {
         repos: list(input.repos ?? input.repo, 'repos'),
@@ -168,5 +194,6 @@ export function parseOpenTaskFilters(input: Record<string, unknown>): OpenTaskFi
         status: status as OpenTaskFilters['status'],
         owner: omitted(input.owner) ? undefined : (input.owner as string),
         limit: limitNum,
+        perRepoLimit: perRepoNum,
     };
 }

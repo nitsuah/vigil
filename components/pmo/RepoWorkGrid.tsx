@@ -20,8 +20,18 @@ const CHIP_COLOR: Record<PriorityKey, string> = {
 
 /** Tasks shown per card before "+N more". */
 const PREVIEW_ROWS = 4;
+/** Most tasks loaded per repo; "+N more" expands up to this, open_total counts the rest. */
+const PER_REPO_ROWS = 25;
 
 type OnHandoff = (repoName: string, item: PmoInProgressItem, taskId: string) => void;
+
+/**
+ * Roadmap item id -> agent task already queued for it but not yet linked.
+ * Module scope, not a ref: HandoffButton unmounts whenever its roadmap list
+ * collapses, and a retry after a failed link must reuse the queued task
+ * rather than queue a duplicate.
+ */
+const queuedHandoffs = new Map<string, string>();
 
 function ciColor(status: string | null): string {
     if (status === 'passing') return 'text-emerald-400';
@@ -65,26 +75,31 @@ function HandoffButton({ repoName, item, onHandoff }: {
         setLoading(true);
         setErr(null);
         try {
-            const taskRes = await fetch('/api/agent/tasks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'roadmap-handoff',
-                    priority: 'normal',
-                    payload: { repoName, itemId: item.id, title: item.title, quarter: item.quarter },
-                }),
-            });
-            if (!taskRes.ok) throw new Error('Agent task queue error');
-            const { task } = await taskRes.json() as { task: { id: string } };
+            if (!queuedHandoffs.has(item.id)) {
+                const taskRes = await fetch('/api/agent/tasks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        type: 'roadmap-handoff',
+                        priority: 'normal',
+                        payload: { repoName, itemId: item.id, title: item.title, quarter: item.quarter },
+                    }),
+                });
+                if (!taskRes.ok) throw new Error('Agent task queue error');
+                const { task } = await taskRes.json() as { task: { id: string } };
+                queuedHandoffs.set(item.id, task.id);
+            }
+            const taskId = queuedHandoffs.get(item.id)!;
 
             const patchRes = await fetch(`/api/repos/${repoName}/roadmap-items/${item.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ agentTaskId: task.id }),
+                body: JSON.stringify({ agentTaskId: taskId }),
             });
-            if (!patchRes.ok) throw new Error('Failed to link agent task');
+            if (!patchRes.ok) throw new Error('Failed to link agent task; retry links the same task');
 
-            onHandoff(repoName, item, task.id);
+            queuedHandoffs.delete(item.id);
+            onHandoff(repoName, item, taskId);
             setDone(true);
         } catch (e) {
             setErr(e instanceof Error ? e.message : 'Error');
@@ -110,7 +125,7 @@ function HandoffButton({ repoName, item, onHandoff }: {
                 disabled={loading}
                 className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/30 disabled:opacity-50"
             >
-                {loading ? <RefreshCw className="h-2.5 w-2.5 animate-spin" /> : <Bot className="h-2.5 w-2.5" />}
+                {loading ? <RefreshCw className="h-2.5 w-2.5 motion-safe:animate-spin" /> : <Bot className="h-2.5 w-2.5" />}
                 {loading ? 'Queuing…' : 'Hand off'}
                 {!loading && <ChevronRight className="h-2.5 w-2.5 opacity-60" />}
             </button>
@@ -260,7 +275,8 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
                 // Every chip off means "show nothing", not "no filter".
                 priorities.size === 0
                     ? Promise.resolve(null)
-                    : fetchRollup({ priority: [...priorities].join(','), limit: String(MAX_ROLLUP_LIMIT) }),
+                    // Capped per repo, so one busy repo can't push another's card out of the global limit.
+                    : fetchRollup({ priority: [...priorities].join(','), per_repo_limit: String(PER_REPO_ROWS), limit: String(MAX_ROLLUP_LIMIT) }),
             ]);
             if (!current()) return;
             setSummary(nextSummary);
@@ -279,7 +295,14 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
         // open_total from the unfiltered counts, not just the filtered tasks.
         const withTotals = (gs: typeof grouped.active) =>
             gs.map((g) => ({ ...g, open_total: summary?.by_repo[g.repo.full_name] ?? g.open_total }));
-        return { active: withTotals(grouped.active), idle: withTotals(grouped.idle) };
+        // Idle repos with roadmap work awaiting hand-off still get a card, so the
+        // Hand off control stays reachable at any priority filter.
+        const needsHandoff = (g: (typeof grouped.idle)[number]) =>
+            g.repo.in_progress_items.some((i) => !i.linked_pr_number);
+        return {
+            active: withTotals([...grouped.active, ...grouped.idle.filter(needsHandoff)]),
+            idle: withTotals(grouped.idle.filter((g) => !needsHandoff(g))),
+        };
     }, [repos, view, summary, priorities]);
 
     const toggle = (p: PriorityKey) => setPriorities((prev) => {
@@ -321,7 +344,7 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
             )}
             {loading && !summary && (
                 <div className="flex items-center gap-2 text-slate-500 text-xs">
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading open tasks…
+                    <RefreshCw className="h-3.5 w-3.5 motion-safe:animate-spin" /> Loading open tasks…
                 </div>
             )}
             {view?.truncated && (
@@ -335,7 +358,7 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
                     {active.map((g) => <RepoWorkCard key={g.repo.id} group={g} onHandoff={onHandoff} />)}
                 </div>
             )}
-            {view && active.length === 0 && (
+            {view && active.every((g) => g.tasks.length === 0) && (
                 <p className="text-xs text-slate-500">No open tasks at these priorities.</p>
             )}
 

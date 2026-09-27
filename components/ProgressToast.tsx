@@ -36,12 +36,12 @@ export const ProgressToast = ({
   const counting = phase === 'health' || phase === 'complete';
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-full max-w-md animate-slide-in" role="status" aria-label="Sync progress">
+    <div className="fixed bottom-4 right-4 z-50 w-full max-w-md motion-safe:animate-slide-in" role="status" aria-label="Sync progress">
       <div className="bg-slate-900 border border-indigo-500/30 rounded-lg shadow-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 bg-slate-800/50 border-b border-indigo-500/20">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${phase === 'error' ? 'bg-red-400' : phase === 'complete' ? 'bg-emerald-400' : 'bg-indigo-400 animate-pulse'}`} />
+              <span className={`w-2 h-2 rounded-full ${phase === 'error' ? 'bg-red-400' : phase === 'complete' ? 'bg-emerald-400' : 'bg-indigo-400 motion-safe:animate-pulse'}`} />
               <span className="text-sm font-medium text-indigo-300">Syncing repositories</span>
             </div>
             <p className="mt-0.5 text-xs text-slate-400" data-testid="sync-step">{STEP[phase]}</p>
@@ -61,7 +61,7 @@ export const ProgressToast = ({
         <div className="px-4 py-3 space-y-2">
           <div className="flex items-center gap-2 text-xs min-w-0">
             {phase !== 'complete' && phase !== 'error' && (
-              <span className="w-3.5 h-3.5 shrink-0 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <span className="w-3.5 h-3.5 shrink-0 border-2 border-indigo-500 border-t-transparent rounded-full motion-safe:animate-spin" />
             )}
             <span className="truncate font-mono text-slate-300" data-testid="sync-current">{currentRepo}</span>
           </div>
@@ -69,7 +69,7 @@ export const ProgressToast = ({
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             {counting ? (
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 rounded-full transition-all duration-300 ease-out"
+                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 rounded-full motion-safe:transition-all motion-safe:duration-300 ease-out"
                 style={{ width: `${progress}%` }}
               />
             ) : (

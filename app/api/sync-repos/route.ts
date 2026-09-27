@@ -237,9 +237,12 @@ export async function POST(request: Request): Promise<NextResponse> {
 
                         const errorWithStatus = error as { status?: number; response?: { status?: number } };
                         const status = errorWithStatus?.status ?? errorWithStatus?.response?.status;
-                        const isRateLimit = status === 403 || status === 429 ||
-                            lastError.message.includes('rate limit') ||
-                            lastError.message.includes('secondary rate limit');
+                        // Retry only transient throttling: a 429, or GitHub's secondary
+                        // limit. An exhausted hourly quota won't clear within the backoff,
+                        // and other 403s (missing permission) never clear.
+                        const exhausted = rateLimitExhausted(error) !== null;
+                        const isRateLimit = !exhausted && (status === 429 ||
+                            (status === 403 && /secondary rate limit/i.test(lastError.message)));
                         const isServerError = status !== undefined && status >= 500;
                         const isNetworkError = lastError.message.includes('ETIMEDOUT') ||
                             lastError.message.includes('ECONNRESET') ||
@@ -253,6 +256,10 @@ export async function POST(request: Request): Promise<NextResponse> {
                             await new Promise(resolve => setTimeout(resolve, backoffDelay));
                         } else if (attempt === MAX_RETRY_ATTEMPTS - 1) {
                             logger.warn(`Failed detailed sync for ${repoMeta.name} after ${MAX_RETRY_ATTEMPTS} attempts: ${lastError.message}`);
+                        } else {
+                            // Not transient (e.g. a permission 403, or the hourly quota is gone): don't retry.
+                            logger.warn(`Failed detailed sync for ${repoMeta.name} (not retryable): ${lastError.message}`);
+                            break;
                         }
                     }
                 }
