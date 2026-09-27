@@ -787,7 +787,7 @@ describe('GitHubClient', () => {
 
         const files = await client.getRepoFileList('repo-1');
         expect(files).toEqual(['README.md', 'src/index.ts']);
-        expect(mockGitGetTree).toHaveBeenCalledWith({ owner: 'fake-owner', repo: 'repo-1', tree_sha: 'HEAD', recursive: '1' });
+        expect(mockGitGetTree).toHaveBeenCalledWith({ owner: 'fake-owner', repo: 'repo-1', tree_sha: 'HEAD', recursive: '1', headers: {} });
     });
 
     it('should propagate errors from repo tree API', async () => {

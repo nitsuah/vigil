@@ -16,6 +16,14 @@ import * as Contributors from './github/contributors';
 export class GitHubClient {
   private octokit: Octokit;
   private owner: string;
+  /**
+   * One file tree per repo for this client's lifetime (a client lives for one
+   * sync or request). getFileContent consults it so probes for docs a repo
+   * doesn't have (TASKS.md, docs/ROADMAP.md, .github/SECURITY.md, ...) cost
+   * nothing: a 404 is never ETag-cached, so each probe used to spend a request
+   * on every sync. null = tree unavailable or truncated; probe as before.
+   */
+  private fileSets = new Map<string, Promise<Set<string> | null>>();
 
   constructor(token: string, owner: string) {
     this.octokit = createOctokitClient(token);
@@ -44,8 +52,23 @@ export class GitHubClient {
     return Repos.getRepo(this.octokit, owner, repo);
   }
 
-  getFileContent(repo: string, path: string, owner?: string): Promise<string | null> {
-    return Repos.getFileContent(this.octokit, owner || this.owner, repo, path);
+  private fileSet(owner: string, repo: string): Promise<Set<string> | null> {
+    const key = `${owner}/${repo}`;
+    let set = this.fileSets.get(key);
+    if (!set) {
+      set = Repos.getRepoFileTree(this.octokit, owner, repo)
+        .then((t) => (t.truncated ? null : new Set(t.paths)))
+        .catch(() => null);
+      this.fileSets.set(key, set);
+    }
+    return set;
+  }
+
+  async getFileContent(repo: string, path: string, owner?: string): Promise<string | null> {
+    const o = owner || this.owner;
+    const files = await this.fileSet(o, repo);
+    if (files && !files.has(path)) return null;
+    return Repos.getFileContent(this.octokit, o, repo, path);
   }
 
   getBranches(repo: string, owner?: string): Promise<BranchInfo[]> {
@@ -60,8 +83,9 @@ export class GitHubClient {
     return Repos.getFileLastModified(this.octokit, owner || this.owner, repo, path);
   }
 
-  getRepoFileList(repo: string, owner?: string): Promise<string[]> {
-    return Repos.getRepoFileList(this.octokit, owner || this.owner, repo);
+  async getRepoFileList(repo: string, owner?: string): Promise<string[]> {
+    const files = await this.fileSet(owner || this.owner, repo);
+    return files ? [...files] : Repos.getRepoFileList(this.octokit, owner || this.owner, repo);
   }
 
   getLanguageStats(repo: string, owner?: string): Promise<Record<string, number>> {
