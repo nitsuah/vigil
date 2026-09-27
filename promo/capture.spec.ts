@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { encode } from 'next-auth/jwt';
 import fs from 'fs';
-import { OWNER, REPOS, TASKS, RELATIONSHIPS } from './demo-seed';
+import { OWNER, REPOS, TASKS, RELATIONSHIPS, DETAIL_REPO, DOCS, PRACTICES, STANDARDS, FIX_PREVIEWS } from './demo-seed';
 
 const OUT = process.env.PROMO_OUT ?? 'promo/out/capture';
 const NOW = new Date('2026-09-25T12:00:00Z');
@@ -23,6 +23,7 @@ const repoRows = REPOS.map((r, i) => ({
     stars: 3 + i, forks: 1, open_issues: 1, open_prs: r.prs ?? 0, branches_count: 3, contributor_count: 2, bus_factor: 1,
     commit_frequency: '9.5', avg_pr_merge_time_hours: '14.2', token_density: '7.9', comment_to_code_ratio: '0.16',
     total_loc: 12000 + i * 3100, coverage_score: String(60 + (r.health % 30)),
+    testing_status: 'healthy', test_case_count: 120 + i * 17, test_describe_count: 30 + i * 4,
     ci_status: r.ci ?? 'passing', last_commit_date: '2026-09-24T00:00:00Z', last_synced: '2026-09-25T00:00:00Z',
     updated_at: '2026-09-25T00:00:00Z', created_at: '2025-01-01T00:00:00Z',
 }));
@@ -77,7 +78,25 @@ async function mockApi(page: Page): Promise<void> {
     const json = (b: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
     await page.route('**/api/repos?*', (r) => r.fulfill(json(repoRows)));
     await page.route('**/api/repo-details/*/trend', (r) => r.fulfill(json({ success: true, snapshots: [] })));
-    await page.route('**/api/repo-details/*', (r) => r.fulfill(json({ repo: repoRows[0], tasks: [], roadmapItems: [], metrics: [], features: [], docStatuses: [], bestPractices: [], communityStandards: [], securityConfig: null })));
+    await page.route('**/api/repo-details/*', (r) => {
+        const name = decodeURIComponent(new URL(r.request().url()).pathname.split('/').pop() ?? '');
+        const repo = repoRows.find((x) => x.name === name) ?? repoRows[0];
+        const rich = repo.name === DETAIL_REPO;
+        return r.fulfill(json({
+            repo,
+            tasks: rich ? openTasks.filter((t) => t.repo === repo.name).map((t, i) => ({ id: `t${i}`, title: t.title, status: t.status, priority: t.priority, section: 'Todo', subsection: null })) : [],
+            roadmapItems: rich ? [
+                { id: 'r1', title: 'Offline-first sync', quarter: '2026 Q4', status: 'in-progress' },
+                { id: 'r2', title: 'Tablet layouts', quarter: '2027 Q1', status: 'planned' },
+            ] : [],
+            metrics: rich ? [{ name: 'Code Coverage', value: 71.4, unit: '%' }, { name: 'Crash-free sessions', value: 99.2, unit: '%' }] : [],
+            features: [],
+            docStatuses: (rich ? DOCS : DOCS.map(([d]) => [d, true, 'healthy'] as const)).map(([doc_type, exists, health_state]) => ({ doc_type, exists, health_state })),
+            bestPractices: (rich ? PRACTICES : PRACTICES.map(([p]) => [p, 'healthy'] as const)).map(([practice_type, status]) => ({ practice_type, status, details: { exists: status !== 'missing', informational: practice_type === 'visual_docs' } })),
+            communityStandards: (rich ? STANDARDS : STANDARDS.map(([c]) => [c, 'healthy'] as const)).map(([standard_type, status]) => ({ standard_type, status, details: {} })),
+            securityConfig: null,
+        }));
+    });
     await page.route('**/api/relationships', (r) => r.fulfill(json(RELS)));
     await page.route('**/api/gemini-status', (r) => r.fulfill(json({ status: 'ok', healthy: true })));
     await page.route('**/api/github-rate-limit', (r) => r.fulfill(json({
@@ -85,6 +104,7 @@ async function mockApi(page: Page): Promise<void> {
         graphql: { limit: 5000, remaining: 4990, used: 10, reset: '2026-09-25T12:40:00Z' },
     })));
     await page.route('**/api/pmo/overview', (r) => r.fulfill(json(PMO)));
+    await page.route('**/api/preview-templates', (r) => r.fulfill(json({ previews: FIX_PREVIEWS })));
     await page.route('**/api/pmo/tasks?*', (r) => r.fulfill(json(rollup(new URL(r.request().url()).searchParams))));
 }
 
@@ -133,12 +153,77 @@ test('capture', async ({ page }) => {
     await page.waitForTimeout(600);
     await rel.screenshot({ path: `${OUT}/crops/relationships.png` });
 
+    // Repo details: expand the demo repo's row and shoot the whole panel, plus
+    // where each section sits so the video can pan to it and draw callouts.
+    await page.goto('/');
+    const row = page.locator('table tbody tr', { hasText: REPOS.find((r) => r.name === DETAIL_REPO)!.description });
+    await expect(row).toBeVisible({ timeout: 60_000 });
+    await row.locator('td').nth(1).click();
+    await expect(page.getByRole('heading', { name: 'Community Standards' })).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(800);
+
+    // Expand every collapsed section so the panel shows everything it checks.
+    // A section card is the heading's nearest ancestor with a border (page coordinates).
+    const cardRect = (name: string) => page.getByRole('heading', { name, exact: true }).first().evaluate((el) => {
+        let n: HTMLElement | null = el as HTMLElement;
+        while (n && !(getComputedStyle(n).borderTopWidth !== '0px' && n.getBoundingClientRect().width > 250)) n = n.parentElement;
+        const b = (n ?? (el as HTMLElement)).getBoundingClientRect();
+        return { x: b.x, y: b.y + window.scrollY, width: b.width, height: b.height };
+    });
+    for (const name of ['Documentation', 'Best Practices', 'Community Standards', 'Testing', 'Metrics']) {
+        const h = page.getByRole('heading', { name, exact: true }).first();
+        if (!(await h.count())) continue;
+        const before = (await cardRect(name)).height;
+        await h.click();
+        await page.waitForTimeout(400);
+        // Already open (some sections share a toggle)? The click collapsed it: open it again.
+        if ((await cardRect(name)).height < before) { await h.click(); await page.waitForTimeout(400); }
+    }
+    await page.waitForTimeout(800);
+
+    // Whole expanded panel, from the repo row to the next row.
+    const rowBox = (await row.boundingBox())!;
+    const scrollY = await page.evaluate(() => window.scrollY);
+    const panelTop = rowBox.y + scrollY;
+    const next = page.locator('table tbody tr', { hasText: 'Customer-facing web shop' });
+    const panelBottom = (await next.boundingBox())!.y + scrollY;
+    await page.screenshot({ path: `${OUT}/crops/details.png`, fullPage: true, clip: { x: 0, y: panelTop, width: 1600, height: panelBottom - panelTop } });
+    const sections: Record<string, { x: number; y: number; w: number; h: number }> = {};
+    for (const name of ['AI Summary', 'Repository Stats', 'Roadmap', 'Tasks', 'Documentation', 'Best Practices', 'Testing', 'Metrics', 'Community Standards']) {
+        if (!(await page.getByRole('heading', { name, exact: true }).count())) continue;
+        const bb = await cardRect(name);
+        sections[name] = { x: bb.x, y: bb.y - panelTop, w: bb.width, h: bb.height };
+    }
+    const detailsMeta = { width: 1600, height: panelBottom - panelTop, sections };
+
+    // Each checklist card on its own.
+    for (const [name, file] of [['Documentation', 'card-docs'], ['Best Practices', 'card-practices'], ['Community Standards', 'card-standards']]) {
+        await page.screenshot({ path: `${OUT}/crops/${file}.png`, fullPage: true, clip: await cardRect(name) });
+    }
+
+    // One click to fix: Best Practices → Fix All opens the real PR preview.
+    const practicesFix = page.getByRole('button', { name: /^Fix All/ }).nth(1); // Documentation, Best Practices, Community Standards
+    const practicesRect = await cardRect('Best Practices');
+    const fixBox = (await practicesFix.boundingBox())!;
+    const fixAll = { x: fixBox.x + fixBox.width / 2 - practicesRect.x, y: fixBox.y + (await page.evaluate(() => window.scrollY)) + fixBox.height / 2 - practicesRect.y };
+    await practicesFix.scrollIntoViewIfNeeded();
+    await practicesFix.click();
+    await expect(page.getByText('.github/dependabot.yml').first()).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: `${OUT}/crops/fix-modal.png` });
+    const prBox = (await page.getByRole('button', { name: /^Create PR/ }).boundingBox())!;
+    const createPr = { x: prBox.x + prBox.width / 2, y: prBox.y + prBox.height / 2 };
+    await page.keyboard.press('Escape');
+
     const p01 = rollup(new URLSearchParams({ priority: 'P0,P1' }));
     const all = rollup(new URLSearchParams());
     fs.writeFileSync(`${OUT}/capture.json`, JSON.stringify({
         repos: REPOS.map((r) => ({ name: r.name, health: r.health, ci: r.ci ?? 'passing' })),
         hook: { repos: REPOS.length, openTasks: all.total, failingCi: REPOS.filter((r) => r.ci === 'failing').length, p0: all.by_priority.P0 },
         // Relative to the grid crop, in CSS px (crops are 2x).
+        details: detailsMeta,
+        fixAll, // CSS px inside card-practices.png
+        createPr, // CSS px inside fix-modal.png (1600x900 viewport)
         p2Chip: p2 && gridBox ? { x: p2.x - gridBox.x + p2.width / 2, y: p2.y - gridBox.y + p2.height / 2 } : null,
         mcp: {
             tasks: p01.tasks.slice(0, 4).map((t) => ({ repo: t.repo, title: t.title, status: t.status, priority: t.priority })),

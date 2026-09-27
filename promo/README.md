@@ -9,11 +9,11 @@ Everything runs in Docker. It needs no database, secrets or GitHub access.
 ## Re-run
 
 ```bash
-promo/build.sh                                  # full render of brag-22s (~4 min)
-promo/build.sh brag-22s --stills 2.6,5.8,9.9    # render just a few frames to check a change
-promo/build.sh brag-22s --audio                 # re-synth music/SFX and remux only
-promo/build.sh brag-22s --recapture             # re-shoot the app (after UI or seed changes)
-promo/build.sh brag-22s --publish               # also update site/assets/ (landing page)
+promo/build.sh                                  # full render of brag-30s (~5 min)
+promo/build.sh brag-30s --stills 2.6,5.8,9.9    # render just a few frames to check a change
+promo/build.sh brag-30s --audio                 # re-synth music/SFX and remux only
+promo/build.sh brag-30s --recapture             # re-shoot the app (after UI or seed changes)
+promo/build.sh brag-30s --publish               # also update site/assets/ (landing page)
 ```
 
 Output goes to `promo/out/` (gitignored):

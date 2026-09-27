@@ -47,7 +47,7 @@
     </div>
 
     <figure class="hero-video">
-      <video id="hero-vid" src="assets/vigil.mp4" poster="assets/poster.jpg" muted loop playsinline preload="metadata" aria-label="22-second Vigil launch video"></video>
+      <video id="hero-vid" src="assets/vigil.mp4" poster="assets/poster.jpg" muted loop playsinline preload="metadata" aria-label="30-second Vigil launch video"></video>
       <div class="hero-controls">
         <button id="hero-play" class="vid-btn" type="button" aria-label="Play video" data-state="paused">
           <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
@@ -64,7 +64,7 @@
   <ul class="stats" aria-label="At a glance">
     <li><span class="stat-num">6</span><span class="stat-label">health components per repo, graded A+ to F</span></li>
     <li><span class="stat-num">10</span><span class="stat-label">MCP tools for Claude and other agents</span></li>
-    <li><span class="stat-num">22</span><span class="stat-label">best practices and community standards checked</span></li>
+    <li><span class="stat-num">23</span><span class="stat-label">best practices and community standards checked</span></li>
     <li><span class="stat-num">1</span><span class="stat-label">ranked list of open work across every repo</span></li>
   </ul>
 </header>
@@ -77,6 +77,32 @@
       <p>Sign in with GitHub and sync. Each repo gets a 0–100 health score across security, testing, best practices, docs, community standards and activity, weighted by a Starter, Production or Enterprise profile. Missing a doc or a CI check? Vigil opens the fix as a pull request.</p>
     </div>
     <div class="shot shot-wide"><img src="assets/dashboard.webp" width="1600" height="900" alt="Vigil dashboard listing ten repositories with health grades from A+ to F, doc status and actions" loading="lazy" /></div>
+  </section>
+
+  <section class="feature feature-flip" aria-labelledby="f-inspect">
+    <div class="feature-copy">
+      <p class="kicker">Inspect</p>
+      <h2 id="f-inspect">Docs. Best practices. <span class="emph">Community standards.</span></h2>
+      <p>Open any repo to see what it has and what it's missing: core docs (README, ROADMAP, TASKS, FEATURES, METRICS), 11 best practices from CI and branch protection to Dependabot and pre-commit hooks, and 12 community standards including SECURITY, CODEOWNERS and agent prompt files.</p>
+      <ul class="ticks">
+        <li>Present docs get an AI <strong>Improve</strong> button</li>
+        <li>Dormant checks explain what's half-done, like a deploy badge it isn't sure about</li>
+        <li>Starter, Production and Enterprise profiles weight what matters</li>
+      </ul>
+    </div>
+    <div class="card-pair">
+      <div class="shot"><img src="assets/card-practices.webp" alt="Best Practices card showing 6 of 11 healthy, with branch protection, pre-commit hooks and Dependabot missing and Fix buttons beside the fixable ones" loading="lazy" /></div>
+      <div class="shot"><img src="assets/card-standards.webp" alt="Community Standards card showing 8 of 12 present, with CONTRIBUTING, CODEOWNERS, SECURITY and FUNDING missing" loading="lazy" /></div>
+    </div>
+  </section>
+
+  <section class="feature" aria-labelledby="f-fix">
+    <div class="feature-copy">
+      <p class="kicker">Fix</p>
+      <h2 id="f-fix">One click. <span class="emph">One pull request.</span></h2>
+      <p><strong>Fix All</strong> gathers a template for every missing, fixable item and opens a preview. Check the files you want, edit them or let AI tailor them to the repo, then <strong>Create PR</strong>. Vigil never pushes to your default branch.</p>
+    </div>
+    <div class="shot shot-wide"><img src="assets/fix-modal.webp" width="1600" height="900" alt="Preview PR dialog for acme/mobile-app listing .github/dependabot.yml and .husky/pre-commit, with a YAML preview and a Create PR (2) button" loading="lazy" /></div>
   </section>
 
   <section class="feature feature-flip" aria-labelledby="f2">

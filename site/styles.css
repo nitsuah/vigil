@@ -201,3 +201,6 @@ main { padding: 0 var(--gutter); }
 .term pre { overflow-x: auto; }
 .term pre code { font-size: 0.8em; }
 .nowrap { white-space: nowrap; }
+.card-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.card-pair img { width: 100%; }
+@media (max-width: 560px) { .card-pair { grid-template-columns: 1fr; } }

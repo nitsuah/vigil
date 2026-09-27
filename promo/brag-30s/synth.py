@@ -1,4 +1,4 @@
-# Music + SFX for the Vigil 22s spot. 120 BPM, D minor.
+# Music + SFX for the Vigil 30s spot. 120 BPM, D minor.
 # Usage: python3 synth.py <spot.json> <out.wav>
 # Scene cuts sit on the bar (2s); event times come from spot.json so the
 # chip pops, typing and clicks stay locked to the picture.
@@ -65,11 +65,12 @@ kick_env = np.zeros(N)  # for sidechain
 
 # --- Pad (whole piece), filtered darker during hook ---
 pad = np.zeros(N)
-for bar in range(11):
+BARS = int(DUR // 2) + 1
+for bar in range(BARS):
     t0 = bar * 2.0
     n = int(2.6 * SR)
     ch = CHORDS[bar % 4]
-    if bar == 10: ch = CHORDS[0]
+    if bar >= BARS - 2: ch = CHORDS[0]
     v = np.zeros(n)
     for m in ch:
         for d in (-0.004, 0.0, 0.004):
@@ -90,7 +91,8 @@ def kick():
     f = 45 + 75 * np.exp(-t * 28)
     ph = 2 * np.pi * np.cumsum(f) / SR
     return np.sin(ph) * np.exp(-t * 11) + 0.15 * lp(rng.standard_normal(n), 1800) * np.exp(-t * 60)
-kicks = [3.0 + i * BEAT for i in range(31)] + [18.5 + i * 1.0 for i in range(3)]
+OUTRO = SPOT['outroAt']
+kicks = [3.0 + i * BEAT for i in range(int((OUTRO - 3.0) / BEAT))] + [OUTRO + i * 1.0 for i in range(int(DUR - OUTRO))]
 for kt in kicks:
     place(music, kick(), kt, db(-9))
     place(kick_env, np.exp(-np.arange(int(0.3 * SR)) / SR * 9), kt, 1.0)
@@ -99,7 +101,7 @@ duck = 1 - 0.55 * np.clip(kick_env, 0, 1)
 # --- Bass: 8th-note pulse on root from 3.0 ---
 bass = np.zeros(N)
 t = 3.0
-while t < 20.0:
+while t < OUTRO + 1.0:
     bar = int(t // 2) % 4
     f = hz(ROOTS[bar] - 12 + 12)  # A2 region
     n = int(0.24 * SR)
@@ -111,7 +113,7 @@ bass = lp(bass, 600)
 music += bass * db(-13)
 
 # --- Hats: offbeat 8ths 7.0–18.5 ---
-for i in range(int((18.5 - 7.0) / BEAT)):
+for i in range(int((OUTRO - 7.0) / BEAT)):
     n = int(0.05 * SR)
     h = hp(rng.standard_normal(n), 7000) * np.exp(-np.arange(n) / SR * 90)
     place(music, h, 7.0 + i * BEAT + BEAT / 2, db(-31))
@@ -119,7 +121,7 @@ for i in range(int((18.5 - 7.0) / BEAT)):
 # --- Arp: 8th-note chord tones, octave up, 7.0–18.5 ---
 arp = np.zeros(N)
 t = 7.0; k = 0
-while t < 18.5 - 1e-6:
+while t < OUTRO - 1e-6:
     bar = int(t // 2) % 4
     ch = CHORDS[bar]
     m = ch[k % len(ch)] + 12 + (12 if k % 8 >= 6 else 0)
@@ -167,7 +169,7 @@ def whoosh(length=0.6, up=True):
     lo, hi = bp(noise, 300, 1200), bp(noise, 1500, 5000)
     mix = lo * (1 - tt) + hi * tt if up else lo * tt + hi * (1 - tt)
     return mix * np.sin(np.pi * tt) ** 2
-for tt in (3.0, 7.0, 11.0, 15.0, 18.5):
+for tt in [a for _, a, _ in SPOT['scenes'][1:]]:
     place(sfx, whoosh(0.55), tt - 0.4, db(-25))
 
 def impact(root_midi):
@@ -177,9 +179,9 @@ def impact(root_midi):
     for m in (root_midi, root_midi + 7, root_midi + 12, root_midi + 15):
         s += 0.3 * np.sin(2 * np.pi * hz(m) * t_) * np.exp(-t_ * 2.2)
     return s * np.minimum(1, t_ / 0.004)
-place(sfx, impact(50), 18.6, db(-17))      # outro logo
-place(sfx, pluck(hz(74), 0.6, 2), 19.62, db(-24))   # chips land: D5 + A5
-place(sfx, pluck(hz(81), 0.8, 2), 19.69, db(-24))
+place(sfx, impact(50), OUTRO + 0.1, db(-17))      # outro logo
+place(sfx, pluck(hz(74), 0.6, 2), OUTRO + 1.2, db(-24))   # chips land: D5 + A5
+place(sfx, pluck(hz(81), 0.8, 2), OUTRO + 1.27, db(-24))
 
 # Clicks: soft click + tonal blip; P2 reveals more cards (rising pair),
 # confirming the agent's edge gets a warm major-third "yes".
@@ -191,6 +193,15 @@ def click(m):
     return s
 place(sfx, click(69), CLICKS['p2'], db(-21))
 place(sfx, pluck(hz(74), 0.35, 2), CLICKS['p2'] + 0.14, db(-24))
+# Inspect: the three checklist cards land on a rising D minor triad.
+for i, at in enumerate(SPOT['cards']):
+    place(sfx, pluck(hz([62, 65, 69][i]), 0.45, 3), at + 0.08, db(-22))
+    place(sfx, whoosh(0.3), at - 0.12, db(-33))
+# Fix All, then Create PR, then the PR-opened chime (F5 A5 D6, bright and short).
+place(sfx, click(67), CLICKS['fixAll'], db(-21))
+place(sfx, click(72), CLICKS['createPr'], db(-20))
+for i, mm in enumerate([77, 81, 86]):
+    place(sfx, pluck(hz(mm), 0.6, 2), SPOT['prOpenedAt'] + i * 0.07, db(-22))
 place(sfx, click(65), CLICKS['confirm'], db(-21))
 place(sfx, pluck(hz(69), 0.4, 2), CLICKS['confirm'] + 0.12, db(-23))
 place(sfx, pluck(hz(74), 0.5, 2), CLICKS['confirm'] + 0.22, db(-23))

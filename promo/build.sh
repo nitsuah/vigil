@@ -2,16 +2,16 @@
 # Rebuild a promo spot end to end in Docker. Everything on screen is the real
 # vigil UI rendering the fictional demo portfolio in promo/demo-seed.ts.
 #
-#   promo/build.sh                                  # full render of brag-22s
-#   promo/build.sh brag-22s --stills 1.8,4.5,9.2    # quick look at a few frames
-#   promo/build.sh brag-22s --audio                 # re-synth audio + remux only
-#   promo/build.sh brag-22s --recapture             # re-shoot the app (after UI/seed changes)
-#   promo/build.sh brag-22s --publish               # also update site/assets/ (landing page hero)
+#   promo/build.sh                                  # full render of brag-30s
+#   promo/build.sh brag-30s --stills 1.8,4.5,9.2    # quick look at a few frames
+#   promo/build.sh brag-30s --audio                 # re-synth audio + remux only
+#   promo/build.sh brag-30s --recapture             # re-shoot the app (after UI/seed changes)
+#   promo/build.sh brag-30s --publish               # also update site/assets/ (landing page hero)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO="$(pwd -W 2>/dev/null || pwd)"   # Windows path under Git Bash
 
-SPOT="brag-22s"; MODE="full"; TIMES=""; RECAPTURE=0; PUBLISH=0
+SPOT="brag-30s"; MODE="full"; TIMES=""; RECAPTURE=0; PUBLISH=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --stills) MODE="stills"; TIMES="$2"; shift 2 ;;
@@ -36,6 +36,7 @@ if [ "$PUBLISH" = 1 ] && [ "$MODE" != stills ]; then
   mkdir -p site/assets
   cp "promo/out/$SPOT/$SPOT-web.mp4" site/assets/vigil.mp4
   cp "promo/out/$SPOT/$SPOT.jpg" site/assets/poster.jpg
-  cp promo/out/capture/web/*.webp site/assets/
+  # details.webp (the whole expanded panel) is for video framing only.
+  for f in promo/out/capture/web/*.webp; do [ "$(basename "$f")" = details.webp ] || cp "$f" site/assets/; done
   echo "published → site/assets/"
 fi

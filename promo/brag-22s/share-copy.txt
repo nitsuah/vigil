@@ -1,1 +1,0 @@
-Too many repos, one question: what do I work on next? Vigil grades every GitHub repo you own, ranks the open work across all of them, maps which repo uses which, and lets Claude read the whole thing over MCP. github.com/nitsuah/vigil

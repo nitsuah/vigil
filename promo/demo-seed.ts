@@ -61,3 +61,40 @@ export const RELATIONSHIPS: [string, string, string, string, 'confirmed' | 'prop
     ['infra', 'deploys', 'api-gateway', 'Terraform module and blue/green deploy pipeline', 'confirmed'],
     ['cli', 'calls', 'api-gateway', 'Found GATEWAY_URL in src/config.rs', 'proposed'],
 ];
+
+/** Repo-details panel data for the repo the promo expands (a C grade with gaps to fix). */
+export const DETAIL_REPO = 'mobile-app';
+export const DOCS: [string, boolean, string][] = [
+    ['readme', true, 'healthy'], ['roadmap', true, 'healthy'], ['tasks', true, 'healthy'], ['features', true, 'dormant'],
+    ['metrics', false, 'missing'], ['changelog', true, 'healthy'], ['contributing', false, 'missing'], ['license', true, 'healthy'],
+];
+export const PRACTICES: [string, string][] = [
+    ['ci_cd', 'healthy'], ['testing_framework', 'healthy'], ['linting', 'healthy'], ['gitignore', 'healthy'],
+    ['branch_protection', 'missing'], ['pre_commit_hooks', 'missing'], ['dependabot', 'missing'], ['docker', 'healthy'],
+    ['env_template', 'healthy'], ['deploy_badge', 'dormant'], ['visual_docs', 'missing'],
+];
+/** Files the Fix All preview proposes for the missing, fixable practices above (first one opens active). */
+export const FIX_PREVIEWS = [
+    { type: 'practice', docType: 'dependabot', practiceType: 'dependabot', path: '.github/dependabot.yml', content: `version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+` },
+    { type: 'practice', docType: 'pre_commit_hooks', practiceType: 'pre_commit_hooks', path: '.husky/pre-commit', content: `#!/usr/bin/env sh
+npx lint-staged
+` },
+];
+export const STANDARDS: [string, string][] = [
+    ['license', 'healthy'], ['contributing', 'missing'], ['code_of_conduct', 'healthy'], ['security', 'missing'],
+    ['issue_template', 'healthy'], ['pr_template', 'healthy'], ['changelog', 'healthy'], ['codeowners', 'missing'],
+    ['copilot_instructions', 'healthy'], ['flow_tasks_prompt', 'healthy'], ['handoff_prompt', 'healthy'], ['funding', 'missing'],
+];

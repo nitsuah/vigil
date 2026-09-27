@@ -51,7 +51,7 @@ ffmpeg -hide_banner -loglevel error -y -framerate "$FPS" -i "$W/frames/f%04d.png
   -c:a aac -b:a 192k -shortest "$W/$SPOT.mp4"
 ffmpeg -hide_banner -loglevel error -y -i "$W/frames/f$POSTER.png" -q:v 2 "$W/$SPOT.jpg"
 # Smaller cut for the GitHub Pages hero.
-ffmpeg -hide_banner -loglevel error -y -i "$W/$SPOT.mp4" -c:v libx264 -preset slow -crf 24 \
+ffmpeg -hide_banner -loglevel error -y -i "$W/$SPOT.mp4" -c:v libx264 -preset slow -crf 27 \
   -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 128k "$W/$SPOT-web.mp4"
 cp "$DIR/share-copy.txt" "$W/share-copy.txt"
 # Landing-page copies of the UI captures (the 2x PNGs are ~1 MB each).
