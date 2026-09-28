@@ -99,10 +99,7 @@ set -e
 # Resolve the repository - use GITHUB_REPOSITORY if set (in Actions), otherwise detect from git remote
 REPO="\${GITHUB_REPOSITORY}"
 if [ -z "\${REPO}" ]; then
-    if ! REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"; then
-        echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
-        exit 1
-    fi
+    REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
     if [ -z "\${REPO}" ]; then
         echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
         exit 1
@@ -155,10 +152,7 @@ set -e
 # Resolve the repository - use GITHUB_REPOSITORY if set (in Actions), otherwise detect from git remote
 REPO="\${GITHUB_REPOSITORY}"
 if [ -z "\${REPO}" ]; then
-    if ! REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"; then
-        echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
-        exit 1
-    fi
+    REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
     if [ -z "\${REPO}" ]; then
         echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
         exit 1
@@ -257,10 +251,7 @@ set -e
 # Resolve the repository - use GITHUB_REPOSITORY if set (in Actions), otherwise detect from git remote
 REPO="\${GITHUB_REPOSITORY}"
 if [ -z "\${REPO}" ]; then
-    if ! REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"; then
-        echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
-        exit 1
-    fi
+    REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)"
     if [ -z "\${REPO}" ]; then
         echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
         exit 1
