@@ -28,9 +28,37 @@ async function fixSecurityFeature(repoName: string, featureType: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ featureType })
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to fix security feature');
-  return data;
+
+  // Handle non-JSON error responses (HTML, plain text, etc.)
+  const contentType = res.headers.get('content-type');
+  let data: unknown;
+  try {
+    if (contentType && contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      data = await res.text();
+    }
+  } catch {
+    data = { error: 'Failed to parse response' };
+  }
+
+  if (!res.ok) {
+    const message = typeof data === 'object' && data !== null && 'error' in data
+      ? (data as { error?: string }).error
+      : 'Failed to fix security feature';
+    throw new Error(message);
+  }
+
+  // Validate success body: require JSON object with non-empty string prUrl
+  if (typeof data !== 'object' || data === null || !('prUrl' in data)) {
+    throw new Error('Invalid response: missing prUrl');
+  }
+  const prUrl = (data as { prUrl?: unknown }).prUrl;
+  if (typeof prUrl !== 'string' || prUrl.trim() === '') {
+    throw new Error('Invalid response: prUrl must be a non-empty string');
+  }
+
+  return data as { prUrl: string };
 }
 
 export function SecuritySection({

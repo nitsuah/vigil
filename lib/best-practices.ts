@@ -72,7 +72,10 @@ export async function checkBestPractices(
             protection = data;
         } catch (mainError: unknown) {
             // If main branch not found or not protected, try master
-            if (mainError instanceof Error && (mainError.message.includes('404') || mainError.message.includes('Not Found'))) {
+            const status = mainError instanceof Error && 'status' in mainError
+                ? (mainError as { status?: number }).status
+                : undefined;
+            if (status === 404) {
                 try {
                     const { data } = await octokit.rest.repos.getBranchProtection({
                         owner,
@@ -87,10 +90,138 @@ export async function checkBestPractices(
             }
         }
 
+        // Also check for branch protection rulesets (GitHub's newer mechanism)
+        // Rulesets can protect branches even without legacy branch protection
+        if (!protection) {
+            try {
+                // Fetch the repository to get default branch for selector resolution
+                const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+                const defaultBranch = repoData.default_branch;
+
+                // Fetch all pages of rulesets (pagination)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- GitHub API returns complex union types for rulesets
+                const allRulesets: any[] = [];
+                for await (const { data: page } of octokit.paginate.iterator(
+                    octokit.rest.repos.getRepoRulesets,
+                    { owner, repo, per_page: 100 }
+                )) {
+                    allRulesets.push(...page);
+                }
+
+                // Find rulesets targeting branches with active enforcement
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- GitHub API returns complex union types for rulesets
+                const candidateRulesets = allRulesets.filter((rs: any) =>
+                    rs.target === 'branch' && rs.enforcement === 'active'
+                );
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- GitHub API returns complex union types for rulesets
+                type RulesetDetail = any;
+
+                for (const rs of candidateRulesets) {
+                    // Fetch full ruleset details to get conditions (summary may lack them)
+                     
+                    let ruleset: RulesetDetail = rs;
+                    try {
+                        const { data: fullRuleset } = await octokit.rest.repos.getRepoRuleset({
+                            owner,
+                            repo,
+                            ruleset_id: rs.id,
+                        });
+                        ruleset = fullRuleset;
+                    } catch {
+                        ruleset = rs; // fallback to summary
+                    }
+
+                    // Check if this ruleset applies to our branch
+                    // Handle include patterns: exact match, wildcards, and GitHub selectors (~DEFAULT_BRANCH, ~ALL)
+                    // Also check exclude patterns - excluded branches are NOT protected by this ruleset
+                    const includePatterns = ruleset.conditions?.ref_name?.include ?? [];
+                    const excludePatterns = ruleset.conditions?.ref_name?.exclude ?? [];
+
+                    // Helper: GitHub fnmatch semantics - dots are literal, * matches single segment, ** matches any depth
+                    function matchesPattern(pattern: string, ref: string): boolean {
+                        // Resolve GitHub selectors
+                        let resolvedPattern = pattern;
+                        if (pattern === '~DEFAULT_BRANCH') {
+                            resolvedPattern = `refs/heads/${defaultBranch}`;
+                        } else if (pattern === '~ALL') {
+                            resolvedPattern = 'refs/heads/**';
+                        }
+
+                        // Convert fnmatch to regex: * -> [^/]+, ** -> .*
+                        // Escape regex metacharacters (including backslash) before restoring wildcards.
+                        const escaped = resolvedPattern
+                            .replace(/\*\*/g, '___DOUBLE_STAR___')
+                            .replace(/\*/g, '___SINGLE_STAR___')
+                            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                            .replace(/___DOUBLE_STAR___/g, '.*')
+                            .replace(/___SINGLE_STAR___/g, '[^/]+');
+                        const regex = new RegExp('^' + escaped + '$');
+                        return regex.test(ref);
+                    }
+
+                    const ref = `refs/heads/${branchName}`;
+
+                    const matchesInclude = includePatterns.some((pattern: string) =>
+                        matchesPattern(pattern, ref)
+                    );
+
+                    const matchesExclude = excludePatterns.some((pattern: string) =>
+                        matchesPattern(pattern, ref)
+                    );
+
+                    if (matchesInclude && !matchesExclude) {
+                        // Extract ruleset rules and map to legacy protection fields for scoring
+                        const rulesetRules = ruleset.rules ?? [];
+                        type RulesetRule = { type: string; parameters?: Record<string, unknown> };
+                        const reviewsRule = rulesetRules.find((r: RulesetRule) => r.type === 'pull_request');
+                        const statusChecksRule = rulesetRules.find((r: RulesetRule) => r.type === 'required_status_checks');
+                        const signedCommitsRule = rulesetRules.find((r: RulesetRule) => r.type === 'required_signatures');
+                        const linearHistoryRule = rulesetRules.find((r: RulesetRule) => r.type === 'required_linear_history');
+                        const conversationResolutionRule = rulesetRules.find((r: RulesetRule) => r.type === 'required_conversation_resolution');
+                        const forcePushRule = rulesetRules.find((r: RulesetRule) => r.type === 'force_push');
+                        const deletionRule = rulesetRules.find((r: RulesetRule) => r.type === 'deletion');
+                        const forkSyncRule = rulesetRules.find((r: RulesetRule) => r.type === 'fork_sync');
+
+                        protection = {
+                            source: 'ruleset',
+                            ruleset,
+                            required_pull_request_reviews: reviewsRule?.parameters ?? undefined,
+                            required_status_checks: statusChecksRule?.parameters ?? undefined,
+                            required_signatures: signedCommitsRule?.parameters ?? undefined,
+                            required_linear_history: linearHistoryRule?.parameters ?? undefined,
+                            required_conversation_resolution: conversationResolutionRule?.parameters ?? undefined,
+                            allow_force_pushes: forcePushRule?.parameters ?? { enabled: false },
+                            allow_deletions: deletionRule?.parameters ?? { enabled: false },
+                            lock_branch: { enabled: false }, // rulesets don't have lock_branch
+                            allow_fork_syncing: forkSyncRule?.parameters ?? { enabled: false },
+                        };
+                        break;
+                    }
+                }
+            } catch {
+                // Rulesets API not available or no rulesets
+            }
+        }
+
         if (protection) {
-            const reviews = protection?.required_pull_request_reviews;
-            const statusChecks = protection?.required_status_checks;
-            
+            // Type narrowing for protection rules
+            type ProtectionRules = {
+                required_pull_request_reviews?: { required_approving_review_count?: number; dismiss_stale_reviews?: boolean; require_code_owner_reviews?: boolean };
+                required_status_checks?: { strict?: boolean; contexts?: string[] };
+                required_signatures?: Record<string, unknown>;
+                required_linear_history?: Record<string, unknown>;
+                required_conversation_resolution?: Record<string, unknown>;
+                allow_force_pushes?: { enabled: boolean };
+                allow_deletions?: { enabled: boolean };
+                lock_branch?: { enabled: boolean };
+                allow_fork_syncing?: { enabled: boolean };
+            };
+
+            const rules = protection as ProtectionRules;
+            const reviews = rules.required_pull_request_reviews;
+            const statusChecks = rules.required_status_checks;
+
             // Calculate score based on protection features (10 conditions, maxScore=10)
             let score = 0;
             const maxScore = 10;

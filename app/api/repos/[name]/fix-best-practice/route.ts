@@ -157,15 +157,18 @@ export async function POST(
                     if (readme && !readme.includes('<!-- visual-docs:start -->')) {
                         const lines = readme.split('\n');
                         let insertIndex = lines.length;
+                        let foundHeading = false;
                         for (let i = 0; i < lines.length; i++) {
                             if (lines[i].trim() === '## Screenshots & diagrams') {
                                 insertIndex = i + 1;
+                                foundHeading = true;
                                 break;
                             }
                         }
-                        // If no Screenshots & diagrams section, append at end
-                        if (insertIndex === lines.length) {
+                        // If no Screenshots & diagrams section, append heading and set insertIndex to after it
+                        if (!foundHeading) {
                             lines.push('', '## Screenshots & diagrams', '');
+                            insertIndex = lines.length - 1; // position after the new heading
                         }
                         lines.splice(insertIndex, 0, '<!-- visual-docs:start -->', '<!-- visual-docs:end -->');
                         const newReadme = lines.join('\n');
