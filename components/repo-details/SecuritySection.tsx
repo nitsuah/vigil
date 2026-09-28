@@ -28,9 +28,27 @@ async function fixSecurityFeature(repoName: string, featureType: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ featureType })
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to fix security feature');
-  return data;
+
+  // Handle non-JSON error responses (HTML, plain text, etc.)
+  const contentType = res.headers.get('content-type');
+  let data: unknown;
+  try {
+    if (contentType && contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      data = await res.text();
+    }
+  } catch {
+    data = { error: 'Failed to parse response' };
+  }
+
+  if (!res.ok) {
+    const message = typeof data === 'object' && data !== null && 'error' in data
+      ? (data as { error?: string }).error
+      : 'Failed to fix security feature';
+    throw new Error(message);
+  }
+  return data as { prUrl: string };
 }
 
 export function SecuritySection({

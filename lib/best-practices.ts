@@ -72,7 +72,10 @@ export async function checkBestPractices(
             protection = data;
         } catch (mainError: unknown) {
             // If main branch not found or not protected, try master
-            if (mainError instanceof Error && (mainError.message.includes('404') || mainError.message.includes('Not Found'))) {
+            const status = mainError instanceof Error && 'status' in mainError
+                ? (mainError as { status?: number }).status
+                : undefined;
+            if (status === 404) {
                 try {
                     const { data } = await octokit.rest.repos.getBranchProtection({
                         owner,
@@ -84,6 +87,32 @@ export async function checkBestPractices(
                 } catch {
                     // Neither main nor master has protection
                 }
+            }
+        }
+
+        // Also check for branch protection rulesets (GitHub's newer mechanism)
+        // Rulesets can protect branches even without legacy branch protection
+        if (!protection) {
+            try {
+                const { data: rulesets } = await octokit.rest.repos.getRepoRulesets({
+                    owner,
+                    repo,
+                });
+                const branchRuleset = rulesets.find(rs =>
+                    rs.target === 'branch' &&
+                    rs.enforcement === 'active' &&
+                    rs.conditions?.ref_name?.include?.some((pattern: string) =>
+                        pattern === `refs/heads/${branchName}` ||
+                        pattern === `refs/heads/*` ||
+                        pattern === 'refs/heads/**'
+                    )
+                );
+                if (branchRuleset) {
+                    // Treat ruleset as protection - we'll do a simplified check
+                    protection = { source: 'ruleset', ruleset: branchRuleset };
+                }
+            } catch {
+                // Rulesets API not available or no rulesets
             }
         }
 

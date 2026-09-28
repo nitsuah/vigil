@@ -84,6 +84,7 @@ export async function POST(
                     });
 
                     // Add a setup script to enable security advisories via GitHub CLI
+                    // Uses the proper endpoint: PATCH /repos/{owner}/{repo} with security_and_analysis
                     const setupScript = `#!/bin/bash
 # Enable GitHub Security Advisories for this repository
 # Run this script locally with: gh auth login && bash enable-security-advisories.sh
@@ -93,8 +94,16 @@ set -e
 REPO="\${GITHUB_REPOSITORY}"
 echo "Enabling Security Advisories for \${REPO}..."
 
-# Enable security advisories via GitHub API
-gh api --method PATCH /repos/\${REPO} -f security_and_analysis='{"security_advisories": {"status": "enabled"}}'
+# Enable security advisories via GitHub API using JSON input
+gh api --method PATCH /repos/\${REPO} --input - <<'EOF'
+{
+  "security_and_analysis": {
+    "security_advisories": {
+      "status": "enabled"
+    }
+  }
+}
+EOF
 
 echo "Security Advisories enabled for \${REPO}"
 `;
@@ -109,7 +118,7 @@ echo "Security Advisories enabled for \${REPO}"
                 }
 
                 case 'private_reporting': {
-                    // Private vulnerability reporting is enabled via GitHub repo settings API
+                    // Private vulnerability reporting is enabled via dedicated GitHub API endpoint
                     const setupScript = `#!/bin/bash
 # Enable Private Vulnerability Reporting for this repository
 # Run this script locally with: gh auth login && bash enable-private-reporting.sh
@@ -119,8 +128,8 @@ set -e
 REPO="\${GITHUB_REPOSITORY}"
 echo "Enabling Private Vulnerability Reporting for \${REPO}..."
 
-# Enable private vulnerability reporting via GitHub API
-gh api --method PATCH /repos/\${REPO} -f security_and_analysis='{"private_vulnerability_reporting": {"status": "enabled"}}'
+# Enable private vulnerability reporting via dedicated GitHub API endpoint
+gh api --method PUT /repos/\${REPO}/private-vulnerability-reporting
 
 echo "Private Vulnerability Reporting enabled for \${REPO}"
 `;
@@ -143,15 +152,45 @@ echo "Private Vulnerability Reporting enabled for \${REPO}"
                 }
 
                 case 'dependabot_alerts': {
-                    // Dependabot alerts are enabled via dependabot.yml
+                    // Dependabot alerts are enabled via repository settings API
+                    // .github/dependabot.yml configures dependency updates, not the alerts themselves
                     const templatePath = path.join(process.cwd(), 'templates', '.github', 'dependabot.yml');
                     const content = await fs.readFile(templatePath, 'utf-8');
                     filesToAdd.push({
                         path: '.github/dependabot.yml',
                         content
                     });
+
+                    // Add a setup script to enable Dependabot alerts via GitHub API
+                    const setupScript = `#!/bin/bash
+# Enable Dependabot Alerts for this repository
+# Run this script locally with: gh auth login && bash enable-dependabot-alerts.sh
+
+set -e
+
+REPO="\${GITHUB_REPOSITORY}"
+echo "Enabling Dependabot Alerts for \${REPO}..."
+
+# Enable Dependabot alerts via GitHub API
+gh api --method PATCH /repos/\${REPO} --input - <<'EOF'
+{
+  "security_and_analysis": {
+    "dependabot_security_updates": {
+      "status": "enabled"
+    }
+  }
+}
+EOF
+
+echo "Dependabot Alerts enabled for \${REPO}"
+`;
+                    filesToAdd.push({
+                        path: 'scripts/enable-dependabot-alerts.sh',
+                        content: setupScript
+                    });
+
                     branchName = `chore-enable-dependabot-alerts-${Date.now()}`;
-                    commitMessage = 'chore: enable Dependabot alerts with config';
+                    commitMessage = 'chore: enable Dependabot alerts';
                     break;
                 }
 
@@ -228,14 +267,39 @@ jobs:
 
 set -e
 
+# Resolve the repository - use GITHUB_REPOSITORY if set (in Actions), otherwise detect from git remote
 REPO="\${GITHUB_REPOSITORY}"
+if [ -z "\${REPO}" ]; then
+    REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"
+    if [ -z "\${REPO}" ]; then
+        echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
+        exit 1
+    fi
+fi
+
 echo "Enabling Secret Scanning for \${REPO}..."
 
-# Enable secret scanning via GitHub API
-gh api --method PATCH /repos/\${REPO} -f security_and_analysis='{"secret_scanning": {"status": "enabled"}}'
+# Enable secret scanning via GitHub API using structured JSON
+gh api --method PATCH /repos/\${REPO} --input - <<'EOF'
+{
+  "security_and_analysis": {
+    "secret_scanning": {
+      "status": "enabled"
+    }
+  }
+}
+EOF
 
 # Enable secret scanning push protection
-gh api --method PATCH /repos/\${REPO} -f security_and_analysis='{"secret_scanning_push_protection": {"status": "enabled"}}'
+gh api --method PATCH /repos/\${REPO} --input - <<'EOF'
+{
+  "security_and_analysis": {
+    "secret_scanning_push_protection": {
+      "status": "enabled"
+    }
+  }
+}
+EOF
 
 echo "Secret Scanning enabled for \${REPO}"
 `;

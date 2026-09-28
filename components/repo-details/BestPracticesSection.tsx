@@ -150,7 +150,7 @@ export function BestPracticesSection({
             })
             .map((practice, i) => {
               // Determine if this practice can be auto-fixed
-              const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting'];
+              const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting', 'visual_docs'];
               const canFix = fixablePractices.includes(practice.practice_type);
               const isMissing = practice.status === 'missing';
 
