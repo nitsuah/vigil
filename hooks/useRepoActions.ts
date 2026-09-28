@@ -364,7 +364,7 @@ export function useRepoActions(
       const bestPractices: BestPractice[] = details.bestPractices || [];
 
       // Get fixable missing practices
-      const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting'];
+      const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting', 'visual_docs'];
       const missingPractices = bestPractices
         .filter((p: BestPractice) => p.status === 'missing' && fixablePractices.includes(p.practice_type))
         .map((p: BestPractice) => p.practice_type);

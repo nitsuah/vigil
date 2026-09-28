@@ -60,14 +60,34 @@ export async function checkBestPractices(
     };
     
     try {
-        const { data: branch } = await octokit.rest.repos.getBranch({
-            owner,
-            repo,
-            branch: 'main',
-        });
-        
-        if (branch.protected) {
-            const protection = branch.protection;
+        // Try 'main' first, then 'master' as fallback
+        let protection;
+        let branchName = 'main';
+        try {
+            const { data } = await octokit.rest.repos.getBranchProtection({
+                owner,
+                repo,
+                branch: 'main',
+            });
+            protection = data;
+        } catch (mainError: unknown) {
+            // If main branch not found or not protected, try master
+            if (mainError instanceof Error && (mainError.message.includes('404') || mainError.message.includes('Not Found'))) {
+                try {
+                    const { data } = await octokit.rest.repos.getBranchProtection({
+                        owner,
+                        repo,
+                        branch: 'master',
+                    });
+                    protection = data;
+                    branchName = 'master';
+                } catch {
+                    // Neither main nor master has protection
+                }
+            }
+        }
+
+        if (protection) {
             const reviews = protection?.required_pull_request_reviews;
             const statusChecks = protection?.required_status_checks;
             
