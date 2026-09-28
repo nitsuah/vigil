@@ -99,7 +99,10 @@ set -e
 # Resolve the repository - use GITHUB_REPOSITORY if set (in Actions), otherwise detect from git remote
 REPO="\${GITHUB_REPOSITORY}"
 if [ -z "\${REPO}" ]; then
-    REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"
+    if ! REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"; then
+        echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
+        exit 1
+    fi
     if [ -z "\${REPO}" ]; then
         echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
         exit 1
@@ -152,7 +155,10 @@ set -e
 # Resolve the repository - use GITHUB_REPOSITORY if set (in Actions), otherwise detect from git remote
 REPO="\${GITHUB_REPOSITORY}"
 if [ -z "\${REPO}" ]; then
-    REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"
+    if ! REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"; then
+        echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
+        exit 1
+    fi
     if [ -z "\${REPO}" ]; then
         echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
         exit 1
@@ -167,7 +173,7 @@ gh api --method PUT /repos/\${REPO}/vulnerability-alerts
 # Verify alerts are enabled
 gh api /repos/\${REPO}/vulnerability-alerts --jq '.enabled'
 
-echo "Dependabot Alerts enabled for \${REPO}"
+echo "Dependabot Alerts enabled for \${REPO}
 `;
                     filesToAdd.push({
                         path: 'scripts/enable-dependabot-alerts.sh',
@@ -251,7 +257,10 @@ set -e
 # Resolve the repository - use GITHUB_REPOSITORY if set (in Actions), otherwise detect from git remote
 REPO="\${GITHUB_REPOSITORY}"
 if [ -z "\${REPO}" ]; then
-    REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"
+    if ! REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"; then
+        echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
+        exit 1
+    fi
     if [ -z "\${REPO}" ]; then
         echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
         exit 1
@@ -282,7 +291,7 @@ gh api --method PATCH /repos/\${REPO} --input - <<'EOF'
 }
 EOF
 
-echo "Secret Scanning enabled for \${REPO}"
+echo "Secret Scanning enabled for \${REPO}
 `;
                     filesToAdd.push({
                         path: 'scripts/enable-secret-scanning.sh',

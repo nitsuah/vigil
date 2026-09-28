@@ -98,13 +98,17 @@ export async function checkBestPractices(
                 const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
                 const defaultBranch = repoData.default_branch;
 
-                const { data: rulesets } = await octokit.rest.repos.getRepoRulesets({
-                    owner,
-                    repo,
-                });
+                // Fetch all pages of rulesets (pagination)
+                const allRulesets: Array<{ target: string; enforcement: string; id: number }> = [];
+                for await (const { data: page } of octokit.paginate.iterator(
+                    octokit.rest.repos.getRepoRulesets,
+                    { owner, repo, per_page: 100 }
+                )) {
+                    allRulesets.push(...page);
+                }
 
                 // Find rulesets targeting branches with active enforcement
-                const candidateRulesets = rulesets.filter(rs =>
+                const candidateRulesets = allRulesets.filter(rs =>
                     rs.target === 'branch' && rs.enforcement === 'active'
                 );
 
@@ -128,7 +132,8 @@ export async function checkBestPractices(
                     const includePatterns = ruleset.conditions?.ref_name?.include ?? [];
                     const excludePatterns = ruleset.conditions?.ref_name?.exclude ?? [];
 
-                    const matchesInclude = includePatterns.some((pattern: string) => {
+                    // Helper: GitHub fnmatch semantics - dots are literal, * matches single segment, ** matches any depth
+                    function matchesPattern(pattern: string, ref: string): boolean {
                         // Resolve GitHub selectors
                         let resolvedPattern = pattern;
                         if (pattern === '~DEFAULT_BRANCH') {
@@ -137,30 +142,52 @@ export async function checkBestPractices(
                             resolvedPattern = 'refs/heads/**';
                         }
 
-                        if (resolvedPattern === `refs/heads/${branchName}`) return true;
-                        if (resolvedPattern === 'refs/heads/*' && !branchName.includes('/')) return true;
-                        if (resolvedPattern === 'refs/heads/**') return true;
-                        // Support glob-style patterns
-                        const regex = new RegExp('^' + resolvedPattern.replace(/\*/g, '.*') + '$');
-                        return regex.test(`refs/heads/${branchName}`);
-                    });
+                        // Convert fnmatch to regex: * -> [^/]+, ** -> .*, literal dots
+                        const escaped = resolvedPattern
+                            .replace(/\./g, '\\.')
+                            .replace(/\*\*/g, '___DOUBLE_STAR___')
+                            .replace(/\*/g, '[^/]+')
+                            .replace(/___DOUBLE_STAR___/g, '.*');
+                        const regex = new RegExp('^' + escaped + '$');
+                        return regex.test(ref);
+                    }
 
-                    const matchesExclude = excludePatterns.some((pattern: string) => {
-                        let resolvedPattern = pattern;
-                        if (pattern === '~DEFAULT_BRANCH') {
-                            resolvedPattern = `refs/heads/${defaultBranch}`;
-                        } else if (pattern === '~ALL') {
-                            resolvedPattern = 'refs/heads/**';
-                        }
-                        if (resolvedPattern === `refs/heads/${branchName}`) return true;
-                        if (resolvedPattern === 'refs/heads/*' && !branchName.includes('/')) return true;
-                        if (resolvedPattern === 'refs/heads/**') return true;
-                        const regex = new RegExp('^' + resolvedPattern.replace(/\*/g, '.*') + '$');
-                        return regex.test(`refs/heads/${branchName}`);
-                    });
+                    const ref = `refs/heads/${branchName}`;
+
+                    const matchesInclude = includePatterns.some((pattern: string) =>
+                        matchesPattern(pattern, ref)
+                    );
+
+                    const matchesExclude = excludePatterns.some((pattern: string) =>
+                        matchesPattern(pattern, ref)
+                    );
 
                     if (matchesInclude && !matchesExclude) {
-                        protection = { source: 'ruleset', ruleset };
+                        // Extract ruleset rules and map to legacy protection fields for scoring
+                        const rulesetRules = ruleset.rules ?? [];
+                        type RulesetRule = { type: string; parameters?: Record<string, unknown> };
+                        const reviewsRule = rulesetRules.find((r: RulesetRule) => r.type === 'pull_request');
+                        const statusChecksRule = rulesetRules.find((r: RulesetRule) => r.type === 'required_status_checks');
+                        const signedCommitsRule = rulesetRules.find((r: RulesetRule) => r.type === 'required_signatures');
+                        const linearHistoryRule = rulesetRules.find((r: RulesetRule) => r.type === 'required_linear_history');
+                        const conversationResolutionRule = rulesetRules.find((r: RulesetRule) => r.type === 'required_conversation_resolution');
+                        const forcePushRule = rulesetRules.find((r: RulesetRule) => r.type === 'force_push');
+                        const deletionRule = rulesetRules.find((r: RulesetRule) => r.type === 'deletion');
+                        const forkSyncRule = rulesetRules.find((r: RulesetRule) => r.type === 'fork_sync');
+
+                        protection = {
+                            source: 'ruleset',
+                            ruleset,
+                            required_pull_request_reviews: reviewsRule?.parameters ?? undefined,
+                            required_status_checks: statusChecksRule?.parameters ?? undefined,
+                            required_signatures: signedCommitsRule?.parameters ?? undefined,
+                            required_linear_history: linearHistoryRule?.parameters ?? undefined,
+                            required_conversation_resolution: conversationResolutionRule?.parameters ?? undefined,
+                            allow_force_pushes: forcePushRule?.parameters ?? { enabled: false },
+                            allow_deletions: deletionRule?.parameters ?? { enabled: false },
+                            lock_branch: { enabled: false }, // rulesets don't have lock_branch
+                            allow_fork_syncing: forkSyncRule?.parameters ?? { enabled: false },
+                        };
                         break;
                     }
                 }
