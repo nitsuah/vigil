@@ -1,0 +1,19 @@
+```mermaid
+flowchart TD
+    A[Client] --> B[API Gateway]
+    B --> C[Auth Service]
+    B --> D[Business Logic]
+    D --> E[(Database)]
+    D --> F[Cache]
+    D --> G[External APIs]
+
+    subgraph "Infrastructure"
+        H[Load Balancer]
+        I[Monitoring]
+        J[Logging]
+    end
+
+    B --> H
+    D --> I
+    D --> J
+```

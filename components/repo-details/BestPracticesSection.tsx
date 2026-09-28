@@ -68,7 +68,7 @@ export function BestPracticesSection({
   // Calculate fixable missing practices with AI-powered context-aware fixes
   // See docs/BEST_PRACTICES_AI_STRATEGY.md for implementation details
   // Each practice uses: template + README + language + (CONTRIBUTING/existing files)
-  const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting'];
+  const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting', 'visual_docs'];
   const missingFixable = bestPractices.filter(
     (p) => p.status === 'missing' && fixablePractices.includes(p.practice_type)
   );

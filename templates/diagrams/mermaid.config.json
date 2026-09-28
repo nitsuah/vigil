@@ -1,0 +1,15 @@
+{
+  "theme": "default",
+  "themeVariables": {
+    "primaryColor": "#1a1a2e",
+    "primaryTextColor": "#eaeaea",
+    "primaryBorderColor": "#7c3aed",
+    "lineColor": "#8b5cf6",
+    "secondaryColor": "#16213e",
+    "tertiaryColor": "#0f3460"
+  },
+  "flowchart": {
+    "htmlLabels": true,
+    "curve": "basis"
+  }
+}

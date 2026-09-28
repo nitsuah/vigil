@@ -15,7 +15,7 @@ export async function POST(
 ) {
     const params = await props.params;
     let fullName = ''; // Declare in outer scope for error handling
-    
+
     try {
         const session = await auth();
         if (!session?.user) {
@@ -107,6 +107,79 @@ export async function POST(
                 );
                 branchName = `chore-add-docker-${Date.now()}`;
                 commitMessage = 'chore: add Docker configuration';
+                break;
+            }
+
+            case 'visual_docs': {
+                // Add visual-docs workflow, readme script, mermaid config, and sample diagram
+                const workflowTemplatePath = path.join(process.cwd(), 'templates', '.github', 'workflows', 'visual-docs.yml');
+                const workflowContent = await fs.readFile(workflowTemplatePath, 'utf-8');
+                filesToAdd.push({
+                    path: '.github/workflows/visual-docs.yml',
+                    content: workflowContent
+                });
+
+                // Add the visual-docs-readme.mjs script
+                const readmeScriptPath = path.join(process.cwd(), 'scripts', 'visual-docs-readme.mjs');
+                const readmeScriptContent = await fs.readFile(readmeScriptPath, 'utf-8');
+                filesToAdd.push({
+                    path: 'scripts/visual-docs-readme.mjs',
+                    content: readmeScriptContent
+                });
+
+                // Add mermaid config (optional)
+                const mermaidConfigPath = path.join(process.cwd(), 'templates', 'diagrams', 'mermaid.config.json');
+                try {
+                    const mermaidConfigContent = await fs.readFile(mermaidConfigPath, 'utf-8');
+                    filesToAdd.push({
+                        path: 'docs/diagrams/mermaid.config.json',
+                        content: mermaidConfigContent
+                    });
+                } catch {
+                    // mermaid config is optional
+                }
+
+                // Add a sample mermaid diagram
+                const sampleDiagramPath = path.join(process.cwd(), 'templates', 'diagrams', 'architecture.mmd');
+                try {
+                    const sampleDiagramContent = await fs.readFile(sampleDiagramPath, 'utf-8');
+                    filesToAdd.push({
+                        path: 'docs/diagrams/architecture.mmd',
+                        content: sampleDiagramContent
+                    });
+                } catch {
+                    // sample diagram is optional
+                }
+
+                // Add README markers if README exists
+                try {
+                    const readme = await github.getFileContent(repoName, 'README.md');
+                    if (readme && !readme.includes('<!-- visual-docs:start -->')) {
+                        const lines = readme.split('\n');
+                        let insertIndex = lines.length;
+                        for (let i = 0; i < lines.length; i++) {
+                            if (lines[i].trim() === '## Screenshots & diagrams') {
+                                insertIndex = i + 1;
+                                break;
+                            }
+                        }
+                        // If no Screenshots & diagrams section, append at end
+                        if (insertIndex === lines.length) {
+                            lines.push('', '## Screenshots & diagrams', '');
+                        }
+                        lines.splice(insertIndex, 0, '<!-- visual-docs:start -->', '<!-- visual-docs:end -->');
+                        const newReadme = lines.join('\n');
+                        filesToAdd.push({
+                            path: 'README.md',
+                            content: newReadme
+                        });
+                    }
+                } catch {
+                    // README not found or error - skip
+                }
+
+                branchName = `chore-add-visual-docs-${Date.now()}`;
+                commitMessage = 'chore: add visual-docs CI recipe for diagrams and screenshots';
                 break;
             }
 

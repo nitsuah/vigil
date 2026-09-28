@@ -3,18 +3,29 @@ import { checkBestPractices } from '../lib/best-practices';
 import type { Octokit } from '@octokit/rest';
 
 function mockOctokitWithBranch(branchProtected: boolean, hasReviews: boolean): Octokit {
+  if (!branchProtected) {
+    // Return 404 when branch is not protected
+    return mockOctokitWithBranchError();
+  }
   return {
     rest: {
       repos: {
-        getBranch: vi.fn().mockResolvedValue({
+        getBranchProtection: vi.fn().mockResolvedValue({
           data: {
-            protected: branchProtected,
-            protection: hasReviews
+            protected: true,
+            required_pull_request_reviews: hasReviews
               ? {
-                  required_pull_request_reviews: { required_approving_review_count: 1 },
-                  required_status_checks: { strict: true, contexts: [] },
+                  required_approving_review_count: 1,
                 }
               : undefined,
+            required_status_checks: hasReviews
+              ? { strict: true, contexts: [] }
+              : undefined,
+            allow_force_pushes: { enabled: false },
+            allow_deletions: { enabled: false },
+            required_conversation_resolution: { enabled: false },
+            lock_branch: { enabled: false },
+            allow_fork_syncing: { enabled: false },
           },
         }),
       },
@@ -26,7 +37,7 @@ function mockOctokitWithBranchError(): Octokit {
   return {
     rest: {
       repos: {
-        getBranch: vi.fn().mockRejectedValue(new Error('Branch not found')),
+        getBranchProtection: vi.fn().mockRejectedValue(new Error('404 Not Found')),
       },
     },
   } as unknown as Octokit;
@@ -270,7 +281,7 @@ function mockOctokitWithProtection(protection: Record<string, unknown>): Octokit
   return {
     rest: {
       repos: {
-        getBranch: vi.fn().mockResolvedValue({ data: { protected: true, protection } }),
+        getBranchProtection: vi.fn().mockResolvedValue({ data: { ...protection } }),
       },
     },
   } as unknown as Octokit;
