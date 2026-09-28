@@ -1,0 +1,22 @@
+[1m[38;2;173;127;168m▲ Next.js 16.3.5[39m[22m (Turbopack)
+- Environments: .env.local
+[32m[1m✓[22m[39m Running next.config.ts took 45ms
+
+[37m[1m [22m[39m Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 error:
+./app/api/repos/[name]/fix-security/route.ts:93:17
+[1m[31mError[39m: Expected a semicolon[22m
+  [90m91 |[0m set -e
+  [90m92 |[0m
+[31m[1m>[0m [90m93 |[0m [33mREPO[0m=[32m"${{ github.repository }}"[0m
+  [90m   |[0m                 [31m[1m^[0m
+  [90m94 |[0m echo [32m"Enabling Security Advisories for \${REPO}..."[0m
+  [90m95 |[0m
+  [90m96 |[0m # [33mEnable[0m security advisories via [33mGitHub[0m [33mAPI[0m
+
+Parsing ecmascript source code failed
+
+
+    at <unknown> (./app/api/repos/[name]/fix-security/route.ts:93:17)

@@ -5,6 +5,7 @@ import { X, Send, Trash2, MessageSquare, Loader2, FileText, Check, X as XIcon } 
 import { MarkdownPreview } from '@/components/MarkdownPreview';
 import { SUGGESTED_WORKFLOWS } from '@/lib/repo-chat';
 import type { ChatThreadMessage } from '@/hooks/useRepoChat';
+import type { TaskOperationProposal } from '@/lib/repo-chat';
 import { getTypeIcon } from '@/components/dashboard/repo-row/repo-row-utils';
 import type { RepoType } from '@/lib/repo-type';
 
@@ -27,6 +28,7 @@ interface RepoChatPanelProps {
     onClear: () => void;
     onApplyProposal?: (proposal: DocEditProposal) => void;
     onDismissProposal?: (messageId: string) => void;
+    onApplyTaskProposal?: (proposal: TaskOperationProposal) => void;
 }
 
 /**
@@ -46,6 +48,7 @@ export function RepoChatPanel({
     onClear,
     onApplyProposal,
     onDismissProposal,
+    onApplyTaskProposal,
 }: RepoChatPanelProps): React.JSX.Element | null {
     const [draft, setDraft] = useState('');
     const [draftRepo, setDraftRepo] = useState(repoName);
@@ -209,6 +212,35 @@ export function RepoChatPanel({
                                       onClick={() => onApplyProposal(message.proposal!)}
                                       disabled={sending}
                                       className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+                                    >
+                                      <Check className="h-3 w-3" />
+                                      Apply
+                                    </button>
+                                    <button
+                                      onClick={() => onDismissProposal?.(message.id)}
+                                      disabled={sending}
+                                      className="px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+                                    >
+                                      <XIcon className="h-3 w-3" />
+                                      Dismiss
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {message.role === 'assistant' && message.taskProposal && onApplyTaskProposal && (
+                              <div className="flex justify-start">
+                                <div className="max-w-[85%] bg-blue-500/10 border border-blue-500/40 rounded-2xl rounded-bl-sm px-3.5 py-2">
+                                  <div className="flex items-center gap-2 text-blue-300 text-sm mb-2">
+                                    <FileText className="h-4 w-4" />
+                                    <span className="font-medium">Task operation: {message.taskProposal.operation.replace('_', ' ')}</span>
+                                  </div>
+                                  <p className="text-slate-300 text-xs mb-2">{message.taskProposal.summary}</p>
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => onApplyTaskProposal(message.taskProposal!)}
+                                      disabled={sending}
+                                      className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
                                     >
                                       <Check className="h-3 w-3" />
                                       Apply

@@ -20,7 +20,12 @@ interface UserAiKeyRow {
  */
 export async function GET(): Promise<NextResponse> {
     const session = await auth();
-    if (!session?.user?.email) {
+    if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // Use stable userId (GitHub numeric ID) as primary, email as fallback for BYOK key storage
+    const userEmail = session.user?.email ?? session.userId;
+    if (!userEmail) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,7 +33,7 @@ export async function GET(): Promise<NextResponse> {
         const db = getNeonClient();
         await ensureSchema(db);
         const rows = (await db`
-            SELECT provider, updated_at FROM user_ai_keys WHERE user_email = ${session.user.email} LIMIT 1
+            SELECT provider, updated_at FROM user_ai_keys WHERE user_email = ${userEmail} LIMIT 1
         `) as UserAiKeyRow[];
 
         if (rows.length === 0) {
@@ -55,7 +60,12 @@ export async function GET(): Promise<NextResponse> {
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
     const session = await auth();
-    if (!session?.user?.email) {
+    if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // Use stable userId (GitHub numeric ID) as primary, email as fallback for BYOK key storage
+    const userEmail = session.user?.email ?? session.userId;
+    if (!userEmail) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -80,7 +90,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         await ensureSchema(db);
         await db`
             INSERT INTO user_ai_keys (user_email, provider, api_key_encrypted, updated_at)
-            VALUES (${session.user.email}, ${provider}, ${encrypted}, NOW())
+            VALUES (${userEmail}, ${provider}, ${encrypted}, NOW())
             ON CONFLICT (user_email)
             DO UPDATE SET provider = ${provider}, api_key_encrypted = ${encrypted}, updated_at = NOW()
         `;
@@ -106,14 +116,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  */
 export async function DELETE(): Promise<NextResponse> {
     const session = await auth();
-    if (!session?.user?.email) {
+    if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // Use stable userId (GitHub numeric ID) as primary, email as fallback for BYOK key storage
+    const userEmail = session.user?.email ?? session.userId;
+    if (!userEmail) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
         const db = getNeonClient();
         await ensureSchema(db);
-        await db`DELETE FROM user_ai_keys WHERE user_email = ${session.user.email}`;
+        await db`DELETE FROM user_ai_keys WHERE user_email = ${userEmail}`;
         return NextResponse.json({ success: true });
     } catch (error) {
         logger.warn('Failed to delete BYOK key:', error);

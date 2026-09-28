@@ -23,6 +23,8 @@ export interface ChatThreadMessage extends ChatMessage {
       content: string;
       summary: string;
     };
+    /** Structured task operation proposal returned by the server. */
+    taskProposal?: import('@/lib/repo-chat').TaskOperationProposal;
     /** BYOK: set when this turn rode the app's shared AI key and is
      * approaching its per-user rate limit. */
     rateLimitWarning?: string;
@@ -246,7 +248,7 @@ export function useRepoChat(identity?: string | null): UseRepoChatResult {
             return {
                 ...prev,
                 [repoName]: existing.map((m) =>
-                    m.id === messageId ? { ...m, proposal: undefined } : m
+                    m.id === messageId ? { ...m, proposal: undefined, taskProposal: undefined } : m
                 ),
             };
         });
