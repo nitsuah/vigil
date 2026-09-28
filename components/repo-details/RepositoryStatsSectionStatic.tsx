@@ -77,7 +77,11 @@ export function RepositoryStatsSectionStatic({
   useEffect(() => {
     if (!repoName) return;
     let cancelled = false;
-    fetch(`/api/repo-details/${encodeURIComponent(repoName)}/trend`)
+    const fullName = repoUrl?.split('/').slice(-2).join('/') || '';
+    const url = fullName
+      ? `/api/repo-details/${encodeURIComponent(repoName)}/trend?fullName=${encodeURIComponent(fullName)}`
+      : `/api/repo-details/${encodeURIComponent(repoName)}/trend`;
+    fetch(url)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!cancelled && data?.snapshots) setTrend(data.snapshots);
@@ -86,7 +90,7 @@ export function RepositoryStatsSectionStatic({
     return () => {
       cancelled = true;
     };
-  }, [repoName]);
+  }, [repoName, repoUrl]);
   
   return (
     <div className="bg-gradient-to-br from-cyan-900/30 via-slate-800/50 to-cyan-800/20 rounded-lg overflow-hidden border border-cyan-500/40 shadow-lg shadow-cyan-500/10 hover:border-cyan-400/50 transition-colors">

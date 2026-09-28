@@ -42,6 +42,7 @@ interface TaskQueueItem {
   submittedBy?: {
     name?: string | null;
     email?: string | null;
+    userId?: string | null;
   };
   /**
    * Whether the durable receipt write for this (terminal) task succeeded.
@@ -330,6 +331,8 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
     // result.data is always defined here because result.success is true
     const { type, payload, priority, meta } = result.data!;
+    // Use stable userId (GitHub numeric ID) as primary identifier
+    const submittedById = session.userId ?? session.user.email ?? null;
     const task: TaskQueueItem = {
       id: randomUUID(),
       type,
@@ -343,6 +346,7 @@ export async function POST(req: NextRequest) {
       submittedBy: {
         name: session.user.name,
         email: session.user.email,
+        userId: submittedById,
       },
     };
 

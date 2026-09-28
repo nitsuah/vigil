@@ -14,11 +14,13 @@ export const runtime = 'nodejs';
  */
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ name: string }> }
+  { params }: { params: Promise<{ name: string; fullName?: string }> }
 ): Promise<NextResponse> {
-  const { name } = await params;
-  if (!name) {
-    return NextResponse.json({ error: 'Repo name required' }, { status: 400 });
+  const { name, fullName } = await params;
+  // Use full_name if provided (preferred), otherwise fall back to short name
+  const lookupValue = fullName || name;
+  if (!lookupValue) {
+    return NextResponse.json({ error: 'Repo identifier required' }, { status: 400 });
   }
 
   const session = await auth();
@@ -33,13 +35,14 @@ export async function GET(
     const db = getNeonClient();
     await ensureSchema(db);
 
-    // Look up the repo first (rather than joining by name below) so access
-    // can be checked before any snapshot data is returned. Signed in is not
-    // itself proof of access to *this* repo (CWE-639): `repos` has no
+    // Look up the repo first using full_name (preferred) or short name
+    // Signed in is not itself proof of access to *this* repo (CWE-639): `repos` has no
     // per-row owner. 404 (not 403) so a private repo's existence isn't
     // confirmed to a caller who can't see it.
     const [repo] = await db`
-      SELECT id, full_name, private_repo, visibility_verified FROM repos WHERE name = ${name} LIMIT 1
+      SELECT id, full_name, private_repo, visibility_verified FROM repos
+      WHERE ${fullName ? `full_name = ${fullName}` : `name = ${name}`}
+      LIMIT 1
     ` as unknown as RepoAccessCheck[];
     if (!repo) {
       return NextResponse.json({ error: 'Repo not found' }, { status: 404 });

@@ -11,6 +11,7 @@ import {
     findStaleDocs,
     parseChatMessages,
     parseDocEditProposal,
+    parseTaskOperationProposal,
     type RepoChatSnapshot,
 } from '@/lib/repo-chat';
 import { canAccessRepo } from '@/lib/repo-access';
@@ -155,7 +156,8 @@ export async function POST(
         // /user/emails fallback also fails -- which would otherwise let such
         // a session skip metering entirely (CWE-770). session.userId (GitHub's
         // numeric user id, lib/auth-session.ts) is set once signed in.
-        const meterId = session.user?.email ?? session.userId;
+        // Use stable userId (GitHub numeric ID) as primary, email as fallback
+        const meterId = session.userId ?? session.user?.email;
         // Both are absent only for a malformed/corrupted session -- fail
         // closed rather than silently letting it ride the shared key
         // unmetered.
@@ -173,9 +175,11 @@ export async function POST(
         // heavy user can't starve everyone else on it.
         let userOverride: { provider: AIProvider; apiKey: string } | undefined;
         let rateLimitWarning: string | undefined;
-        if (session?.user?.email) {
+        // Use stable userId (GitHub numeric ID) as primary, email as fallback for BYOK key storage
+        const byokUserEmail = session.user?.email ?? session.userId;
+        if (byokUserEmail) {
             const keyRows = (await db`
-                SELECT provider, api_key_encrypted FROM user_ai_keys WHERE user_email = ${session.user.email} LIMIT 1
+                SELECT provider, api_key_encrypted FROM user_ai_keys WHERE user_email = ${byokUserEmail} LIMIT 1
             `) as Array<{ provider: string; api_key_encrypted: string }>;
 
             if (keyRows.length > 0 && isKnownProvider(keyRows[0].provider)) {
@@ -290,11 +294,13 @@ export async function POST(
         }
 
         const proposal = parseDocEditProposal(reply);
+        const taskProposal = parseTaskOperationProposal(reply);
 
         return NextResponse.json({
             success: true,
             reply,
             proposal,
+            taskProposal,
             usingOwnKey,
             rateLimitWarning,
             context: {

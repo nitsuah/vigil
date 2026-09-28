@@ -496,6 +496,31 @@ export default function Dashboard() {
           setPreviewMode('single');
           setPreviewModalOpen(true);
         }}
+        onApplyTaskProposal={async (taskProposal) => {
+          if (!chatRepoName) return;
+          try {
+            const res = await fetch(`/api/repos/${encodeURIComponent(chatRepoName)}/tasks`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(taskProposal),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              const msg = data?.error || `Task operation failed (${res.status})`;
+              setToastMessage(msg);
+              return;
+            }
+            // Success: dismiss proposal and show PR link
+            dismissProposal(chatRepoName, taskProposal.taskId || '');
+            if (data.prUrl) {
+              setToastMessage(`Task ${taskProposal.operation.replace('_', ' ')} complete — PR created: ${data.prUrl}`);
+            } else {
+              setToastMessage(`Task ${taskProposal.operation.replace('_', ' ')} complete`);
+            }
+          } catch {
+            setToastMessage('Network error - could not apply task operation');
+          }
+        }}
         onDismissProposal={(messageId) => {
           if (chatRepoName) dismissProposal(chatRepoName, messageId);
         }}

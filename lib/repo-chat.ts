@@ -467,6 +467,77 @@ export function parseDocEditProposal(reply: string): {
   return null;
 }
 
+/**
+ * Task operation types for chat-driven task completion (stage 3).
+ */
+export type TaskOperationType =
+  | 'check_off'    // Mark task as done (move to Done section)
+  | 'move_to_features'  // Move task to FEATURES.md
+  | 'move_to_roadmap'   // Move task to ROADMAP.md
+  | 'update_status'     // Update task status (todo/in-progress/done)
+  | 'add_task';         // Add a new task
+
+/**
+ * Task operation proposal from chat.
+ */
+export interface TaskOperationProposal {
+  type: 'task_operation';
+  operation: TaskOperationType;
+  taskId?: string;
+  taskTitle?: string;
+  section?: string;
+  newStatus?: 'todo' | 'in-progress' | 'done';
+  newSection?: string;
+  summary: string;
+}
+
+/**
+ * Parse a structured task operation proposal from the model's reply.
+ * Expected format (fenced code block):
+ * ```proposal
+ * {
+ *   "type": "task_operation",
+ *   "operation": "check_off|move_to_features|move_to_roadmap|update_status|add_task",
+ *   "taskId": "optional-task-id",
+ *   "taskTitle": "optional-task-title (used for matching if no ID)",
+ *   "section": "optional-current-section",
+ *   "newStatus": "optional-new-status (for update_status)",
+ *   "newSection": "optional-new-section (for update_status)",
+ *   "summary": "one-line description of the change"
+ * }
+ * ```
+ * Returns null if no valid proposal found.
+ */
+export function parseTaskOperationProposal(reply: string): TaskOperationProposal | null {
+  const match = reply.match(/```proposal\s*(\{[\s\S]*?\})\s*```/);
+  if (!match) return null;
+  try {
+    const parsed: unknown = JSON.parse(match[1]);
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      (parsed as Record<string, unknown>).type === 'task_operation' &&
+      typeof (parsed as Record<string, unknown>).operation === 'string' &&
+      typeof (parsed as Record<string, unknown>).summary === 'string'
+    ) {
+      const p = parsed as Record<string, unknown>;
+      return {
+        type: 'task_operation',
+        operation: p.operation as TaskOperationType,
+        taskId: typeof p.taskId === 'string' ? p.taskId : undefined,
+        taskTitle: typeof p.taskTitle === 'string' ? p.taskTitle : undefined,
+        section: typeof p.section === 'string' ? p.section : undefined,
+        newStatus: p.newStatus as 'todo' | 'in-progress' | 'done' | undefined,
+        newSection: typeof p.newSection === 'string' ? p.newSection : undefined,
+        summary: p.summary as string,
+      };
+    }
+  } catch {
+    // Invalid JSON
+  }
+  return null;
+}
+
 export interface ParsedMessages {
     ok: boolean;
     messages?: ChatMessage[];
