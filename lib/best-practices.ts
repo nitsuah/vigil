@@ -99,7 +99,8 @@ export async function checkBestPractices(
                 const defaultBranch = repoData.default_branch;
 
                 // Fetch all pages of rulesets (pagination)
-                const allRulesets: Array<{ target: string; enforcement: string; id: number }> = [];
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- GitHub API returns complex union types for rulesets
+                const allRulesets: any[] = [];
                 for await (const { data: page } of octokit.paginate.iterator(
                     octokit.rest.repos.getRepoRulesets,
                     { owner, repo, per_page: 100 }
@@ -108,13 +109,18 @@ export async function checkBestPractices(
                 }
 
                 // Find rulesets targeting branches with active enforcement
-                const candidateRulesets = allRulesets.filter(rs =>
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- GitHub API returns complex union types for rulesets
+                const candidateRulesets = allRulesets.filter((rs: any) =>
                     rs.target === 'branch' && rs.enforcement === 'active'
                 );
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- GitHub API returns complex union types for rulesets
+                type RulesetDetail = any;
+
                 for (const rs of candidateRulesets) {
                     // Fetch full ruleset details to get conditions (summary may lack them)
-                    let ruleset: typeof rs;
+                     
+                    let ruleset: RulesetDetail = rs;
                     try {
                         const { data: fullRuleset } = await octokit.rest.repos.getRepoRuleset({
                             owner,
@@ -199,9 +205,23 @@ export async function checkBestPractices(
         }
 
         if (protection) {
-            const reviews = protection?.required_pull_request_reviews;
-            const statusChecks = protection?.required_status_checks;
-            
+            // Type narrowing for protection rules
+            type ProtectionRules = {
+                required_pull_request_reviews?: { required_approving_review_count?: number; dismiss_stale_reviews?: boolean; require_code_owner_reviews?: boolean };
+                required_status_checks?: { strict?: boolean; contexts?: string[] };
+                required_signatures?: Record<string, unknown>;
+                required_linear_history?: Record<string, unknown>;
+                required_conversation_resolution?: Record<string, unknown>;
+                allow_force_pushes?: { enabled: boolean };
+                allow_deletions?: { enabled: boolean };
+                lock_branch?: { enabled: boolean };
+                allow_fork_syncing?: { enabled: boolean };
+            };
+
+            const rules = protection as ProtectionRules;
+            const reviews = rules.required_pull_request_reviews;
+            const statusChecks = rules.required_status_checks;
+
             // Calculate score based on protection features (10 conditions, maxScore=10)
             let score = 0;
             const maxScore = 10;
