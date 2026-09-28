@@ -142,12 +142,14 @@ export async function checkBestPractices(
                             resolvedPattern = 'refs/heads/**';
                         }
 
-                        // Convert fnmatch to regex: * -> [^/]+, ** -> .*, literal dots
+                        // Convert fnmatch to regex: * -> [^/]+, ** -> .*
+                        // Escape regex metacharacters (including backslash) before restoring wildcards.
                         const escaped = resolvedPattern
-                            .replace(/\./g, '\\.')
                             .replace(/\*\*/g, '___DOUBLE_STAR___')
-                            .replace(/\*/g, '[^/]+')
-                            .replace(/___DOUBLE_STAR___/g, '.*');
+                            .replace(/\*/g, '___SINGLE_STAR___')
+                            .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                            .replace(/___DOUBLE_STAR___/g, '.*')
+                            .replace(/___SINGLE_STAR___/g, '[^/]+');
                         const regex = new RegExp('^' + escaped + '$');
                         return regex.test(ref);
                     }
