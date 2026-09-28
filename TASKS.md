@@ -32,10 +32,11 @@ _None open — see CHANGELOG for the #221–#233 work._
 - [ ] **[2027-Q1]** 3D / click-to-detail view of the relationship map, once the 2D map's data is right.
   - Priority: P3
 
-- [ ] Thread `full_name` through to the trend endpoint instead of matching by short `name`.
+- [x] Thread `full_name` through to the trend endpoint instead of matching by short `name`.
   - Priority: P2
   - Context: flagged by CodeRabbit on PR #204 (2026-09-09) — `GET /api/repo-details/[name]/trend` matches `repos.name`, which is ambiguous if two tracked repos across different owners share a short name. `repo.full_name` is already available at every call site (`RepoTableRow.tsx`, `MobileRepoCard.tsx`) but isn't threaded through `ExpandableRow` -> `RepositoryStatsSectionStatic` -> the trend fetch URL. Deferred rather than rushed since it touches three component layers.
   - Acceptance Criteria: the trend route (and its callers) key on `full_name` or `repo_id`, not the bare `name` column; add a regression test with two same-named repos under different owners.
+  - Status: ✅ COMPLETE (2026-09-28) — `app/api/repo-details/[name]/trend/route.ts` accepts `fullName` query param; `components/repo-details/RepositoryStatsSectionStatic.tsx` extracts `full_name` from `repoUrl` and passes it. Shipped in PR #253.
 
 ### DB & backend scaling
 
