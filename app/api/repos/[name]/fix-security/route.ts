@@ -73,9 +73,9 @@ export async function POST(
                 }
 
                 case 'security_advisories': {
-                    // Security advisories are enabled via GitHub repo settings API
-                    // This requires admin permissions - create a PR that documents the setting
-                    // and add a workflow to enable it via GitHub CLI if needed
+                    // GitHub Security Advisories are available for eligible public repositories on GitHub.com.
+                    // They cannot be enabled via API - GitHub automatically enables them for qualifying repos.
+                    // The fix focuses on documenting the vulnerability reporting process via SECURITY.md.
                     const templatePath = path.join(process.cwd(), 'templates', 'community-standards', 'SECURITY.md');
                     const content = await fs.readFile(templatePath, 'utf-8');
                     filesToAdd.push({
@@ -83,37 +83,8 @@ export async function POST(
                         content
                     });
 
-                    // Add a setup script to enable security advisories via GitHub CLI
-                    // Uses the proper endpoint: PATCH /repos/{owner}/{repo} with security_and_analysis
-                    const setupScript = `#!/bin/bash
-# Enable GitHub Security Advisories for this repository
-# Run this script locally with: gh auth login && bash enable-security-advisories.sh
-
-set -e
-
-REPO="\${GITHUB_REPOSITORY}"
-echo "Enabling Security Advisories for \${REPO}..."
-
-# Enable security advisories via GitHub API using JSON input
-gh api --method PATCH /repos/\${REPO} --input - <<'EOF'
-{
-  "security_and_analysis": {
-    "security_advisories": {
-      "status": "enabled"
-    }
-  }
-}
-EOF
-
-echo "Security Advisories enabled for \${REPO}"
-`;
-                    filesToAdd.push({
-                        path: 'scripts/enable-security-advisories.sh',
-                        content: setupScript
-                    });
-
-                    branchName = `chore-enable-security-advisories-${Date.now()}`;
-                    commitMessage = 'chore: enable GitHub Security Advisories';
+                    branchName = `chore-add-security-policy-${Date.now()}`;
+                    commitMessage = 'chore: add Security Policy (SECURITY.md) for vulnerability reporting';
                     break;
                 }
 
@@ -125,7 +96,16 @@ echo "Security Advisories enabled for \${REPO}"
 
 set -e
 
+# Resolve the repository - use GITHUB_REPOSITORY if set (in Actions), otherwise detect from git remote
 REPO="\${GITHUB_REPOSITORY}"
+if [ -z "\${REPO}" ]; then
+    REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"
+    if [ -z "\${REPO}" ]; then
+        echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
+        exit 1
+    fi
+fi
+
 echo "Enabling Private Vulnerability Reporting for \${REPO}..."
 
 # Enable private vulnerability reporting via dedicated GitHub API endpoint
@@ -162,25 +142,30 @@ echo "Private Vulnerability Reporting enabled for \${REPO}"
                     });
 
                     // Add a setup script to enable Dependabot alerts via GitHub API
+                    // Uses PUT /repos/{owner}/{repo}/vulnerability-alerts endpoint
                     const setupScript = `#!/bin/bash
 # Enable Dependabot Alerts for this repository
 # Run this script locally with: gh auth login && bash enable-dependabot-alerts.sh
 
 set -e
 
+# Resolve the repository - use GITHUB_REPOSITORY if set (in Actions), otherwise detect from git remote
 REPO="\${GITHUB_REPOSITORY}"
+if [ -z "\${REPO}" ]; then
+    REPO="\$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)"
+    if [ -z "\${REPO}" ]; then
+        echo "Error: Could not determine repository. Set GITHUB_REPOSITORY or run from a git repository with gh CLI."
+        exit 1
+    fi
+fi
+
 echo "Enabling Dependabot Alerts for \${REPO}..."
 
 # Enable Dependabot alerts via GitHub API
-gh api --method PATCH /repos/\${REPO} --input - <<'EOF'
-{
-  "security_and_analysis": {
-    "dependabot_security_updates": {
-      "status": "enabled"
-    }
-  }
-}
-EOF
+gh api --method PUT /repos/\${REPO}/vulnerability-alerts
+
+# Verify alerts are enabled
+gh api /repos/\${REPO}/vulnerability-alerts --jq '.enabled'
 
 echo "Dependabot Alerts enabled for \${REPO}"
 `;
@@ -206,16 +191,12 @@ echo "Dependabot Alerts enabled for \${REPO}"
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
   schedule:
     - cron: '0 0 * * 0'
 
 permissions:
   contents: read
-  security-events: write
-  actions: read
 
 jobs:
   analyze:

@@ -94,22 +94,75 @@ export async function checkBestPractices(
         // Rulesets can protect branches even without legacy branch protection
         if (!protection) {
             try {
+                // Fetch the repository to get default branch for selector resolution
+                const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+                const defaultBranch = repoData.default_branch;
+
                 const { data: rulesets } = await octokit.rest.repos.getRepoRulesets({
                     owner,
                     repo,
                 });
-                const branchRuleset = rulesets.find(rs =>
-                    rs.target === 'branch' &&
-                    rs.enforcement === 'active' &&
-                    rs.conditions?.ref_name?.include?.some((pattern: string) =>
-                        pattern === `refs/heads/${branchName}` ||
-                        pattern === `refs/heads/*` ||
-                        pattern === 'refs/heads/**'
-                    )
+
+                // Find rulesets targeting branches with active enforcement
+                const candidateRulesets = rulesets.filter(rs =>
+                    rs.target === 'branch' && rs.enforcement === 'active'
                 );
-                if (branchRuleset) {
-                    // Treat ruleset as protection - we'll do a simplified check
-                    protection = { source: 'ruleset', ruleset: branchRuleset };
+
+                for (const rs of candidateRulesets) {
+                    // Fetch full ruleset details to get conditions (summary may lack them)
+                    let ruleset: typeof rs;
+                    try {
+                        const { data: fullRuleset } = await octokit.rest.repos.getRepoRuleset({
+                            owner,
+                            repo,
+                            ruleset_id: rs.id,
+                        });
+                        ruleset = fullRuleset;
+                    } catch {
+                        ruleset = rs; // fallback to summary
+                    }
+
+                    // Check if this ruleset applies to our branch
+                    // Handle include patterns: exact match, wildcards, and GitHub selectors (~DEFAULT_BRANCH, ~ALL)
+                    // Also check exclude patterns - excluded branches are NOT protected by this ruleset
+                    const includePatterns = ruleset.conditions?.ref_name?.include ?? [];
+                    const excludePatterns = ruleset.conditions?.ref_name?.exclude ?? [];
+
+                    const matchesInclude = includePatterns.some((pattern: string) => {
+                        // Resolve GitHub selectors
+                        let resolvedPattern = pattern;
+                        if (pattern === '~DEFAULT_BRANCH') {
+                            resolvedPattern = `refs/heads/${defaultBranch}`;
+                        } else if (pattern === '~ALL') {
+                            resolvedPattern = 'refs/heads/**';
+                        }
+
+                        if (resolvedPattern === `refs/heads/${branchName}`) return true;
+                        if (resolvedPattern === 'refs/heads/*' && !branchName.includes('/')) return true;
+                        if (resolvedPattern === 'refs/heads/**') return true;
+                        // Support glob-style patterns
+                        const regex = new RegExp('^' + resolvedPattern.replace(/\*/g, '.*') + '$');
+                        return regex.test(`refs/heads/${branchName}`);
+                    });
+
+                    const matchesExclude = excludePatterns.some((pattern: string) => {
+                        let resolvedPattern = pattern;
+                        if (pattern === '~DEFAULT_BRANCH') {
+                            resolvedPattern = `refs/heads/${defaultBranch}`;
+                        } else if (pattern === '~ALL') {
+                            resolvedPattern = 'refs/heads/**';
+                        }
+                        if (resolvedPattern === `refs/heads/${branchName}`) return true;
+                        if (resolvedPattern === 'refs/heads/*' && !branchName.includes('/')) return true;
+                        if (resolvedPattern === 'refs/heads/**') return true;
+                        const regex = new RegExp('^' + resolvedPattern.replace(/\*/g, '.*') + '$');
+                        return regex.test(`refs/heads/${branchName}`);
+                    });
+
+                    if (matchesInclude && !matchesExclude) {
+                        protection = { source: 'ruleset', ruleset };
+                        break;
+                    }
                 }
             } catch {
                 // Rulesets API not available or no rulesets

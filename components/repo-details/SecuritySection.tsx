@@ -48,6 +48,16 @@ async function fixSecurityFeature(repoName: string, featureType: string) {
       : 'Failed to fix security feature';
     throw new Error(message);
   }
+
+  // Validate success body: require JSON object with non-empty string prUrl
+  if (typeof data !== 'object' || data === null || !('prUrl' in data)) {
+    throw new Error('Invalid response: missing prUrl');
+  }
+  const prUrl = (data as { prUrl?: unknown }).prUrl;
+  if (typeof prUrl !== 'string' || prUrl.trim() === '') {
+    throw new Error('Invalid response: prUrl must be a non-empty string');
+  }
+
   return data as { prUrl: string };
 }
 
