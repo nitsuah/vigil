@@ -18,13 +18,16 @@ _None open — see CHANGELOG for the #221–#233 work._
 
 ### P2 - Medium
 
-- [x] **[2027-Q1]** Chat-driven doc editing (TASKS/ROADMAP/FEATURES) — stage 3 complete.
+- [x] **[2027-Q1]** Chat-driven doc editing (TASKS/ROADMAP/FEATURES) — stages 1–4 complete.
   - Priority: P2
   - Context: the per-repo chat panel (PR #196) only answered questions before this branch — it rebuilt context and replied, but couldn't act.
   - Acceptance Criteria: broken into stages — (1) chat can propose a specific, diffable edit to one doc file and show it inline before applying; (2) accepting the proposal opens a PR via the existing fix-doc PR flow rather than writing directly; (3) the chat can check an item off in TASKS.md or move it to FEATURES.md when the user confirms it's shipped, referencing the same parser the dashboard already uses so state never diverges from what's rendered elsewhere; (4) before calling `createPrForFile`, the caller-supplied target path must be validated against the approved doc list (TASKS.md/ROADMAP.md/FEATURES.md, matching the existing `TARGET_PATHS` mapping) — never pass a chat-supplied path straight through unchecked.
   - Status: ✅ ALL STAGES (1)–(4) COMPLETE — `parseTaskOperationProposal` in `lib/repo-chat.ts` extracts fenced ` ```proposal``` ` JSON for task operations (check_off, move_to_features, move_to_roadmap, update_status, add_task); `RepoChatPanel` renders task proposals as inline cards with Apply/Dismiss; Apply calls new `POST /api/repos/[name]/tasks` which fetches TASKS.md, applies the operation using `parseTasks`/`serializeTasks`, creates PR via `createPrForFile`, and for cross-file moves also updates FEATURES.md/ROADMAP.md in additional PRs; all validated against `TARGET_PATHS`.
 
-- [x] Grow the cross-repo relationship map (foundation shipped: `repo_relationships`, `/api/relationships`, `get_relationships` / `propose_relationship` MCP tools, PMO map).
+- [x] Ship the cross-repo relationship map foundation: `repo_relationships`, `/api/relationships`, `get_relationships` / `propose_relationship` MCP tools, PMO map.
+  - Priority: P2
+
+- [ ] Grow the cross-repo relationship map from real evidence.
   - Priority: P2
   - Next: (1) seed the real edges (confirm or reject what agents propose); (2) an Obsidian import that reads relationship lines from the vault and posts them to `POST /api/relationships` as proposals; (3) a PMO audit / agent pass that proposes edges from real evidence (package.json deps, MCP/API URLs in config, deploy scripts); (4) surface "what depends on this repo" on the repo details panel.
   - Acceptance Criteria: the map reflects real usage for every tracked repo, and agents consult `get_relationships` before cross-repo changes.
