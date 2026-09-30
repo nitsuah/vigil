@@ -95,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Agent instructions (`.github/copilot-instructions.md` and `AGENTS.md`) now require closing tracked work in the same PR: update `TASKS.md`, `ROADMAP.md` and this changelog before the last push, and confirm `git diff origin/main...HEAD --stat` includes them before merge; added `.github/pull_request_template.md` with a "Closes TASKS item(s)" checklist.
 - **Health score weights rebalanced:** Best Practices 30% (was 25%), Security 30% (was 10%), Documentation 15% (was 20%), Testing 15% (was 25%), Community Standards 5% (was 10%), Activity 5% (was 10%) — reflects the primacy of security and engineering hygiene (PR #181)
 - **E2E tests moved to `e2e/`:** `tests/dashboard.spec.ts` → `e2e/dashboard.spec.ts`; `playwright.config.ts` now uses `testDir: './e2e'` (PR #181)
 - **`HealthBreakdown` accessibility:** Native `<button>` replaces `<span role="button">`; `onFocus`/`onBlur` handlers; `aria-describedby` on button and `role="tooltip"` + id on popup; `id` attribute added to popup portal (PR #181)
