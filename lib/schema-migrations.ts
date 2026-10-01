@@ -69,6 +69,13 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
     EXCEPTION WHEN duplicate_object THEN NULL;
     END $$`,
 
+    // repos: user-assigned importance tier (lib/repo-tier.ts). NULL = untiered.
+    `ALTER TABLE repos ADD COLUMN IF NOT EXISTS tier TEXT`,
+    `DO $$ BEGIN
+      ALTER TABLE repos ADD CONSTRAINT repos_tier_check CHECK (tier IS NULL OR tier IN ('T1', 'T2', 'T3', 'T4'));
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$`,
+
     // repos: security configuration
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS has_security_policy BOOLEAN DEFAULT FALSE`,
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS has_security_advisories BOOLEAN DEFAULT FALSE`,

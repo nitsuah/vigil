@@ -34,6 +34,7 @@ import { detectActivityState, ActivityState, MAINTENANCE_MODE_DAYS } from '@/lib
 import { HealthBreakdown } from './repo-row/HealthBreakdown';
 import { HealthShields } from './repo-row/HealthShields';
 import { TypeEditor } from './repo-row/TypeEditor';
+import { TierEditor } from './repo-row/TierEditor';
 import { getTypeIcon } from './repo-row/repo-row-utils';
 
 interface RepoTableRowProps {
@@ -122,6 +123,14 @@ export function RepoTableRow({
                 repoType={repoType}
                 repoName={repo.name}
                 getTypeIcon={getTypeIcon}
+                isAuthenticated={isAuthenticated}
+              />
+            </div>
+            {/* Tier Badge */}
+            <div className={repo.is_hidden ? 'opacity-50 grayscale' : ''}>
+              <TierEditor
+                tier={repo.tier}
+                repoName={repo.name}
                 isAuthenticated={isAuthenticated}
               />
             </div>

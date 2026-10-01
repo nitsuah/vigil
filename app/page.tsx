@@ -89,6 +89,8 @@ export default function Dashboard() {
     setFilterLanguage,
     filterFork,
     setFilterFork,
+    filterTier,
+    setFilterTier,
     sortField,
     sortDirection,
     handleSort,
@@ -297,6 +299,7 @@ export default function Dashboard() {
         filterType={filterType}
         filterLanguage={filterLanguage}
         filterFork={filterFork}
+        filterTier={filterTier}
         languages={languages}
         onAddRepoUrlChange={setAddRepoUrl}
         onAddRepoTypeChange={setAddRepoType}
@@ -307,6 +310,7 @@ export default function Dashboard() {
         onFilterTypeChange={setFilterType}
         onFilterLanguageChange={setFilterLanguage}
         onFilterForkChange={setFilterFork}
+        onFilterTierChange={setFilterTier}
         onClearFilters={clearFilters}
         onStartTour={() => setShowTour(true)}
         showHidden={showHidden}

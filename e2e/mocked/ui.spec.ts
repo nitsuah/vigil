@@ -276,3 +276,66 @@ test.describe('Sync All', () => {
     await context.close();
   });
 });
+
+test.describe('Repo tiers', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  const TIERED = [{ ...REPO, tier: 'T2' }, { ...REPO, id: 'repo-2', name: 'other-repo', full_name: 'acme/other-repo', tier: null }];
+  const table = (page: Page) => page.locator('table tbody');
+
+  test('signed out: an assigned tier is a read-only badge and untiered repos show none', async ({ page }) => {
+    await mockApi(page);
+    await page.route('**/api/repos?*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TIERED) }));
+    await page.goto('/');
+    await expect(table(page)).toContainText('other-repo', { timeout: 30_000 });
+    const badges = table(page).getByTestId('repo-tier-badge');
+    await expect(badges).toHaveCount(1);
+    await expect(badges.first()).toHaveText('T2');
+    expect(await badges.first().evaluate((el) => el.tagName)).toBe('SPAN');
+  });
+
+  test('signed in: picking a tier PATCHes it and the filter narrows to it', async ({ browser }) => {
+    const context = await authenticatedContext(browser);
+    await mockApi(context);
+    await context.route('**/api/repos?*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TIERED) }));
+    const patches: unknown[] = [];
+    await context.route('**/api/repos/*/update-tier', async (route) => {
+      patches.push({ url: route.request().url(), body: route.request().postDataJSON() });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, tier: 'T1' }) });
+    });
+    const page = await context.newPage();
+    const errors = trackPageErrors(page);
+    await page.goto('/');
+    await expect(table(page)).toContainText('other-repo', { timeout: 30_000 });
+
+    const untiered = table(page).getByRole('button', { name: 'Tier for other-repo: none' });
+    await expect(untiered).toHaveText('T–');
+    await untiered.click();
+    await table(page).getByLabel('Set tier for other-repo').selectOption('T1');
+
+    await expect(table(page).getByRole('button', { name: 'Tier for other-repo: T1' })).toHaveText('T1');
+    expect(patches).toEqual([{ url: expect.stringContaining('/api/repos/other-repo/update-tier'), body: { tier: 'T1' } }]);
+
+    await page.getByRole('button', { name: 'Filters', exact: true }).filter({ visible: true }).click();
+    await page.getByLabel('Filter by tier').filter({ visible: true }).selectOption('T2');
+    await expect(table(page)).toContainText('demo-repo');
+    await expect(table(page)).not.toContainText('other-repo');
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+
+  test('signed in: a rejected update reverts the badge', async ({ browser }) => {
+    const context = await authenticatedContext(browser);
+    await mockApi(context);
+    await context.route('**/api/repos?*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TIERED) }));
+    await context.route('**/api/repos/*/update-tier', (route) => route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"Repo not found"}' }));
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(table(page)).toContainText('demo-repo', { timeout: 30_000 });
+
+    await table(page).getByRole('button', { name: 'Tier for demo-repo: T2' }).click();
+    await table(page).getByLabel('Set tier for demo-repo').selectOption('T4');
+    await expect(table(page).getByRole('button', { name: 'Tier for demo-repo: T2' })).toHaveText('T2');
+    await context.close();
+  });
+});
