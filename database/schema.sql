@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS repos (
   ai_summary TEXT,
   health_score INTEGER DEFAULT 0,
   health_profile TEXT NOT NULL DEFAULT 'production' CHECK (health_profile IN ('starter', 'production', 'enterprise')),
+  -- User-assigned importance tier (lib/repo-tier.ts); NULL = untiered.
+  tier TEXT CHECK (tier IS NULL OR tier IN ('T1', 'T2', 'T3', 'T4')),
   testing_status TEXT,
   coverage_score NUMERIC,
   readme_last_updated TIMESTAMP WITH TIME ZONE,

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Repo tiers and Claude Code skill
+
+- **Added:** repository tiers. Each repo can be tagged T1 (Critical), T2 (Important), T3 (Standard) or T4 (Low) from a badge next to its type icon, on desktop rows and mobile cards. Stored in a new nullable `repos.tier` column (self-applied by `ensureSchema`), set via `PATCH /api/repos/[name]/update-tier` (write grant required, `null` clears), filterable in the dashboard filter bar including "Untiered".
+- **Added:** MCP `list_repos` accepts a `tier` filter and returns `tier`; `get_repo_health` and `GET /api/context` include it too.
+- **Added:** `skills/vigil/` Claude Code skill (`SKILL.md` + `reference.md`): when to use Vigil, which MCP tool answers which question, triage / cross-repo / close-tracked-work workflows, the doc formats the parsers read, and common failure modes. Install steps in the README.
+- **Docs:** README documents tiers, the skill, and previously undocumented routes (`update-type`, `update-health-profile`, `fix-security`, `improve-doc`, `suggest-*`, `chat`, `tasks`, `roadmap-items`, `settings/ai-key`, `health`, trend). The project page (`site/`) gains tier, chat/AI, and skill sections.
+- **Tests:** `update-tier` route (401, valid tier, clear with null, 400 on unknown, 404 without a grant, 409 on ambiguous name) and `lib/repo-tier` helpers.
+
 ### Project page and launch video
 
 - **Added:** GitHub Pages landing page in `site/` (hero video, real UI captures, MCP tool list, install steps), deployed by `.github/workflows/pages.yml` on pushes to `main` that touch `site/`.

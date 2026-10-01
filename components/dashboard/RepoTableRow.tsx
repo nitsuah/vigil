@@ -34,6 +34,8 @@ import { detectActivityState, ActivityState, MAINTENANCE_MODE_DAYS } from '@/lib
 import { HealthBreakdown } from './repo-row/HealthBreakdown';
 import { HealthShields } from './repo-row/HealthShields';
 import { TypeEditor } from './repo-row/TypeEditor';
+import { TierEditor } from './repo-row/TierEditor';
+import type { RepoTier } from '@/lib/repo-tier';
 import { getTypeIcon } from './repo-row/repo-row-utils';
 
 interface RepoTableRowProps {
@@ -61,6 +63,8 @@ interface RepoTableRowProps {
   onSyncSingleRepo: () => void;
   onUnhide?: () => void;
   onOpenChat?: () => void;
+  /** Writes a tier change into the dashboard's shared repo list. */
+  onTierChange?: (tier: RepoTier | null) => void;
 }
 
 export function RepoTableRow({
@@ -88,6 +92,7 @@ export function RepoTableRow({
   onSyncSingleRepo,
   onUnhide,
   onOpenChat,
+  onTierChange,
 }: RepoTableRowProps) {
 
   // Centralized repo type resolution - use stored type or detect from metadata
@@ -122,6 +127,15 @@ export function RepoTableRow({
                 repoType={repoType}
                 repoName={repo.name}
                 getTypeIcon={getTypeIcon}
+                isAuthenticated={isAuthenticated}
+              />
+            </div>
+            {/* Tier Badge */}
+            <div className={repo.is_hidden ? 'opacity-50 grayscale' : ''}>
+              <TierEditor
+                tier={repo.tier}
+                onTierChange={onTierChange}
+                repoName={repo.name}
                 isAuthenticated={isAuthenticated}
               />
             </div>

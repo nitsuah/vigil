@@ -68,17 +68,20 @@ The shell expands `$VIGIL_MCP_KEY` when you run `claude mcp add`, so the literal
 | `list_tasks`                  | All tasks, including done ones, for **one** repo                                                                                                                                                                                                                                                                                                 |
 | `get_repo_details`            | One repo's tasks, roadmap, docs, best practices, community standards                                                                                                                                                                                                                                                                             |
 | `get_repo_health`             | One repo's health score, CI, vulnerabilities                                                                                                                                                                                                                                                                                                     |
-| `list_repos` / `search_repos` | Portfolio listing and search                                                                                                                                                                                                                                                                                                                     |
+| `list_repos` / `search_repos` | Portfolio listing and search. `list_repos` filters: `min_health`, `language`, `type`, `has_vulns`, `tier` (`T1`–`T4` or `untiered`)                                                                                                                                                                                                              |
 | `get_portfolio_overview`      | Health and CI distribution, what needs attention                                                                                                                                                                                                                                                                                                 |
 | `get_security_summary`        | Security posture, one repo or all                                                                                                                                                                                                                                                                                                                |
 
 `GET /api/context` (same bearer key) returns a one-shot JSON portfolio dump. Its `open_work` block holds the P0/P1 slice; call `get_open_tasks` for the rest. Its `relationships` block lists every edge as one line (`source kind target: context`).
+
+Install the [Claude Code skill](../skills/vigil/SKILL.md) so sessions know when to reach for these tools without being told (see the README's "Use it from Claude Code").
 
 Example prompts in a Claude Code session:
 
 - "Use vigil to list open P0 and P1 tasks across all repos."
 - "What's in progress in skyview and darkmoon?"
 - "Which repos have no prioritized tasks?" (Use `priority: ["none"]` and read `by_repo`.)
+- "List my T1 repos and their open P0/P1 work." (`list_repos` with `tier: "T1"`, then `get_open_tasks`.)
 
 ## How tasks get their priority and owner
 

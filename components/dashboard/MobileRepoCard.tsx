@@ -26,6 +26,8 @@ import { getHealthGrade } from '@/lib/dashboard-utils';
 import { detectActivityState, ActivityState, MAINTENANCE_MODE_DAYS } from '@/lib/repo-signals';
 import { HealthBreakdown } from './repo-row/HealthBreakdown';
 import { TypeEditor } from './repo-row/TypeEditor';
+import { TierEditor } from './repo-row/TierEditor';
+import type { RepoTier } from '@/lib/repo-tier';
 import { getTypeIcon } from './repo-row/repo-row-utils';
 
 interface MobileRepoCardProps {
@@ -49,6 +51,8 @@ interface MobileRepoCardProps {
   onSyncSingleRepo: () => void;
   onUnhide?: () => void;
   onOpenChat?: () => void;
+  /** Writes a tier change into the dashboard's shared repo list. */
+  onTierChange?: (tier: RepoTier | null) => void;
 }
 
 const DOC_ICONS = [
@@ -80,6 +84,7 @@ export function MobileRepoCard({
   onSyncSingleRepo,
   onUnhide,
   onOpenChat,
+  onTierChange,
 }: MobileRepoCardProps) {
   const repoType = repo.repo_type
     ? (repo.repo_type as RepoType)
@@ -160,6 +165,14 @@ export function MobileRepoCard({
                   repoType={repoType}
                   repoName={repo.name}
                   getTypeIcon={getTypeIcon}
+                  isAuthenticated={isAuthenticated}
+                />
+              </div>
+              <div className={`pointer-events-auto ${repo.is_hidden ? 'opacity-50 grayscale' : ''}`}>
+                <TierEditor
+                  tier={repo.tier}
+                  onTierChange={onTierChange}
+                  repoName={repo.name}
                   isAuthenticated={isAuthenticated}
                 />
               </div>

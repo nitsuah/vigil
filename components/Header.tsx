@@ -9,6 +9,7 @@ import Image from "next/image";
 import { getLanguageColor } from "@/lib/language-colors";
 import { useState } from "react";
 import { RepoType } from "@/lib/repo-type";
+import { REPO_TIERS, type TierFilter } from "@/lib/repo-tier";
 import { useRateLimit, RateLimitDisplay } from "./RateLimitIndicator";
 import { ProfileMenu } from "./ProfileMenu";
 
@@ -24,6 +25,7 @@ interface HeaderProps {
     filterType?: RepoType | 'all';
     filterLanguage?: string;
     filterFork?: 'all' | 'no-forks' | 'forks-only';
+    filterTier?: TierFilter;
     languages?: string[];
     onAddRepoUrlChange?: (url: string) => void;
     onAddRepoTypeChange?: (type: RepoType) => void;
@@ -34,6 +36,7 @@ interface HeaderProps {
     onFilterTypeChange?: (type: RepoType | 'all') => void;
     onFilterLanguageChange?: (language: string) => void;
     onFilterForkChange?: (fork: 'all' | 'no-forks' | 'forks-only') => void;
+    onFilterTierChange?: (tier: TierFilter) => void;
     onClearFilters?: () => void;
     onStartTour?: () => void;
     showHidden?: boolean;
@@ -58,6 +61,7 @@ export default function Header(props: HeaderProps = {}) {
         filterType,
         filterLanguage,
         filterFork,
+        filterTier = 'all',
         languages = [],
         onAddRepoUrlChange,
         onAddRepoTypeChange,
@@ -68,6 +72,7 @@ export default function Header(props: HeaderProps = {}) {
         onFilterTypeChange,
         onFilterLanguageChange,
         onFilterForkChange,
+        onFilterTierChange,
         onClearFilters,
         onStartTour,
         showHidden,
@@ -76,7 +81,7 @@ export default function Header(props: HeaderProps = {}) {
     } = props;
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const hasActiveFilters = filterType && (filterType !== 'all' || filterLanguage !== 'all' || filterFork !== 'all');
+    const hasActiveFilters = filterType && (filterType !== 'all' || filterLanguage !== 'all' || filterFork !== 'all' || filterTier !== 'all');
 
     if (status === "loading") return null;
 
@@ -236,6 +241,20 @@ export default function Header(props: HeaderProps = {}) {
                                             <option value="no-forks" className="bg-slate-900 text-slate-300">No Forks</option>
                                             <option value="forks-only" className="bg-slate-900 text-slate-300">Forks Only</option>
                                         </select>
+                                        {onFilterTierChange && (
+                                            <select
+                                                aria-label="Filter by tier"
+                                                value={filterTier}
+                                                onChange={(e) => onFilterTierChange(e.target.value as TierFilter)}
+                                                className="px-3 py-1.5 bg-slate-700/60 border-2 border-amber-500/60 rounded-lg text-slate-100 hover:border-amber-400/80 hover:shadow-sm hover:shadow-amber-500/30 focus:outline-none focus:border-amber-400 transition-all duration-200 text-sm font-medium cursor-pointer"
+                                            >
+                                                <option value="all" className="bg-slate-900 text-slate-300">Tier</option>
+                                                {REPO_TIERS.map((t) => (
+                                                    <option key={t.id} value={t.id} className="bg-slate-900 text-slate-300">{t.id} · {t.label}</option>
+                                                ))}
+                                                <option value="untiered" className="bg-slate-900 text-slate-300">Untiered</option>
+                                            </select>
+                                        )}
                                         {/* Hidden toggle inside filter dropdown */}
                                         {onToggleHidden && (
                                             <button
@@ -486,6 +505,20 @@ export default function Header(props: HeaderProps = {}) {
                                 <option value="no-forks">No Forks</option>
                                 <option value="forks-only">Forks Only</option>
                             </select>
+                            {onFilterTierChange && (
+                                <select
+                                    aria-label="Filter by tier"
+                                    value={filterTier}
+                                    onChange={(e) => onFilterTierChange(e.target.value as TierFilter)}
+                                    className="flex-1 px-3 py-2 bg-slate-700/60 border border-amber-500/60 rounded-lg text-slate-100 focus:outline-none text-sm"
+                                >
+                                    <option value="all">All Tiers</option>
+                                    {REPO_TIERS.map((t) => (
+                                        <option key={t.id} value={t.id}>{t.id} · {t.label}</option>
+                                    ))}
+                                    <option value="untiered">Untiered</option>
+                                </select>
+                            )}
                         </div>
                         {/* Hidden toggle inside mobile filter dropdown */}
                         {onToggleHidden && (

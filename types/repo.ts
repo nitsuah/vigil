@@ -84,6 +84,8 @@ export interface Repo {
   last_synced: string;
   is_fork?: boolean;
   repo_type?: string;
+  /** User-assigned importance tier (lib/repo-tier.ts); null = untiered. */
+  tier?: 'T1' | 'T2' | 'T3' | 'T4' | null;
   health_score?: number;
   testing_status?: string;
   coverage_score?: number;

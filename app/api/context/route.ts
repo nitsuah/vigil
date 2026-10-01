@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
           url:              repo.url,
           language:         repo.language,
           repo_type:        repo.repo_type,
+          tier:             repo.tier ?? null,
           stars:            repo.stars,
           forks:            repo.forks,
           last_commit_date: repo.last_commit_date,
@@ -175,7 +176,7 @@ export async function GET(req: NextRequest) {
     // Portfolio context
     // -----------------------------------------------------------------------
     const allRows = (await db`
-      SELECT id, name, full_name, description, url, language, repo_type, health_score,
+      SELECT id, name, full_name, description, url, language, repo_type, tier, health_score,
              ci_status, open_prs, open_issues_count, vuln_critical_count, vuln_high_count,
              secret_scanning_alert_count, last_commit_date, stars, testing_status,
              coverage_score, last_synced
@@ -229,6 +230,7 @@ export async function GET(req: NextRequest) {
         description:  r.description,
         language:     r.language,
         type:         r.repo_type,
+        tier:         r.tier ?? null,
         url:          r.url,
         health: {
           score: r.health_score ?? null,

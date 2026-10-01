@@ -195,6 +195,14 @@ main { padding: 0 var(--gutter); }
 }
 
 /* Vigil additions */
+.priv-grid h3 + p { margin-top: 10px; }
+.tier-row { display: flex; gap: 6px; }
+.tier { font: 600 0.75rem var(--mono); padding: 3px 8px; border-radius: 6px; border: 1px solid; }
+.tier.t1 { color: #fca5a5; background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.5); }
+.tier.t2 { color: #fcd34d; background: rgba(245,158,11,.15); border-color: rgba(245,158,11,.5); }
+.tier.t3 { color: #7dd3fc; background: rgba(14,165,233,.15); border-color: rgba(14,165,233,.5); }
+.tier.t4 { color: #cbd5e1; background: rgba(100,116,139,.15); border-color: rgba(100,116,139,.5); }
+#skill .install { margin: 0; }
 .mark-icon { color: #a5b4fc; filter: drop-shadow(0 0 10px rgba(168,85,247,.5)); }
 .pri-toggle button[aria-pressed="true"] { color: #fbbf24; border-color: rgba(245,158,11,.6); background: rgba(245,158,11,.1); }
 .t-p0 { color: #f87171; font-weight: 600; } .t-p1 { color: #fbbf24; font-weight: 600; }

@@ -25,9 +25,9 @@ const repo = <T extends { name: string; health_score: number }>(over: T) => ({
 });
 
 const REPOS = [
-  repo({ name: 'vigil', description: 'Portfolio health dashboard, PMO, and MCP server', language: 'TypeScript', repo_type: 'web-app', health_score: 92, total_loc: 48210, coverage_score: '81.2' }),
-  repo({ name: 'agent-board', description: 'Local agent runtime and task board', language: 'Python', repo_type: 'tool', health_score: 78, total_loc: 15320, coverage_score: '64.0' }),
-  repo({ name: 'darkmoon', description: 'Multiplayer browser game', language: 'TypeScript', repo_type: 'game', health_score: 71, total_loc: 30110, coverage_score: '52.5', ci_status: 'failing' }),
+  repo({ name: 'vigil', tier: 'T1', description: 'Portfolio health dashboard, PMO, and MCP server', language: 'TypeScript', repo_type: 'web-app', health_score: 92, total_loc: 48210, coverage_score: '81.2' }),
+  repo({ name: 'agent-board', tier: 'T2', description: 'Local agent runtime and task board', language: 'Python', repo_type: 'tool', health_score: 78, total_loc: 15320, coverage_score: '64.0' }),
+  repo({ name: 'darkmoon', tier: 'T3', description: 'Multiplayer browser game', language: 'TypeScript', repo_type: 'game', health_score: 71, total_loc: 30110, coverage_score: '52.5', ci_status: 'failing' }),
   repo({ name: 'skyview', description: 'Drone services marketplace', language: 'JavaScript', repo_type: 'web-app', health_score: 64, total_loc: 21900, coverage_score: '40.1' }),
 ];
 

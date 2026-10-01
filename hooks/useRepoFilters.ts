@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { Repo } from '@/types/repo';
 import { RepoType, detectRepoType } from '@/lib/repo-type';
 import { ForkFilter } from '@/lib/sync-filters';
+import { TierFilter, matchesTierFilter } from '@/lib/repo-tier';
 
 export type SortField = 'name' | 'health' | 'stars' | 'updated' | 'language';
 export type SortDirection = 'asc' | 'desc';
@@ -12,6 +13,7 @@ export function useRepoFilters(repos: Repo[]) {
   const [filterType, setFilterType] = useState<RepoType | 'all'>('all');
   const [filterLanguage, setFilterLanguage] = useState<string>('all');
   const [filterFork, setFilterFork] = useState<ForkFilter>('all');
+  const [filterTier, setFilterTier] = useState<TierFilter>('all');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
@@ -28,6 +30,7 @@ export function useRepoFilters(repos: Repo[]) {
       if (filterLanguage !== 'all' && repo.language !== filterLanguage) return false;
       if (filterFork === 'no-forks' && repo.is_fork) return false;
       if (filterFork === 'forks-only' && !repo.is_fork) return false;
+      if (!matchesTierFilter(repo.tier, filterTier)) return false;
       return true;
     });
 
@@ -66,12 +69,13 @@ export function useRepoFilters(repos: Repo[]) {
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [repos, filterType, filterLanguage, filterFork, sortField, sortDirection]);
+  }, [repos, filterType, filterLanguage, filterFork, filterTier, sortField, sortDirection]);
 
   const clearFilters = () => {
     setFilterType('all');
     setFilterLanguage('all');
     setFilterFork('all');
+    setFilterTier('all');
     setSortField('name');
     setSortDirection('asc');
   };
@@ -92,6 +96,8 @@ export function useRepoFilters(repos: Repo[]) {
     setFilterLanguage,
     filterFork,
     setFilterFork,
+    filterTier,
+    setFilterTier,
     sortField,
     sortDirection,
     handleSort,

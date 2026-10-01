@@ -29,6 +29,7 @@
     <nav aria-label="Primary">
       <a href="#features">Features</a>
       <a href="#mcp">MCP</a>
+      <a href="#skill">Skill</a>
       <a href="#install">Install</a>
       <a class="nav-gh" href="https://github.com/nitsuah/vigil" target="_blank" rel="noopener">GitHub</a>
     </nav>
@@ -127,11 +128,44 @@
     <div class="shot shot-wide"><img src="assets/relationships.webp" alt="Relationship graph of ten repos next to a list of edges with context, including one proposed by an agent that needs review" loading="lazy" /></div>
   </section>
 
+  <section class="privacy" id="more" aria-labelledby="more-title">
+    <p class="kicker">Also in the box</p>
+    <h2 id="more-title">Everything else <span class="emph">you'll reach for.</span></h2>
+    <div class="priv-grid">
+      <div>
+        <h3>Repo tiers</h3>
+        <p class="tier-row" aria-hidden="true"><span class="tier t1">T1</span><span class="tier t2">T2</span><span class="tier t3">T3</span><span class="tier t4">T4</span></p>
+        <p>Tag each repo Critical, Important, Standard or Low from a badge beside its type icon. Filter the dashboard by tier, and agents can ask <code>list_repos</code> for just your T1s.</p>
+      </div>
+      <div>
+        <h3>Chat with any repo</h3>
+        <p>A chat thread per repo, grounded in its synced health, docs, tasks and roadmap. Ask what to do next; it can propose a doc edit or tick a task off, and each one lands as a PR you review.</p>
+      </div>
+      <div>
+        <h3>AI that shows its work</h3>
+        <p><strong>Improve</strong> rewrites an existing doc and shows a before/after diff. <strong>Suggest</strong> drafts features and roadmap goals from the repo's own signals. Summaries on demand.</p>
+      </div>
+      <div>
+        <h3>Your key, any provider</h3>
+        <p>Gemini by default with automatic failover to OpenAI and Anthropic, per-provider circuit breakers, and bring-your-own-key, encrypted at rest.</p>
+      </div>
+      <div>
+        <h3>Synced on push</h3>
+        <p>A GitHub webhook re-syncs a repo seconds after each push. Every sync records a snapshot, so the health sparkline shows which way a repo is trending.</p>
+      </div>
+      <div>
+        <h3>Docs that stay current</h3>
+        <p>A CI recipe regenerates architecture diagrams and app screenshots into your README via a bot PR. Vigil detects it as a best practice across your repos.</p>
+      </div>
+    </div>
+  </section>
+
+
   <section class="mcp" id="mcp" aria-labelledby="mcp-title">
     <div class="mcp-copy">
       <p class="kicker">Built for agents</p>
       <h2 id="mcp-title">Your agents <span class="emph">read it too.</span></h2>
-      <p>A JSON-RPC MCP server at <code>/api/mcp</code> works with <code class="nowrap">claude mcp add</code> over HTTP. <code>GET /api/context</code> returns the same portfolio as one LLM-ready JSON document.</p>
+      <p>A JSON-RPC MCP server at <code>/api/mcp</code> works with <code class="nowrap">claude mcp add</code> over HTTP. <code>GET /api/context</code> returns the same portfolio as one LLM-ready JSON document. Filter by health, language, type, open vulnerabilities or tier.</p>
       <ul class="tools" aria-label="MCP tools">
         <li>get_open_tasks</li><li>get_relationships</li><li>propose_relationship</li><li>get_portfolio_overview</li>
         <li>list_repos</li><li>get_repo_health</li><li>get_repo_details</li><li>list_tasks</li>
@@ -150,6 +184,29 @@
     </div>
   </section>
 
+  <section class="mcp" id="skill" aria-labelledby="skill-title">
+    <div class="mcp-copy">
+      <p class="kicker">Claude Code skill</p>
+      <h2 id="skill-title">Teach Claude <span class="emph">how you work.</span></h2>
+      <p>Drop <code>skills/vigil/</code> into <code>~/.claude/skills/</code> and Claude knows when to reach for Vigil without being asked, and how to leave your repos in a shape Vigil can read.</p>
+      <ul class="ticks">
+        <li>Which MCP tool answers which question, P0 first, T1 first</li>
+        <li>Check <code>get_relationships</code> before changing anything another repo calls</li>
+        <li>Close the <code>TASKS.md</code> item in the same PR that finishes it</li>
+        <li>The task, roadmap and feature formats the parsers expect</li>
+      </ul>
+    </div>
+    <pre class="install"><button class="copy" type="button" data-copy="mkdir -p ~/.claude/skills/vigil
+curl -fsSL https://raw.githubusercontent.com/nitsuah/vigil/main/skills/vigil/SKILL.md -o ~/.claude/skills/vigil/SKILL.md
+curl -fsSL https://raw.githubusercontent.com/nitsuah/vigil/main/skills/vigil/reference.md -o ~/.claude/skills/vigil/reference.md">Copy</button><code><span class="prompt">$</span> mkdir -p ~/.claude/skills/vigil
+<span class="prompt">$</span> curl -fsSL \
+    https://raw.githubusercontent.com/nitsuah/vigil/main/skills/vigil/SKILL.md \
+    -o ~/.claude/skills/vigil/SKILL.md
+<span class="prompt">$</span> curl -fsSL \
+    https://raw.githubusercontent.com/nitsuah/vigil/main/skills/vigil/reference.md \
+    -o ~/.claude/skills/vigil/reference.md</code></pre>
+  </section>
+
   <section class="install-sec" id="install" aria-labelledby="install-title">
     <h2 id="install-title">Run your own.</h2>
     <p class="install-lead">Needs Node 22, a <a href="https://github.com/settings/developers" target="_blank" rel="noopener">GitHub OAuth app</a> and a free <a href="https://neon.tech" target="_blank" rel="noopener">Neon</a> Postgres database. Fill in <code>.env.local</code> from <code>.env.example</code>, then open <code>http://localhost:3000</code>.</p>
@@ -164,7 +221,7 @@ npm run dev">Copy</button><code><span class="prompt">$</span> git clone https://
 <span class="prompt">$</span> cp .env.example .env.local   <span class="t-d"># GitHub OAuth + DATABASE_URL + MCP_API_KEY</span>
 <span class="prompt">$</span> npm run setup-db
 <span class="prompt">$</span> npm run dev</code></pre>
-    <p class="install-lead">Then connect Claude Code to your deployment:</p>
+    <p class="install-lead">Then connect Claude Code to your deployment, and add the <a href="#skill">Vigil skill</a>:</p>
     <pre class="install"><button class="copy" type="button" data-copy="claude mcp add --transport http --scope user vigil https://YOUR-VIGIL-HOST/api/mcp --header &quot;Authorization: Bearer $VIGIL_MCP_KEY&quot;">Copy</button><code><span class="prompt">$</span> claude mcp add --transport http --scope user vigil \
     https://YOUR-VIGIL-HOST/api/mcp \
     --header "Authorization: Bearer $VIGIL_MCP_KEY"</code></pre>

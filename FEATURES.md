@@ -32,17 +32,20 @@ Status guide: features listed here are shipped unless explicitly marked as plann
 - **Community Standards**: 12 checks for CODE_OF_CONDUCT, CONTRIBUTING, SECURITY, LICENSE, CHANGELOG, Issue/PR templates, CODEOWNERS, Copilot Instructions, FUNDING, FLOW-TASKS Prompt, HANDOFF Prompt
 - **Org-Level Fallback Awareness**: Community standards satisfied solely by the owner's `.github` repo (no repo-local copy) are marked with a distinct "Org" badge and a tooltip naming the source repo, instead of an indistinguishable "Present"
 - **Extended File Location Detection**: Standards detection accepts files found under `docs/` or `config/` subdirectories in addition to the repo root and `.github/`, reducing false-negative health scores for repos that organize their governance files in subdirectories
+- **Repository Tiers**: User-assigned importance tier per repo — T1 Critical, T2 Important, T3 Standard, T4 Low — set from a badge next to the type icon on desktop rows and mobile cards (`PATCH /api/repos/[name]/update-tier`, write grant required, `null` clears it). Stored in `repos.tier`, never auto-detected; filterable in the dashboard filter bar (including "Untiered") and exposed to agents via MCP `list_repos` (`tier` filter) / `get_repo_health` and `GET /api/context`
 - **Stale-Review Detector**: Surfaces a badge when a PR's formal review decision is `CHANGES_REQUESTED` but every review thread is resolved and CI is green — a state GitHub never auto-clears on its own, which otherwise silently blocks branch-protection-gated merges until a human notices. The badge links directly to the lowest-numbered affected PR.
 
 ### 🤖 Cross-Repo Orchestration
 
 - **Agent Dispatch Bridge**: Route tasks from vigil's agent task queue to agent-board's local model runtime for execution _(planned — v0 dispatch bridge, see TASKS.md)_
-- **MCP Server**: `POST /api/mcp` — JSON-RPC 2.0 endpoint (MCP Streamable HTTP, JSON-only; protocol 2024-11-05 → 2025-06-18) exposing 10 tools to any MCP-compatible agent client: `get_repo_health` (health score, CI, vuln counts, activity), `list_tasks` (per-repo tasks with optional status filter), `list_repos` (full portfolio with health/CI/vuln metadata, filterable by min_health/language/type/has_vulns), `get_repo_details` (tasks, roadmap, docs, best practices, community standards), `get_portfolio_overview` (aggregate health distribution, CI pass rate, security posture), `search_repos` (name/description/language search with LIKE-metachar escaping), `get_security_summary` (single-repo or portfolio-wide vuln/secret/code-scanning posture), `get_open_tasks` (cross-repo open-task rollup, below), `get_relationships` / `propose_relationship` (relationship map, below); Bearer token auth via `MCP_API_KEY` env var (bearer requests pass the session proxy for `/api/mcp` and `/api/context` only); 60 req/min rate limit; `GET /api/mcp` returns the capability doc. Connect Claude Code with `claude mcp add --transport http` — see [docs/MCP.md](./docs/MCP.md)
+- **MCP Server**: `POST /api/mcp` — JSON-RPC 2.0 endpoint (MCP Streamable HTTP, JSON-only; protocol 2024-11-05 → 2025-06-18) exposing 10 tools to any MCP-compatible agent client: `get_repo_health` (health score, CI, vuln counts, activity), `list_tasks` (per-repo tasks with optional status filter), `list_repos` (full portfolio with health/CI/vuln metadata, filterable by min_health/language/type/has_vulns/tier), `get_repo_details` (tasks, roadmap, docs, best practices, community standards), `get_portfolio_overview` (aggregate health distribution, CI pass rate, security posture), `search_repos` (name/description/language search with LIKE-metachar escaping), `get_security_summary` (single-repo or portfolio-wide vuln/secret/code-scanning posture), `get_open_tasks` (cross-repo open-task rollup, below), `get_relationships` / `propose_relationship` (relationship map, below); Bearer token auth via `MCP_API_KEY` env var (bearer requests pass the session proxy for `/api/mcp` and `/api/context` only); 60 req/min rate limit; `GET /api/mcp` returns the capability doc. Connect Claude Code with `claude mcp add --transport http` — see [docs/MCP.md](./docs/MCP.md)
 - **Cross-Repo Task Rollup**: every open TASKS.md item across tracked repos in one priority-sorted list — `get_open_tasks` MCP tool (filters: repos, priority P0–P3/none, status, owner, limit), an `open_work` P0/P1 block in `GET /api/context`, and the PMO page's combined "Repos & open work" grid (`GET /api/pmo/tasks`, session-scoped), where each repo card lists its own open tasks most-urgent first. The TASKS parser now captures priority (`- Priority:` sub-bullet > inline `(P2, M)` tag > `### P1 - High` heading) and owner (`- Owner:` / `- Assignee:`), and treats unchecked items under `## In Progress` as in-progress
 - **Cross-Repo Relationship Map**: durable, directed edges between repos (`repo_relationships`) with a kind (`depends_on`, `calls`, `deploys`, `embeds`, `shares_data`, `tracks`), a required one-line context and optional evidence. People add and confirm edges on the PMO page; agents propose them over MCP (`propose_relationship`, evidence required) and imports bulk-load them (`POST /api/relationships` with `{ relationships: [...] }`), both landing as `proposed` until confirmed. Exposed to agents via `get_relationships` and the `relationships` block of `GET /api/context`. Replaces the topic/language-inferred dependency graph
 - **LLM Context Endpoint**: `GET /api/context` — LLM-optimized JSON dump of the full portfolio or a single repo (`?repo=owner/repo`); no auth returns default repos only, Bearer token or NextAuth session returns full portfolio; designed to be passed directly as context to an LLM or MCP agent
 
 ### 🔄 Agent Prompt Toolkit
+
+- **Claude Code Skill**: [`skills/vigil/SKILL.md`](./skills/vigil/SKILL.md) (+ `reference.md`) — drop into `~/.claude/skills/vigil/` so Claude knows when to use Vigil's MCP tools, which tool answers which question, the triage / cross-repo-change / close-tracked-work workflows, the TASKS.md / ROADMAP.md / FEATURES.md formats the parsers expect, tiers vs. health profiles, and common failure modes (PowerShell empty bearer, hidden repos, stale sync)
 
 - **FLOW-TASKS Prompt**: Standard template for agents to triage, prioritize, and sequence tasks from TASKS.md across any repo in the portfolio
 - **HANDOFF Prompt**: Structured context-capture brief enabling agents to hand off in-progress work to a new session without loss of state
@@ -131,9 +134,9 @@ Status guide: features listed here are shipped unless explicitly marked as plann
 - **Enhanced Health Shields**: Tooltips with detailed component breakdowns (Community, Best Practices, Testing, Coverage, Documentation)
 - **Profile Section Compass Rose**: Pills positioned at NW, W, SW with rotating glow backdrop on profile picture
 - **Dynamic Text Expansion**: Right-to-left pill text reveal (icon first, text expands left) with origin-right scaling
-- **Color-Coded Filter Dropdowns**: Purple Type, Blue Language, Fuchsia Fork borders with 60% opacity and subtle shadows
+- **Color-Coded Filter Dropdowns**: Purple Type, Blue Language, Fuchsia Fork, Amber Tier borders with 60% opacity and subtle shadows
 - **Clickable Repository Names**: Direct GitHub links in table rows with hover underline styling
-- **Filtering & Sorting**: Filter by type, language, fork status with advanced controls
+- **Filtering & Sorting**: Filter by type, language, fork status, and tier with advanced controls
 - **Responsive Design**: Adapts to different screen sizes with mobile-friendly controls
 - **Visual Indicators**: Icons, badges, and color-coding for quick scanning
 - **Repository Stats**: Stars, forks, branches, LOC, vulnerabilities, contributor analytics displayed in compact sidebar
@@ -308,6 +311,8 @@ Health scores are displayed as letter grades (A-F) with detailed component break
 - **Scheduled Jobs**: Netlify scheduled functions for auto-sync
 
 ## 📅 Last Updated
+
+2026-09-30 - Repository tiers (T1–T4) with dashboard badge, filter, and MCP/context exposure; Claude Code skill (`skills/vigil/`)
 
 2026-09-24 - 2027 planning reset: P0 hardening (row error boundary, NUMERIC normalization, repo-access scoping), mocked e2e + prod smoke CI, and shared-store rate limiting added to Security; shipped dispatch bridge removed from Planned; remaining Planned items retargeted to 2027 Q1
 

@@ -19,6 +19,7 @@ import { detectRepoType, RepoType } from '@/lib/repo-type';
 import { byokPromptKey } from '@/lib/byok-prompt-key';
 import { ProgressToast, type SyncPhase } from '@/components/ProgressToast';
 import type { Repo } from '@/types/repo';
+import type { RepoTier } from '@/lib/repo-tier';
 
 export default function Dashboard() {
   const { data: session } = useSession();
@@ -28,6 +29,10 @@ export default function Dashboard() {
   const { expandedRepos, toggleRepo } = useRepoExpansion();
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Tier edits update the shared list so filters and both row layouts agree.
+  const handleTierChange = (repoId: string, tier: RepoTier | null) =>
+    setRepos((prev) => prev.map((r) => (r.id === repoId ? { ...r, tier } : r)));
   const [syncing, setSyncing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showAddRepo, setShowAddRepo] = useState(false);
@@ -89,6 +94,8 @@ export default function Dashboard() {
     setFilterLanguage,
     filterFork,
     setFilterFork,
+    filterTier,
+    setFilterTier,
     sortField,
     sortDirection,
     handleSort,
@@ -297,6 +304,7 @@ export default function Dashboard() {
         filterType={filterType}
         filterLanguage={filterLanguage}
         filterFork={filterFork}
+        filterTier={filterTier}
         languages={languages}
         onAddRepoUrlChange={setAddRepoUrl}
         onAddRepoTypeChange={setAddRepoType}
@@ -307,6 +315,7 @@ export default function Dashboard() {
         onFilterTypeChange={setFilterType}
         onFilterLanguageChange={setFilterLanguage}
         onFilterForkChange={setFilterFork}
+        onFilterTierChange={setFilterTier}
         onClearFilters={clearFilters}
         onStartTour={() => setShowTour(true)}
         showHidden={showHidden}
@@ -348,6 +357,7 @@ export default function Dashboard() {
                   onSyncSingleRepo={() => handleSyncAndRefresh(repo.name)}
                   onUnhide={() => handleRestoreRepo(repo.name)}
                   onOpenChat={session ? () => setChatRepoName(repo.name) : undefined}
+                  onTierChange={(tier) => handleTierChange(repo.id, tier)}
                 />
               ))}
             </div>
@@ -424,6 +434,7 @@ export default function Dashboard() {
                       onSyncSingleRepo={() => handleSyncAndRefresh(repo.name)}
                       onUnhide={() => handleRestoreRepo(repo.name)}
                       onOpenChat={session ? () => setChatRepoName(repo.name) : undefined}
+                      onTierChange={(tier) => handleTierChange(repo.id, tier)}
                     />
                   ))}
                 </tbody>

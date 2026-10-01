@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import logger from '@/lib/log';
+import { REPO_TIER_IDS, isRepoTier } from '@/lib/repo-tier';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
 import { loadOpenTasks, parseOpenTaskFilters, rollupOpenTasks, DEFAULT_ROLLUP_LIMIT, MAX_ROLLUP_LIMIT } from '@/lib/task-rollup';
 import {
@@ -147,6 +148,11 @@ const TOOLS = [
         has_vulns: {
           type: 'boolean',
           description: 'true = only repos with open vulnerability alerts; false = only clean repos',
+        },
+        tier: {
+          type: 'string',
+          enum: [...REPO_TIER_IDS, 'untiered'],
+          description: 'Filter by user-assigned importance tier (T1 = most critical), or "untiered"',
         },
       },
     },
@@ -287,8 +293,10 @@ async function getRepoHealth(args: Row): Promise<string> {
   if (!name) throw new InvalidParamsError('"name" is required');
 
   const db = getNeonClient();
+  // repos.tier is added by a migration; don't depend on another route having run it.
+  await ensureSchema(db);
   const rows = await db`
-    SELECT name, full_name, url, health_score, health_profile, ci_status, language,
+    SELECT name, full_name, url, health_score, health_profile, tier, ci_status, language,
            open_prs, last_commit_date,
            vuln_alert_count, vuln_critical_count, vuln_high_count
     FROM repos
@@ -307,6 +315,7 @@ async function getRepoHealth(args: Row): Promise<string> {
     url:                 r.url,
     health_score:        r.health_score,
     health_profile:      r.health_profile ?? 'production',
+    tier:                r.tier ?? null,
     health_grade:        healthGrade(r.health_score ?? 0),
     ci_status:           r.ci_status,
     language:            r.language,
@@ -355,10 +364,15 @@ async function listRepos(args: Row): Promise<string> {
   const language  = typeof args.language   === 'string' ? args.language   : null;
   const type      = typeof args.type       === 'string' ? args.type       : null;
   const hasVulns  = typeof args.has_vulns  === 'boolean' ? args.has_vulns : null;
+  const tier      = isRepoTier(args.tier) || args.tier === 'untiered' ? args.tier : null;
+  if (args.tier !== undefined && tier === null) {
+    throw new InvalidParamsError(`tier must be one of: ${[...REPO_TIER_IDS, 'untiered'].join(', ')}`);
+  }
 
   const db = getNeonClient();
+  await ensureSchema(db);
   let repos = (await db`
-    SELECT name, full_name, url, health_score, ci_status, language, repo_type,
+    SELECT name, full_name, url, health_score, ci_status, language, repo_type, tier,
            open_prs, open_issues_count, last_commit_date, vuln_alert_count, is_hidden
     FROM repos
     WHERE is_hidden = false
@@ -370,6 +384,8 @@ async function listRepos(args: Row): Promise<string> {
   if (type)          repos = repos.filter(r => r.repo_type === type);
   if (hasVulns === true)  repos = repos.filter(r => (r.vuln_alert_count ?? 0) > 0);
   if (hasVulns === false) repos = repos.filter(r => (r.vuln_alert_count ?? 0) === 0);
+  if (tier === 'untiered') repos = repos.filter(r => !isRepoTier(r.tier));
+  else if (tier)           repos = repos.filter(r => r.tier === tier);
 
   return JSON.stringify({
     repos: repos.map(r => ({
@@ -381,6 +397,7 @@ async function listRepos(args: Row): Promise<string> {
       ci_status:        r.ci_status,
       language:         r.language,
       repo_type:        r.repo_type,
+      tier:             r.tier ?? null,
       open_prs:         r.open_prs ?? 0,
       open_issues:      r.open_issues_count ?? 0,
       last_commit_date: r.last_commit_date,
@@ -392,6 +409,7 @@ async function listRepos(args: Row): Promise<string> {
       language,
       type,
       has_vulns: hasVulns,
+      tier,
     },
   });
 }
