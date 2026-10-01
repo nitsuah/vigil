@@ -7,11 +7,17 @@ interface TierEditorProps {
   tier: string | null | undefined;
   repoName: string;
   isAuthenticated: boolean;
+  /**
+   * Called optimistically with the new tier, and again with the previous one
+   * if the save fails, so the dashboard's shared repo state stays the source
+   * of truth for filters and remounted editors.
+   */
+  onTierChange?: (tier: RepoTier | null) => void;
 }
 
 const UNTIERED_CLASS = 'text-slate-500 bg-transparent border-dashed border-slate-600';
 
-export function TierEditor({ tier: initialTier, repoName, isAuthenticated }: TierEditorProps) {
+export function TierEditor({ tier: initialTier, repoName, isAuthenticated, onTierChange }: TierEditorProps) {
   const [tier, setTier] = useState<RepoTier | null>(isRepoTier(initialTier) ? initialTier : null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -29,6 +35,7 @@ export function TierEditor({ tier: initialTier, repoName, isAuthenticated }: Tie
     const next: RepoTier | null = isRepoTier(value) ? value : null;
     const previous = tier;
     setTier(next);
+    onTierChange?.(next);
     setEditing(false);
     try {
       setSaving(true);
@@ -40,10 +47,12 @@ export function TierEditor({ tier: initialTier, repoName, isAuthenticated }: Tie
       if (!res.ok) {
         console.error('Failed to update repo tier');
         setTier(previous);
+        onTierChange?.(previous);
       }
     } catch (error) {
       console.error('Error updating repo tier:', error);
       setTier(previous);
+      onTierChange?.(previous);
     } finally {
       setSaving(false);
     }

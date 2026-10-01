@@ -294,7 +294,7 @@ test.describe('Repo tiers', () => {
     expect(await badges.first().evaluate((el) => el.tagName)).toBe('SPAN');
   });
 
-  test('signed in: picking a tier PATCHes it and the filter narrows to it', async ({ browser }) => {
+  test('signed in: picking a tier PATCHes it and the filter sees the new tier', async ({ browser }) => {
     const context = await authenticatedContext(browser);
     await mockApi(context);
     await context.route('**/api/repos?*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(TIERED) }));
@@ -317,6 +317,10 @@ test.describe('Repo tiers', () => {
     expect(patches).toEqual([{ url: expect.stringContaining('/api/repos/other-repo/update-tier'), body: { tier: 'T1' } }]);
 
     await page.getByRole('button', { name: 'Filters', exact: true }).filter({ visible: true }).click();
+    // The tier just set must reach the shared repo list, not only the badge.
+    await page.getByLabel('Filter by tier').filter({ visible: true }).selectOption('T1');
+    await expect(table(page)).toContainText('other-repo');
+    await expect(table(page)).not.toContainText('demo-repo');
     await page.getByLabel('Filter by tier').filter({ visible: true }).selectOption('T2');
     await expect(table(page)).toContainText('demo-repo');
     await expect(table(page)).not.toContainText('other-repo');

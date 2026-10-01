@@ -71,10 +71,14 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
 
     // repos: user-assigned importance tier (lib/repo-tier.ts). NULL = untiered.
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS tier TEXT`,
+    // NOT VALID + a separate VALIDATE so the existing-row scan doesn't run
+    // under ADD CONSTRAINT's ACCESS EXCLUSIVE lock (ensureSchema runs on
+    // request paths). VALIDATE is a no-op once the constraint is valid.
     `DO $$ BEGIN
-      ALTER TABLE repos ADD CONSTRAINT repos_tier_check CHECK (tier IS NULL OR tier IN ('T1', 'T2', 'T3', 'T4'));
+      ALTER TABLE repos ADD CONSTRAINT repos_tier_check CHECK (tier IS NULL OR tier IN ('T1', 'T2', 'T3', 'T4')) NOT VALID;
     EXCEPTION WHEN duplicate_object THEN NULL;
     END $$`,
+    `ALTER TABLE repos VALIDATE CONSTRAINT repos_tier_check`,
 
     // repos: security configuration
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS has_security_policy BOOLEAN DEFAULT FALSE`,
