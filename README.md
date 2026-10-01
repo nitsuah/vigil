@@ -426,11 +426,6 @@ Every committed Markdown doc in this repo (other than this README, `.github/` an
 - [Visual docs: diagrams and screenshots that stay current](./docs/VISUAL_DOCS.md) — `docs/VISUAL_DOCS.md`
 - [DB Scaling Assessment](./docs/db-scaling-assessment.md) — `docs/db-scaling-assessment.md`
 
-**`skills/vigil/`**
-
-- [Vigil Claude Code skill](./skills/vigil/SKILL.md) — `skills/vigil/SKILL.md`
-- [Vigil reference](./skills/vigil/reference.md) — `skills/vigil/reference.md`
-
 **`docs/archive/`**
 
 - [Handoff: Agent Task Queue Execution (2026-04-03)](./docs/archive/HANDOFF-agent-task-queue-execution-20260403.md) — `docs/archive/HANDOFF-agent-task-queue-execution-20260403.md`
@@ -449,6 +444,19 @@ Every committed Markdown doc in this repo (other than this README, `.github/` an
 **`database/migrations/`**
 
 - [Migration history (frozen)](./database/migrations/README.md) — `database/migrations/README.md`
+
+**`promo/`**
+
+- [Promo spots](./promo/README.md) — `promo/README.md`
+
+**`promo/brag-30s/`**
+
+- [brag-30s — storyboard](./promo/brag-30s/storyboard.md) — `promo/brag-30s/storyboard.md`
+
+**`skills/vigil/`**
+
+- [Vigil](./skills/vigil/SKILL.md) — `skills/vigil/SKILL.md`
+- [Vigil reference](./skills/vigil/reference.md) — `skills/vigil/reference.md`
 
 <!-- docs-index:end -->
 
