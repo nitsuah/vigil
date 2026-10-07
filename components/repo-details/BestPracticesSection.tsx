@@ -182,6 +182,26 @@ export function BestPracticesSection({
                     </div>
                   </div>
 
+                  {practice.practice_type === 'visual_docs' && !!practice.details?.elements && (
+                    <div className="mt-2 ml-6 flex flex-wrap gap-1.5 text-[10px]" aria-label="Visual showcase elements">
+                      {(['screenshots', 'diagrams', 'videos', 'pages'] as const).map(el => {
+                        const elements = practice.details?.elements as Record<string, string> | undefined;
+                        const state = elements?.[el] ?? 'missing';
+                        const good = state === 'ci' || state === 'tracked' || state === 'deployed';
+                        const bad = state === 'missing' || state === 'orphaned';
+                        return (
+                          <span
+                            key={el}
+                            title={`${el}: ${state}`}
+                            className={`px-1.5 py-0.5 rounded border ${good ? 'border-green-700 text-green-400' : bad ? 'border-slate-700 text-slate-500' : 'border-yellow-700 text-yellow-400'}`}
+                          >
+                            {el} · {state}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {practice.practice_type === 'visual_docs' && practice.status !== 'healthy' && (
                     <div className="mt-2 ml-6 text-xs text-slate-400">
                       {practice.status === 'dormant'

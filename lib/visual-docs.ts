@@ -11,6 +11,7 @@
  */
 
 import type { HealthState } from '@/lib/best-practices';
+import { classifyElements, detectShowcaseFiles, type ShowcaseElements, type ShowcaseFiles } from '@/lib/showcase';
 
 export const VISUAL_DOCS_PRACTICE = 'visual_docs';
 
@@ -28,6 +29,9 @@ export interface VisualDocsDetails {
     /** A workflow whose file name suggests it regenerates these assets. */
     automated: boolean;
     workflows: string[];
+    /** Per-element state (screenshots/diagrams: ci|static|missing), videos and Pages. */
+    elements: ShowcaseElements;
+    showcase: ShowcaseFiles;
     informational: true;
     [key: string]: unknown;
 }
@@ -47,6 +51,8 @@ export function detectVisualDocs(fileList: string[], readmeContent?: string | nu
     const diagrams = candidates.filter(f => DIAGRAM_SOURCE.test(f) || DIAGRAM_RENDER.test(f) || DIAGRAM_DIR.test(f));
     const screenshots = candidates.filter(f => SCREENSHOT.test(f) && !diagrams.includes(f));
     const workflows = fileList.filter(f => VISUAL_WORKFLOW.test(f));
+    const showcase = detectShowcaseFiles(fileList);
+    const elements = classifyElements({ diagrams, screenshots, automated: workflows.length > 0, files: showcase });
 
     const readme = readmeContent ?? '';
     const inlineMermaid = /^\s*```mermaid\b/m.test(readme);
@@ -72,6 +78,8 @@ export function detectVisualDocs(fileList: string[], readmeContent?: string | nu
             embedded: embedded.slice(0, 20),
             automated: workflows.length > 0,
             workflows,
+            elements,
+            showcase,
             informational: true,
         },
     };

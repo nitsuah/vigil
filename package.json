@@ -12,6 +12,7 @@
     "start:dynamic": "node scripts/start-server.js",
     "lint": "eslint --config config/eslint.config.mjs",
     "setup-db": "tsx scripts/setup-db.ts",
+    "showcase": "tsx scripts/showcase.ts",
     "migrate": "tsx scripts/migrate.ts",
     "check-schema": "tsx scripts/check-schema.ts",
     "test-query": "tsx scripts/test-query.ts",

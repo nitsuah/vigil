@@ -15,7 +15,7 @@
     --heading: 'Inter', system-ui, sans-serif;
     --body: 'Inter', system-ui, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, monospace;
-    --max: 1200px;
+    --max: 1280px;
     --gutter: clamp(16px, 4vw, 40px);
     --radius: 16px;
 }
@@ -119,8 +119,8 @@ nav a:hover { color: var(--text); text-decoration: none; }
 
 /* ---------- Features ---------- */
 main { padding: 0 var(--gutter); }
-.feature { max-width: var(--max); margin: clamp(80px, 11vw, 140px) auto 0; display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr); gap: clamp(28px, 4.5vw, 64px); align-items: center; }
-.feature-flip { grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr); }
+.feature { max-width: var(--max); margin: clamp(80px, 11vw, 140px) auto 0; display: grid; grid-template-columns: minmax(0, 0.62fr) minmax(0, 1.6fr); gap: clamp(28px, 4vw, 56px); align-items: center; }
+.feature-flip { grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.62fr); }
 .feature-flip .feature-copy { order: 2; }
 .kicker { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--violet-2); font-weight: 600; margin-bottom: 14px; }
 .feature-copy p:not(.kicker) { color: #cbd5e1; margin-top: 18px; }
