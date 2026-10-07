@@ -11,6 +11,7 @@
  */
 
 import type { HealthState } from '@/lib/best-practices';
+import { classifyElements, detectShowcaseFiles, type ShowcaseElements, type ShowcaseFiles } from '@/lib/showcase';
 
 export const VISUAL_DOCS_PRACTICE = 'visual_docs';
 
@@ -28,6 +29,9 @@ export interface VisualDocsDetails {
     /** A workflow whose file name suggests it regenerates these assets. */
     automated: boolean;
     workflows: string[];
+    /** Per-element state (screenshots/diagrams: ci|static|missing), videos and Pages. */
+    elements: ShowcaseElements;
+    showcase: ShowcaseFiles;
     informational: true;
     [key: string]: unknown;
 }
@@ -42,11 +46,35 @@ const DIAGRAM_DIR = /(^|\/)(diagrams?|architecture)\/[^/]+\.(svg|png|jpe?g|webp)
 const SCREENSHOT = /(^|\/)(screenshots?|screens)\/[^/]+\.(png|jpe?g|webp|gif)$/i;
 const VISUAL_WORKFLOW = /^\.github\/workflows\/[^/]*(screenshot|diagram|visual)[^/]*\.ya?ml$/i;
 
-export function detectVisualDocs(fileList: string[], readmeContent?: string | null): { status: HealthState; details: VisualDocsDetails } {
+const VISUAL_DOCS_PLAYWRIGHT = /(^|\/)playwright[^/]*visual[^/]*\.config\.[cm]?[jt]s$/i;
+
+/** Every detected diagram and screenshot, untruncated (details lists are capped for display). */
+export function findVisualAssets(fileList: string[]): { diagrams: string[]; screenshots: string[] } {
     const candidates = fileList.filter(f => !IGNORED_DIRS.test(f) && !TEST_BASELINES.test(f));
     const diagrams = candidates.filter(f => DIAGRAM_SOURCE.test(f) || DIAGRAM_RENDER.test(f) || DIAGRAM_DIR.test(f));
     const screenshots = candidates.filter(f => SCREENSHOT.test(f) && !diagrams.includes(f));
+    return { diagrams, screenshots };
+}
+
+/**
+ * Per-element automation evidence from file names alone. A generic "visual"
+ * workflow only counts for an element whose inputs it can rebuild: a
+ * Playwright visual-docs config for screenshots, Mermaid sources for diagrams.
+ */
+export function visualAutomation(fileList: string[], workflows: string[], diagrams: string[]): { screenshots: boolean; diagrams: boolean } {
+    const named = (re: RegExp) => workflows.some(w => re.test(w.split('/').pop()!));
+    const visual = named(/visual/i);
+    return {
+        screenshots: named(/screenshot/i) || (visual && fileList.some(f => VISUAL_DOCS_PLAYWRIGHT.test(f))),
+        diagrams: named(/diagram/i) || (visual && diagrams.some(f => /\.(mmd|mermaid)$/i.test(f))),
+    };
+}
+
+export function detectVisualDocs(fileList: string[], readmeContent?: string | null): { status: HealthState; details: VisualDocsDetails } {
+    const { diagrams, screenshots } = findVisualAssets(fileList);
     const workflows = fileList.filter(f => VISUAL_WORKFLOW.test(f));
+    const showcase = detectShowcaseFiles(fileList);
+    const elements = classifyElements({ diagrams, screenshots, automated: visualAutomation(fileList, workflows, diagrams), files: showcase });
 
     const readme = readmeContent ?? '';
     const inlineMermaid = /^\s*```mermaid\b/m.test(readme);
@@ -72,6 +100,8 @@ export function detectVisualDocs(fileList: string[], readmeContent?: string | nu
             embedded: embedded.slice(0, 20),
             automated: workflows.length > 0,
             workflows,
+            elements,
+            showcase,
             informational: true,
         },
     };

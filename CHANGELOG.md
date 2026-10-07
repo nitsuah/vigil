@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Visual showcase
+
+- **Added:** `npm run showcase -- audit|apply` checks screenshots, diagrams, videos and Pages against FEATURES.md and `promo/spots.json`. The dashboard shows per-element state, and the landing page uses the shared expand kit with larger screenshots.
+
 ### Repo tiers and Claude Code skill
 
 - **Added:** repository tiers. Each repo can be tagged T1 (Critical), T2 (Important), T3 (Standard) or T4 (Low) from a badge next to its type icon, on desktop rows and mobile cards. Stored in a new nullable `repos.tier` column (self-applied by `ensureSchema`), set via `PATCH /api/repos/[name]/update-tier` (write grant required, `null` clears), filterable in the dashboard filter bar including "Untiered".
