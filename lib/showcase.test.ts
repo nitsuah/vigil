@@ -5,6 +5,7 @@ import {
     detectShowcaseFiles,
     hasExpandKit,
     injectExpandKit,
+    PAGES_DEPLOY_STEP,
     parseFeatures,
     scaffoldSpots,
     type SpotsManifest,
@@ -187,6 +188,14 @@ describe('strict video tracking and per-element automation', () => {
         expect(cls(gone)).toBe('untracked');
         expect(cls(null)).toBe('untracked');
         expect(cls(pub)).toBe('tracked');
+        expect(cls({ ...empty, reels: [{ id: 'hero', spots: [], published: 'site/assets/demo.mp4' }] })).toBe('tracked');
+    });
+
+    it('treats only a deploy step, not an artifact upload, as Pages deployment', () => {
+        expect(PAGES_DEPLOY_STEP.test('uses: actions/upload-pages-artifact@v3')).toBe(false);
+        expect(PAGES_DEPLOY_STEP.test('uses: actions/upload-pages-artifact@v3\n      - uses: actions/deploy-pages@v4')).toBe(true);
+        const pages = detectShowcaseFiles(['site/index.html']); // upload-only workflow contributes no deploy evidence
+        expect(classifyElements({ diagrams: [], screenshots: [], automated: NONE, files: pages }).pages).toBe('orphaned');
     });
 
     it('credits a generic visual workflow only to elements it can rebuild', () => {

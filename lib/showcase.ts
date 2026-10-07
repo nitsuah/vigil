@@ -52,12 +52,13 @@ export function detectShowcaseFiles(fileList: string[]): ShowcaseFiles {
 }
 
 /** Workflow steps that publish a GitHub Pages site (content check; the file list only sees names). */
-export const PAGES_DEPLOY_STEP = /actions\/deploy-pages|actions\/upload-pages-artifact|peaceiris\/actions-gh-pages|JamesIves\/github-pages-deploy-action/;
+// upload-pages-artifact alone only stages the site; deploy-pages publishes it.
+export const PAGES_DEPLOY_STEP = /actions\/deploy-pages|peaceiris\/actions-gh-pages|JamesIves\/github-pages-deploy-action/;
 
 /**
  * `automated` is per element: a screenshot workflow doesn't make a static
  * diagram "ci". Pass `manifest` when its contents are known: videos are then
- * `tracked` only if a spot's `published` path is one of the repo's videos.
+ * `tracked` only if a spot's or reel's `published` path is one of the repo's videos.
  * Without it (dashboard, file list only) a present manifest counts.
  * `pages: 'orphaned'` means no Pages workflow was found, which is unverified:
  * the site may publish from a branch.
@@ -73,7 +74,7 @@ export function classifyElements(input: {
     const { files, manifest } = input;
     const videosTracked = manifest === undefined
         ? files.spotsManifest !== null
-        : !!manifest?.spots?.some(s => !!s.published && files.videos.includes(s.published));
+        : [...(manifest?.spots ?? []), ...(manifest?.reels ?? [])].some(s => !!s.published && files.videos.includes(s.published));
     return {
         screenshots: asset(input.screenshots, input.automated.screenshots),
         diagrams: asset(input.diagrams, input.automated.diagrams),
