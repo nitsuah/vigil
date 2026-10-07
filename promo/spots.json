@@ -1454,11 +1454,23 @@
       "spots": []
     }
   ],
-  "spots": [],
+  "spots": [
+    {
+      "id": "brag-30s",
+      "seconds": 30,
+      "format": "landscape",
+      "tool": "promo/build.sh",
+      "features": [],
+      "published": "site/assets/vigil.mp4",
+      "rendered": "2026-09-27"
+    }
+  ],
   "reels": [
     {
       "id": "hero",
-      "spots": [],
+      "spots": [
+        "brag-30s"
+      ],
       "published": null
     }
   ],

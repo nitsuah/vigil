@@ -9,7 +9,9 @@ import {
     scaffoldSpots,
     type SpotsManifest,
 } from './showcase';
-import { detectVisualDocs } from './visual-docs';
+import { detectVisualDocs, visualAutomation } from './visual-docs';
+
+const NONE = { screenshots: false, diagrams: false };
 
 const FEATURES = `# Features
 
@@ -49,7 +51,7 @@ describe('detectShowcaseFiles / classifyElements', () => {
             'promo/spots.json',
         ]);
         expect(files.videos).toEqual(['site/assets/demo.mp4']);
-        expect(classifyElements({ diagrams: [], screenshots: ['docs/screenshots/a.png'], automated: false, files })).toEqual({
+        expect(classifyElements({ diagrams: [], screenshots: ['docs/screenshots/a.png'], automated: NONE, files })).toEqual({
             screenshots: 'static', diagrams: 'missing', videos: 'tracked', pages: 'deployed',
         });
     });
@@ -57,12 +59,15 @@ describe('detectShowcaseFiles / classifyElements', () => {
     it('flags Pages HTML with no workflow as orphaned and stray brag-output', () => {
         const files = detectShowcaseFiles(['docs/brag/index.html', 'brag-output/brag.mp4']);
         expect(files.strayBragOutput).toBe(true);
-        expect(classifyElements({ diagrams: [], screenshots: [], automated: true, files }).pages).toBe('orphaned');
-        expect(classifyElements({ diagrams: [], screenshots: [], automated: true, files }).videos).toBe('untracked');
+        expect(classifyElements({ diagrams: [], screenshots: [], automated: NONE, files }).pages).toBe('orphaned');
+        expect(classifyElements({ diagrams: [], screenshots: [], automated: NONE, files }).videos).toBe('untracked');
     });
 
     it('is exposed through the visual_docs details', () => {
-        const r = detectVisualDocs(['docs/screenshots/a.png', '.github/workflows/visual-docs.yml'], '![a](docs/screenshots/a.png)');
+        const r = detectVisualDocs(
+            ['docs/screenshots/a.png', '.github/workflows/visual-docs.yml', 'playwright.visual-docs.config.ts'],
+            '![a](docs/screenshots/a.png)',
+        );
         expect(r.details.elements.screenshots).toBe('ci');
         expect(r.details.elements.pages).toBe('missing');
     });
@@ -110,7 +115,7 @@ describe('auditShowcase', () => {
         return auditShowcase({
             fileList,
             files,
-            elements: classifyElements({ diagrams: [], screenshots: [], automated: false, files }),
+            elements: classifyElements({ diagrams: [], screenshots: [], automated: NONE, files }),
             readme: '# x',
             features,
             manifest: null,
@@ -136,19 +141,58 @@ describe('auditShowcase', () => {
         };
         const r = base({ manifest, featuresChanged: '2026-02-01T00:00:00Z' });
         const codes = r.gaps.map(g => g.code);
-        expect(r.coverage).toEqual({ features: 4, withVisual: 2, exempt: 1 });
+        expect(r.coverage).toEqual({ features: 4, withVisual: 0, exempt: 1 });
         expect(codes).toEqual(expect.arrayContaining([
             'feature-unlisted', 'spot-unknown', 'screenshot-missing-file', 'feature-dropped', 'spot-stale', 'spot-long', 'spot-unpublished',
         ]));
     });
 
-    it('checks Pages HTML for the kit, posters and absolute og:image, errors first', () => {
+    it('counts only resolvable references as coverage', () => {
+        const manifest: SpotsManifest = {
+            product: 'x',
+            features: [
+                { id: 'resume-learning', title: 'Resume Learning', category: 'C', spots: ['fill-21s'] },
+                { id: 'profile-reuse', title: 'Profile Reuse', category: 'C', screenshots: ['docs/screenshots/profile-reuse.png'] },
+                { id: 'form-fill-automation', title: 'Form Fill', category: 'A', screenshots: [] },
+                { id: 'application-automation-resume-learning', title: 'Resume Learning', category: 'A', visual: 'none' },
+            ],
+            spots: [{ id: 'fill-21s', seconds: 21 }],
+        };
+        const r = base({ manifest, fileList: ['README.md', 'docs/screenshots/profile-reuse.png'] });
+        expect(r.coverage).toEqual({ features: 4, withVisual: 2, exempt: 1 });
+        expect(r.gaps.find(g => g.code === 'feature-no-visual')?.message).toContain('Form Fill Automation');
+    });
+
+    it('checks Pages HTML for the kit, posters and absolute og:image; a missing Pages workflow is an unverified warning', () => {
         const fileList = ['docs/brag/index.html'];
         const r = base({
             fileList,
             pagesHtml: { 'docs/brag/index.html': '<head><meta property="og:image" content="brag.jpg"></head><video src="a.mp4">' },
         });
-        expect(r.gaps[0].code).toBe('pages-orphaned');
+        expect(r.gaps.find(g => g.code === 'pages-orphaned')?.severity).toBe('warn');
+        expect(r.gaps.some(g => g.severity === 'error')).toBe(false);
         expect(r.gaps.map(g => g.code)).toEqual(expect.arrayContaining(['no-expand-kit', 'video-no-poster', 'og-relative']));
+    });
+});
+
+describe('strict video tracking and per-element automation', () => {
+    const files = detectShowcaseFiles(['site/assets/demo.mp4', 'promo/spots.json']);
+
+    it('needs a spot that publishes one of the videos once the manifest is known', () => {
+        const empty: SpotsManifest = { product: 'x', features: [], spots: [] };
+        const pub: SpotsManifest = { ...empty, spots: [{ id: 'a', published: 'site/assets/demo.mp4' }] };
+        const gone: SpotsManifest = { ...empty, spots: [{ id: 'a', published: 'site/assets/old.mp4' }] };
+        const cls = (manifest: SpotsManifest | null) => classifyElements({ diagrams: [], screenshots: [], automated: NONE, files, manifest }).videos;
+        expect(cls(empty)).toBe('untracked');
+        expect(cls(gone)).toBe('untracked');
+        expect(cls(null)).toBe('untracked');
+        expect(cls(pub)).toBe('tracked');
+    });
+
+    it('credits a generic visual workflow only to elements it can rebuild', () => {
+        const wf = ['.github/workflows/visual-docs.yml'];
+        expect(visualAutomation(['playwright.visual-docs.config.ts'], wf, ['docs/diagrams/a.svg'])).toEqual({ screenshots: true, diagrams: false });
+        expect(visualAutomation([], wf, ['docs/diagrams/a.mmd'])).toEqual({ screenshots: false, diagrams: true });
+        expect(visualAutomation([], ['.github/workflows/screenshots.yml'], [])).toEqual({ screenshots: true, diagrams: false });
     });
 });

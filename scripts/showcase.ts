@@ -14,10 +14,12 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { detectVisualDocs } from '../lib/visual-docs';
+import { detectVisualDocs, findVisualAssets, visualAutomation } from '../lib/visual-docs';
 import {
     auditShowcase,
+    classifyElements,
     injectExpandKit,
+    PAGES_DEPLOY_STEP,
     parseFeatures,
     scaffoldSpots,
     SPOTS_MANIFEST,
@@ -39,6 +41,13 @@ function listFiles(root: string): string[] {
     };
     walk(root, '');
     return out;
+}
+
+/** Write via a temp file and rename, so an interrupted run never leaves a truncated file. */
+function writeAtomic(file: string, content: string) {
+    const tmp = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.tmp`);
+    fs.writeFileSync(tmp, content);
+    fs.renameSync(tmp, file);
 }
 
 const read = (root: string, rel: string): string | null => {
@@ -74,17 +83,29 @@ function scan(root: string): RepoScan {
     }
     const pagesHtml: Record<string, string> = {};
     for (const p of vd.details.showcase.pagesHtml) pagesHtml[p] = read(root, p) ?? '';
+    // With contents available, any workflow that runs a Pages deploy step counts,
+    // whatever its file name, and videos count as tracked only when a spot publishes one.
+    const deploying = fileList.filter(f => /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(f) && PAGES_DEPLOY_STEP.test(read(root, f) ?? ''));
+    const files = { ...vd.details.showcase, pagesWorkflows: [...new Set([...vd.details.showcase.pagesWorkflows, ...deploying])] };
+    const { diagrams, screenshots } = findVisualAssets(fileList);
+    const elements = classifyElements({
+        diagrams,
+        screenshots,
+        automated: visualAutomation(fileList, vd.details.workflows, diagrams),
+        files,
+        manifest,
+    });
     const audit = auditShowcase({
         fileList,
-        elements: vd.details.elements,
-        files: vd.details.showcase,
+        elements,
+        files,
         readme,
         features,
         manifest,
         pagesHtml,
         featuresChanged: featuresPath ? gitDate(root, featuresPath) : null,
     });
-    return { name: path.basename(path.resolve(root)), root, fileList, featuresPath, audit, manifest, screenshots: vd.details.screenshots };
+    return { name: path.basename(path.resolve(root)), root, fileList, featuresPath, audit, manifest, screenshots };
 }
 
 /** Repo names from the "Tracked" table in stash's scope.md (first column). */
@@ -128,7 +149,7 @@ function apply(root: string, dryRun: boolean) {
         const next = injectExpandKit(html);
         if (next !== html) {
             changes.push(`${p}: added expand kit`);
-            if (!dryRun) fs.writeFileSync(path.join(root, p), next);
+            if (!dryRun) writeAtomic(path.join(root, p), next);
         }
     }
     if (s.featuresPath) {
@@ -148,7 +169,7 @@ function apply(root: string, dryRun: boolean) {
             changes.push(`${SPOTS_MANIFEST}: ${before ? 'updated' : 'created'} (${next.features.length} features)`);
             if (!dryRun) {
                 fs.mkdirSync(path.join(root, 'promo'), { recursive: true });
-                fs.writeFileSync(path.join(root, SPOTS_MANIFEST), JSON.stringify(next, null, 2) + '\n');
+                writeAtomic(path.join(root, SPOTS_MANIFEST), JSON.stringify(next, null, 2) + '\n');
             }
         }
     } else {
@@ -184,7 +205,11 @@ function main(argv: string[]) {
     if (!dirs.length) dirs = ['.'];
     const scans: RepoScan[] = [];
     for (const d of dirs) {
-        if (!fs.existsSync(d)) { console.error(`skip ${d}: not found`); continue; }
+        if (!fs.existsSync(d)) {
+            console.error(`skip ${d}: not found`);
+            process.exitCode = 1; // a passing audit must mean every requested repo was checked
+            continue;
+        }
         scans.push(scan(d));
     }
     if (flags.has('--json')) {

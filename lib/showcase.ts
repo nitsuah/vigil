@@ -51,18 +51,33 @@ export function detectShowcaseFiles(fileList: string[]): ShowcaseFiles {
     };
 }
 
+/** Workflow steps that publish a GitHub Pages site (content check; the file list only sees names). */
+export const PAGES_DEPLOY_STEP = /actions\/deploy-pages|actions\/upload-pages-artifact|peaceiris\/actions-gh-pages|JamesIves\/github-pages-deploy-action/;
+
+/**
+ * `automated` is per element: a screenshot workflow doesn't make a static
+ * diagram "ci". Pass `manifest` when its contents are known: videos are then
+ * `tracked` only if a spot's `published` path is one of the repo's videos.
+ * Without it (dashboard, file list only) a present manifest counts.
+ * `pages: 'orphaned'` means no Pages workflow was found, which is unverified:
+ * the site may publish from a branch.
+ */
 export function classifyElements(input: {
     diagrams: string[];
     screenshots: string[];
-    automated: boolean;
+    automated: { screenshots: boolean; diagrams: boolean };
     files: ShowcaseFiles;
+    manifest?: SpotsManifest | null;
 }): ShowcaseElements {
-    const asset = (list: string[]): AssetState => (list.length === 0 ? 'missing' : input.automated ? 'ci' : 'static');
-    const { files } = input;
+    const asset = (list: string[], ci: boolean): AssetState => (list.length === 0 ? 'missing' : ci ? 'ci' : 'static');
+    const { files, manifest } = input;
+    const videosTracked = manifest === undefined
+        ? files.spotsManifest !== null
+        : !!manifest?.spots?.some(s => !!s.published && files.videos.includes(s.published));
     return {
-        screenshots: asset(input.screenshots),
-        diagrams: asset(input.diagrams),
-        videos: files.videos.length === 0 ? 'missing' : files.spotsManifest ? 'tracked' : 'untracked',
+        screenshots: asset(input.screenshots, input.automated.screenshots),
+        diagrams: asset(input.diagrams, input.automated.diagrams),
+        videos: files.videos.length === 0 ? 'missing' : videosTracked ? 'tracked' : 'untracked',
         pages: files.pagesHtml.length === 0 ? 'missing' : files.pagesWorkflows.length > 0 ? 'deployed' : 'orphaned',
     };
 }
@@ -245,7 +260,9 @@ export function auditShowcase(input: ShowcaseAuditInput): ShowcaseAudit {
     }
     if (elements.videos === 'untracked') add('warn', 'videos-untracked', `Videos exist but there's no ${SPOTS_MANIFEST} recording which features they cover.`);
     if (files.strayBragOutput) add('warn', 'stray-brag-output', 'A root brag-output/ folder is committed. Spot sources belong in promo/<spot>/, renders in the Pages assets folder.');
-    if (elements.pages === 'orphaned') add('error', 'pages-orphaned', `Pages HTML (${files.pagesHtml.join(', ')}) has no pages workflow, so the live site never updates.`);
+    if (elements.pages === 'orphaned') {
+        add('warn', 'pages-orphaned', `Pages HTML (${files.pagesHtml.join(', ')}) but no workflow deploys it. Unless Pages publishes from a branch, the live site never updates.`);
+    }
 
     for (const [path, html] of Object.entries(input.pagesHtml)) {
         if (!hasExpandKit(html)) add('warn', 'no-expand-kit', `${path} is missing the showcase expand kit.`);
@@ -264,10 +281,17 @@ export function auditShowcase(input: ShowcaseAuditInput): ShowcaseAudit {
             const m = listed.get(f.id);
             if (!m) { add('warn', 'feature-unlisted', `"${f.title}" is in FEATURES.md but not in ${SPOTS_MANIFEST} (run apply).`); continue; }
             if (m.visual === 'none') { exempt++; continue; }
-            if ((m.screenshots?.length ?? 0) + (m.spots?.length ?? 0) > 0) withVisual++;
+            let resolved = 0;
+            for (const s of m.screenshots ?? []) {
+                if (fileSet.has(s)) resolved++;
+                else add('warn', 'screenshot-missing-file', `"${f.title}" points at ${s}, which doesn't exist.`);
+            }
+            for (const s of m.spots ?? []) {
+                if (spotIds.has(s)) resolved++;
+                else add('warn', 'spot-unknown', `"${f.title}" lists spot "${s}", which isn't in spots[].`);
+            }
+            if (resolved > 0) withVisual++;
             else missingVisual.push(f.title);
-            for (const s of m.screenshots ?? []) if (!fileSet.has(s)) add('warn', 'screenshot-missing-file', `"${f.title}" points at ${s}, which doesn't exist.`);
-            for (const s of m.spots ?? []) if (!spotIds.has(s)) add('warn', 'spot-unknown', `"${f.title}" lists spot "${s}", which isn't in spots[].`);
         }
         if (missingVisual.length) {
             add('info', 'feature-no-visual', `${missingVisual.length} feature(s) have no screenshot or spot: ${missingVisual.slice(0, 8).join(', ')}${missingVisual.length > 8 ? ', …' : ''}.`);

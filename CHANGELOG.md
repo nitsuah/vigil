@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Visual showcase: `npm run showcase -- audit|apply` checks screenshots, diagrams, videos and Pages against FEATURES.md and `promo/spots.json`; dashboard shows per-element state; landing page uses the shared expand kit with larger screenshots.
+### Visual showcase
+
+- **Added:** `npm run showcase -- audit|apply` checks screenshots, diagrams, videos and Pages against FEATURES.md and `promo/spots.json`. The dashboard shows per-element state, and the landing page uses the shared expand kit with larger screenshots.
 
 ### Repo tiers and Claude Code skill
 
