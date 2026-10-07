@@ -1,7 +1,7 @@
 {
-  "product": "app",
-  "live": null,
-  "page": "https://nitsuah.github.io/app/",
+  "product": "vigil",
+  "live": "https://gh-vigil.netlify.app/",
+  "page": "https://nitsuah.github.io/vigil/",
   "pagesDir": "site",
   "features": [
     {
