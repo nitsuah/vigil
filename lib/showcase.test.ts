@@ -10,6 +10,7 @@ import {
     isScreenshotWorkflow,
     PAGES_DEPLOY_STEP,
     pagesUploadPaths,
+    unresolvedPagesUploads,
     parseFeatures,
     repoNameFromRemote,
     scaffoldSpots,
@@ -304,6 +305,15 @@ describe('in-house screenshot pipelines and brand automation', () => {
         expect(isScreenshotWorkflow('- run: npx playwright test\n- uses: actions/upload-artifact@v4\n  with:\n    name: screenshots\n    path: test-results/**/*.png\n')).toBe(false);
         // a commented-out capture step is not automation
         expect(isScreenshotWorkflow('- run: npx playwright test\n# - run: node scripts/capture-screenshots.mjs\n')).toBe(false);
+        // nor a trailing comment
+        expect(isScreenshotWorkflow('- run: npx playwright test # then capture-screenshots.mjs\n')).toBe(false);
+    });
+
+    it('needs the runner and the target in the same job', () => {
+        const split = 'jobs:\n  test:\n    steps:\n      - run: npx playwright test\n  gallery:\n    steps:\n      - run: docker run -v $PWD/screenshots:/out img\n';
+        expect(isScreenshotWorkflow(split)).toBe(false);
+        const same = 'jobs:\n  gallery:\n    steps:\n      - run: mkdir -p screenshots\n      - run: npx playwright test\n';
+        expect(isScreenshotWorkflow(same)).toBe(true);
     });
 
     it('CLI: content evidence replaces the file-name guess for screenshots', () => {
@@ -346,6 +356,9 @@ describe('in-house screenshot pipelines and brand automation', () => {
             { severity: 'info', code: 'brand-automation', message: 'brand automation: .github/workflows/ci.yml' },
         ]);
         expect(auditShowcase(input).brandAutomation).toEqual([]);
+        // scan notes surface as info gaps
+        const n = auditShowcase({ ...input, notes: [{ code: 'workflow-unreadable', message: 'x' }] });
+        expect(n.gaps.filter(g => g.code === 'workflow-unreadable')).toEqual([{ severity: 'info', code: 'workflow-unreadable', message: 'x' }]);
         expect(auditShowcase(input).gaps.some(g => g.code === 'brand-automation')).toBe(false);
     });
 });
@@ -377,6 +390,7 @@ describe('Pages folder from the upload-pages-artifact step', () => {
         expect(pagesUploadPaths("- with:\n    path: 'out'\n  uses: actions/upload-pages-artifact@v3\n")).toEqual(['out']);
         expect(pagesUploadPaths('- uses: actions/upload-pages-artifact@v3\n- uses: actions/deploy-pages@v4\n')).toEqual(['_site']);
         expect(pagesUploadPaths('- uses: actions/upload-pages-artifact@v3\n  with:\n    path: ${{ env.DIR }}\n')).toEqual([]);
+        expect(unresolvedPagesUploads('- uses: actions/upload-pages-artifact@v3\n  with:\n    path: ${{ env.DIR }}\n')).toEqual(['${{ env.DIR }}']);
         expect(pagesUploadPaths('- uses: actions/upload-artifact@v4\n  with:\n    path: site\n')).toEqual([]);
     });
 

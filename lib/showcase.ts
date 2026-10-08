@@ -47,6 +47,15 @@ export const SPOTS_MANIFEST = 'promo/spots.json';
  * (`${{ ... }}`) can't be resolved statically and are skipped.
  */
 export function pagesUploadPaths(yaml: string): string[] {
+    return uploadPagesPathsRaw(yaml).filter(p => !p.includes('${{'));
+}
+
+/** The `${{ ... }}` upload paths pagesUploadPaths had to skip, so the audit can say it couldn't follow them. */
+export function unresolvedPagesUploads(yaml: string): string[] {
+    return uploadPagesPathsRaw(yaml).filter(p => p.includes('${{'));
+}
+
+function uploadPagesPathsRaw(yaml: string): string[] {
     const lines = yaml.split(/\r?\n/);
     const indentOf = (l: string) => l.match(/^\s*/)![0].length;
     const out: string[] = [];
@@ -60,12 +69,12 @@ export function pagesUploadPaths(yaml: string): string[] {
         for (let j = start; j < lines.length; j++) {
             const l = lines[j];
             if (j > start && l.trim() && !/^\s*#/.test(l) && indentOf(l) <= dash) break;
-            const m = l.match(/^\s*(?:-\s+)?path:\s*['"]?([^'"#\s]+)['"]?/);
+            const m = l.match(/^\s*(?:-\s+)?path:\s*['"]?(\$\{\{.*?\}\}|[^'"#\s]+)['"]?/);
             if (m) { path = m[1]; break; }
         }
         out.push(path.replace(/^\.(\/|$)/, '').replace(/\/+$/, ''));
     });
-    return [...new Set(out.filter(p => !p.includes('${{')))];
+    return [...new Set(out)];
 }
 
 /** Repo name from a git remote URL (https or scp-style, with or without .git); null if none. */
@@ -113,7 +122,31 @@ export function detectShowcaseFiles(fileList: string[], opts: { pagesDirs?: stri
 // upload-pages-artifact alone only stages the site; deploy-pages publishes it.
 export const PAGES_DEPLOY_STEP = /actions\/deploy-pages|peaceiris\/actions-gh-pages|JamesIves\/github-pages-deploy-action/;
 
-const stripYamlComments = (yaml: string) => yaml.replace(/^\s*#.*$/gm, '');
+/** Whole-line comments, and trailing ` # ...` comments (a `#` after whitespace). */
+const stripYamlComments = (yaml: string) => yaml.replace(/^\s*#.*$/gm, '').replace(/\s+#.*$/gm, '');
+
+/**
+ * Each job's block under `jobs:`, so a check can require its signals in the same
+ * job. Falls back to the whole file when there's no `jobs:` map.
+ */
+function jobBlocks(yaml: string): string[] {
+    const lines = yaml.split(/\r?\n/);
+    const at = lines.findIndex(l => /^\s*jobs:\s*$/.test(l));
+    if (at < 0) return [yaml];
+    const indentOf = (l: string) => l.match(/^\s*/)![0].length;
+    const jobsIndent = indentOf(lines[at]);
+    let jobIndent = -1; // indent of the job keys, set by the first one
+    const blocks: string[][] = [];
+    for (const l of lines.slice(at + 1)) {
+        if (!l.trim()) continue;
+        const ind = indentOf(l);
+        if (ind <= jobsIndent) break; // the jobs map ended
+        if (jobIndent < 0) jobIndent = ind;
+        if (ind === jobIndent) blocks.push([]);
+        blocks[blocks.length - 1]?.push(l);
+    }
+    return blocks.length ? blocks.map(b => b.join('\n')) : [yaml];
+}
 
 /** A step that drives a browser capture: Playwright, a capture-screenshots script, or an npm script named after screenshots. */
 const NPM_SCREENSHOT_SCRIPT = /npm\s+run\s+[\w:-]*screenshots?\b/i;
@@ -138,8 +171,8 @@ const SCREENSHOT_TARGET = new RegExp(
  * Playwright failure screenshots as an artifact does not count.
  */
 export function isScreenshotWorkflow(yaml: string): boolean {
-    const y = stripYamlComments(yaml);
-    return SCREENSHOT_RUNNER.test(y) && SCREENSHOT_TARGET.test(y);
+    // Runner and target must sit in the same job: a test job plus an unrelated screenshots mount isn't a capture.
+    return jobBlocks(stripYamlComments(yaml)).some(j => SCREENSHOT_RUNNER.test(j) && SCREENSHOT_TARGET.test(j));
 }
 
 /** Store listing images, promo tiles, or icon/favicon/logo generation. */
@@ -342,6 +375,8 @@ export interface ShowcaseAuditInput {
     featuresChanged?: string | null;
     /** Workflows that generate store/brand assets (content check). Informational, never a gap. */
     brandWorkflows?: string[];
+    /** Things the scan couldn't check (unreadable workflow, unresolvable upload path, no git), reported as info. */
+    notes?: { code: string; message: string }[];
 }
 
 export interface ShowcaseAudit {
@@ -430,6 +465,7 @@ export function auditShowcase(input: ShowcaseAuditInput): ShowcaseAudit {
 
     const brandAutomation = input.brandWorkflows ?? [];
     if (brandAutomation.length) add('info', 'brand-automation', `brand automation: ${brandAutomation.join(', ')}`);
+    for (const n of input.notes ?? []) add('info', n.code, n.message);
 
     const order: Record<GapSeverity, number> = { error: 0, warn: 1, info: 2 };
     gaps.sort((a, b) => order[a.severity] - order[b.severity]);
