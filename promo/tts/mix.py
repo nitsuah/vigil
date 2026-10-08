@@ -5,6 +5,7 @@ import json
 import sys
 import wave
 import numpy as np
+from scipy.ndimage import uniform_filter1d
 from scipy.signal import resample_poly
 
 SPOT, VO, MUSIC, OUT = sys.argv[1:5]
@@ -30,7 +31,7 @@ for line in N['lines']:
     duck[max(0, i - int(0.15 * sr)):i + len(v) + int(0.25 * sr)] = 1
 # Smooth the duck so the music breathes in and out instead of switching.
 k = int(0.12 * sr)
-duck = np.convolve(duck, np.ones(k) / k, mode='same')
+duck = uniform_filter1d(duck, k, mode="constant")
 gain = 1 - (1 - 10 ** (-10 / 20)) * duck
 mix = music * gain[:, None] + voice[:, None] * 10 ** (-1.5 / 20) / max(1e-9, np.max(np.abs(voice)))
 mix *= 10 ** (-1 / 20) / np.max(np.abs(mix))
