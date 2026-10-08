@@ -3,14 +3,43 @@
   "duration": 30,
   "fps": 30,
   "poster": 9.9,
-  "scenes": [["hook", 0, 3], ["reveal", 3, 7], ["inspect", 7, 11], ["fix", 11, 15], ["prioritize", 15, 19], ["connect", 19, 23], ["ask", 23, 27], ["outro", 27, 30]],
-  "hook": { "chipsStart": 0.15, "chipGap": 0.08, "countAt": 1.1, "typeAt": 1.7, "typeCps": 30 },
-  "cards": [7.35, 7.7, 8.05],
-  "clicks": { "fixAll": 10.55, "createPr": 13.9, "p2": 17.2, "confirm": 21.3 },
+  "scenes": [
+    ["hook", 0, 3],
+    ["reveal", 3, 7],
+    ["inspect", 7, 11],
+    ["fix", 11, 15],
+    ["prioritize", 15, 19],
+    ["connect", 19, 23],
+    ["ask", 23, 27],
+    ["outro", 27, 30]
+  ],
+  "hook": {
+    "chipsStart": 0.15,
+    "chipGap": 0.08,
+    "countAt": 1.1,
+    "typeAt": 1.7,
+    "typeCps": 30
+  },
+  "cards": [
+    7.35,
+    7.7,
+    8.05
+  ],
+  "clicks": {
+    "fixAll": 10.55,
+    "createPr": 13.9,
+    "p2": 17.2,
+    "confirm": 21.3,
+    "chatApply": 32.6
+  },
   "prOpenedAt": 14.2,
   "question": "what should I work on next?",
   "questionAt": 23.35,
   "toolAt": 24.45,
   "resultAt": 24.8,
-  "outroAt": 27.0
+  "outroAt": 27,
+  "extraScenes": [
+    ["chat", 30, 34]
+  ],
+  "chatPillAt": 32.9
 }

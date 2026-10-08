@@ -1,0 +1,1 @@
+Ten repos, twenty-three open tasks, one question: what do I work on next? Vigil reads every repo's TASKS.md and ranks the open work across all of them, P0 first, then maps which repo depends on which, and why. nitsuah.github.io/vigil

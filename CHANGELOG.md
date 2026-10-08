@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Visual showcase
 
+- **Changed:** the feature spots no longer share an intro and outro. The three 21 s spots each opened on the same 7 s hook and reveal and closed on the same outro, so about half of every spot was identical, and the page gallery read as one video three times. Each spot now plays only its own scenes: `health-17s` (dashboard → inspect → fix), `work-16s` (hook → open work → relationships), `ai-14s` (MCP → per-repo chat). The hero is one 37 s cut (`hero-37s`) through every scene with a single hook, reveal and outro, instead of the spots joined end to end. The vertical short is now `health-17s-vert`.
+- **Added:** a `chat` scene (the per-repo chat panel proposing a doc edit; the cursor clicks Apply) captured from the real app with a seeded thread, as an `extraScenes` entry the 30 s base doesn't play. Spots that open on a feature scene show the Vigil wordmark in the corner from frame 0, and their groove starts at once instead of after a hook.
+
 - **Added:** three 21s feature spots (`health-21s` grade and fix, `work-21s` prioritize and connect, `agents-21s` MCP), a narrated 9:16 short (`health-21s-vert`, Kokoro TTS via Hyperframes in Docker, burned-in captions) and a hero reel joined from the spots (`promo/reel.sh hero`). Spots reuse brag-30s's scenes with `"base"` in `spot.json`; each scene's choreography and sound cues are time-mapped into its slot, so a new cut is a scene list, not a new composition.
 - **Changed:** the landing page hero is the hero reel; a spots gallery and a per-repo chat section were added. `promo/build.sh <spot> --publish` writes `site/assets/<spot>.mp4`; only `reel.sh --publish` replaces the hero. The spot hook shows the Vigil wordmark from frame 0.
 - **Added:** visual-docs screenshots of the per-repo chat (with a doc-edit proposal) and the mobile layout, named after their feature ids so the audit links them.

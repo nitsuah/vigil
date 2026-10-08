@@ -1,0 +1,10 @@
+{
+  "title": "Vigil — AI spot (MCP and per-repo chat)",
+  "base": "brag-30s",
+  "duration": 14,
+  "fps": 30,
+  "poster": 10.8,
+  "scenes": [["ask", 0, 5.5], ["chat", 5.5, 11.5], ["outro", 11.5, 14]],
+  "outroFeats": "MCP server · 10 tools · Per-repo chat · Doc edits as PRs",
+  "outroChips": ["nitsuah.github.io/vigil", "MCP for Claude Code"]
+}

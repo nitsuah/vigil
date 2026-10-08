@@ -1,0 +1,1 @@
+Vigil keeps watch over every GitHub repo you own: grades each one, opens the PR that fixes what's missing, ranks open work across all of them, maps which repo uses which, and lets Claude (or a per-repo chat) read it all. nitsuah.github.io/vigil

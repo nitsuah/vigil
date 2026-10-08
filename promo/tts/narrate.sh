@@ -2,7 +2,7 @@
 # Generates promo/<spot>/vo/<id>.wav for each line in promo/<spot>/spot.json "narration"
 # with Hyperframes' local Kokoro TTS, in Docker. The wavs are committed, so
 # build.sh stays offline; re-run this only when the narration changes.
-#   promo/tts/narrate.sh health-21s-vert
+#   promo/tts/narrate.sh health-17s-vert
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 REPO="$(pwd -W 2>/dev/null || pwd)"

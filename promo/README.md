@@ -10,29 +10,30 @@ Everything runs in Docker. It needs no database, secrets or GitHub access.
 
 | Spot | Length | Covers |
 |---|---|---|
-| `health-21s` | 21 s | Health grades, docs / best practices / community standards, one-click fix PR |
-| `work-21s` | 21 s | Cross-repo open work (most urgent first), relationship map |
-| `agents-21s` | 21 s | MCP: Claude asks what to work on next; agents propose relationship edges |
-| `health-21s-vert` | 24.5 s, 9:16 | Narrated, captioned short of `health-21s` for Shorts / Reels / TikTok |
-| `brag-30s` | 30 s | The original all-in-one launch spot (superseded on the page by the hero reel) |
+| `health-17s` | 17 s | Health grades, docs / best practices / community standards, one-click fix PR |
+| `work-16s` | 16 s | Cross-repo open work (most urgent first), relationship map |
+| `ai-14s` | 14 s | Claude over MCP ("what should I work on next?"), per-repo chat proposing a doc edit as a PR |
+| `hero-37s` | 37 s | Every scene once: one hook, one reveal, one outro. The landing-page hero and the YouTube cut |
+| `health-17s-vert` | 24.5 s, 9:16 | Narrated, captioned short of the health story for Shorts / Reels / TikTok |
+| `brag-30s` | 30 s | The original all-in-one launch spot, and the base every cut reuses |
 
-The hero reel (`reels[hero]` in `spots.json`: health → work → agents, ~62 s) is what the landing page plays. Which features each spot shows is recorded in `spots.json`, and `npm run showcase -- audit .` reports coverage.
+Feature spots play only their own scenes: no shared reveal, a 2.5 s outro, and the Vigil wordmark from frame 0 (a corner mark when the spot opens on a feature scene). The hero is one continuous cut (`hero-37s`, `reels[hero]`) rather than the spots joined end to end, so the intro and outro play once. Which features each spot shows is recorded in `spots.json`, and `npm run showcase -- audit .` reports coverage.
 
-All spots share one composition: `brag-30s/compose.html` and `brag-30s/synth.py` are written in brag-30s's timeline, and a spot with `"base": "brag-30s"` in its `spot.json` lists any subset of those scenes (`hook`, `reveal`, `inspect`, `fix`, `prioritize`, `connect`, `ask`, `outro`) with its own start and end times. Each scene's motion and sound cues are mapped linearly into its slot, and chapter numbers follow the spot's order. Per-spot copy: `hookQuestion`, `revealLine`, `outroFeats`, `outroChips`. A new cut is a new `spot.json` and `share-copy.txt`.
+All spots share one composition: `brag-30s/compose.html` and `brag-30s/synth.py` are written in brag-30s's timeline, and a spot with `"base": "brag-30s"` in its `spot.json` lists any subset of those scenes (`hook`, `reveal`, `inspect`, `fix`, `prioritize`, `connect`, `ask`, `outro`, plus `chat`, an `extraScenes` entry the 30 s base itself doesn't play) with its own start and end times. Each scene's motion and sound cues are mapped linearly into its slot, and chapter numbers follow the spot's order. Per-spot copy: `hookQuestion`, `revealLine`, `outroFeats`, `outroChips`. A new cut is a new `spot.json` and `share-copy.txt`.
 
 A vertical spot (`"format": "vertical"`, `width`/`height`) has its own `compose.html`, a 1080×1920 shell that plays the base composition (staged as `inner.html`) full width, with the brand above and captions below. Its `narration` lines are spoken by Kokoro (`promo/tts/narrate.sh <spot>` writes `vo/<id>.wav` and prints each line's duration for `dur`) and mixed over the music by `tts/mix.py`. The wavs are committed, so `build.sh` stays offline.
 
 ## Re-run
 
 ```bash
-promo/build.sh health-21s                       # full render of one spot (~5 min)
-promo/build.sh health-21s --stills 2.6,5.8,9.9  # render just a few frames to check a change
-promo/sheet.sh health-21s                       # contact sheet of those stills
-promo/build.sh health-21s --audio               # re-synth music/SFX and remux only
-promo/build.sh health-21s --recapture           # re-shoot the app (after UI or seed changes)
-promo/build.sh health-21s --publish             # also copy it to site/assets/health-21s.mp4/.jpg
+promo/build.sh health-17s                       # full render of one spot (~5 min)
+promo/build.sh health-17s --stills 2.6,5.8,9.9  # render just a few frames to check a change
+promo/sheet.sh health-17s                       # contact sheet of those stills
+promo/build.sh health-17s --audio               # re-synth music/SFX and remux only
+promo/build.sh health-17s --recapture           # re-shoot the app (after UI or seed changes)
+promo/build.sh health-17s --publish             # also copy it to site/assets/health-17s.mp4/.jpg
 promo/reel.sh hero --publish                    # join the spots into the hero reel → site/assets/vigil.mp4
-promo/tts/narrate.sh health-21s-vert                # regenerate a vertical spot's narration
+promo/tts/narrate.sh health-17s-vert                # regenerate a vertical spot's narration
 ```
 
 Output goes to `promo/out/` (gitignored):

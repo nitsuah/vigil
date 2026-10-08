@@ -193,6 +193,18 @@ describe('auditShowcase', () => {
         ]));
     });
 
+    it("accepts a long spot that is a reel's single hero cut", () => {
+        const manifest: SpotsManifest = {
+            product: 'x',
+            features: [{ id: 'resume-learning', title: 'Resume Learning', category: 'C', spots: ['hero-37s'] }],
+            spots: [{ id: 'hero-37s', seconds: 37 }, { id: 'demo-40s', seconds: 40 }],
+            reels: [{ id: 'hero', spots: ['hero-37s'] }],
+        };
+        const long = base({ manifest }).gaps.filter(g => g.code === 'spot-long').map(g => g.message);
+        expect(long).toHaveLength(1);
+        expect(long[0]).toContain('demo-40s');
+    });
+
     it('counts only resolvable references as coverage', () => {
         const manifest: SpotsManifest = {
             product: 'x',
