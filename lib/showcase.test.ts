@@ -56,6 +56,9 @@ describe('parseFeatures status tags and unshipped work', () => {
             '## Core',
             '- [x] **Done Thing** — shipped',
             '- [ ] **Half Thing** — not yet',
+            '- `[in-progress]` **Busy Thing** — not yet',
+            '## In-Progress',
+            '- **Draft Thing** — not yet',
             '## Planned',
             '### Sync',
             '- **Cloud Sync** — later',
@@ -287,6 +290,10 @@ describe('in-house screenshot pipelines and brand automation', () => {
         expect(isScreenshotWorkflow('steps:\n  - run: node scripts/capture-screenshots.mjs\n')).toBe(true);
     });
 
+    it('counts a Playwright run against a visual-docs config (vigil)', () => {
+        expect(isScreenshotWorkflow('- name: Capture screenshots\n  run: npx playwright test -c playwright.visual-docs.config.ts\n')).toBe(true);
+    });
+
     it('does not count a job that only uploads Playwright failure screenshots', () => {
         expect(isScreenshotWorkflow(ATS_E2E_JOB)).toBe(false);
         expect(isScreenshotWorkflow('- run: npx playwright test\n- uses: actions/upload-artifact@v4\n  with:\n    name: screenshots\n    path: test-results/**/*.png\n')).toBe(false);
@@ -302,6 +309,10 @@ describe('in-house screenshot pipelines and brand automation', () => {
         const named = ['.github/workflows/screenshots.yml'];
         expect(visualAutomation(named, named, [], { screenshotWorkflows: [] }).screenshots).toBe(false);
         expect(visualAutomation(named, named, []).screenshots).toBe(true);
+        // same for a visual-named workflow with a Playwright visual config
+        const visual = ['.github/workflows/visual.yml', 'playwright.visual.config.ts'];
+        expect(visualAutomation(visual, [visual[0]], [], { screenshotWorkflows: [] }).screenshots).toBe(false);
+        expect(visualAutomation(visual, [visual[0]], []).screenshots).toBe(true);
     });
 
     it('dashboard: a screenshot spec/script + Playwright config + a workflow counts', () => {
@@ -371,6 +382,8 @@ describe('Pages folder from the upload-pages-artifact step', () => {
         expect(findPagesHtml(fileList, ['github-pages-blog'], true)).toEqual(['github-pages-blog/index.html', 'github-pages-blog/blog/post/index.html', 'site/index.html']);
         // a root upload takes only the top-level page, never every index.html in the repo
         expect(findPagesHtml(['index.html', 'other/index.html'], [''], true)).toEqual(['index.html']);
+        // an explicitly uploaded build folder qualifies; build output nested inside it doesn't
+        expect(findPagesHtml(['out/index.html', 'out/node_modules/x/index.html', 'dist/index.html'], ['out'], true)).toEqual(['out/index.html']);
     });
 
     it('names the repo from its git remote', () => {

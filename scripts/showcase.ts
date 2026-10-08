@@ -191,10 +191,12 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
     }
     if (s.featuresPath) {
         const features = parseFeatures(read(root, s.featuresPath) ?? '');
-        // Prefer the folder a workflow actually uploads over fixed locations like site/.
-        const uploaded = pagesHtml.filter(p => s.pagesDirs.some(d => p.startsWith(d.replace(/\/?$/, '/'))));
-        const top = [...(uploaded.length ? uploaded : pagesHtml)].sort((a, b) => a.split('/').length - b.split('/').length)[0];
-        const pagesDir = top ? path.posix.dirname(top) : null;
+        // Prefer the folder a workflow actually uploads (its root, not a nested page's folder) over fixed locations like site/.
+        const upload = s.pagesDirs
+            .filter(d => pagesHtml.some(p => p.startsWith(d ? `${d}/` : '')))
+            .sort((a, b) => b.length - a.length)[0];
+        const top = [...pagesHtml].sort((a, b) => a.split('/').length - b.split('/').length)[0];
+        const pagesDir = upload !== undefined ? upload || '.' : top ? path.posix.dirname(top) : null;
         const before = s.manifest ? JSON.stringify(s.manifest) : null;
         const next = scaffoldSpots({
             product,

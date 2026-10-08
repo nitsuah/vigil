@@ -81,14 +81,17 @@ export function repoNameFromRemote(url: string): string | null {
  */
 export function findPagesHtml(fileList: string[], uploadDirs: string[] = [], deep = false): string[] {
     return fileList.filter(f => {
-        if (IGNORED.test(f)) return false;
-        if (PAGES_HTML.test(f)) return true;
-        return uploadDirs.some(d => {
+        const uploaded = uploadDirs.some(d => {
             const prefix = d ? `${d}/` : '';
-            if (f === `${prefix}index.html`) return true;
+            if (!f.startsWith(prefix)) return false;
+            // The upload step names the folder, so it qualifies even when it's out/ or dist/; build output inside it doesn't.
+            const rest = f.slice(prefix.length);
+            if (IGNORED.test(rest)) return false;
+            if (rest === 'index.html') return true;
             // Never sweep a whole repo uploaded from its root.
-            return deep && !!d && f.startsWith(prefix) && f.endsWith('/index.html');
+            return deep && !!d && rest.endsWith('/index.html');
         });
+        return uploaded || (!IGNORED.test(f) && PAGES_HTML.test(f));
     });
 }
 
@@ -114,10 +117,11 @@ const SCREENSHOT_RUNNER = /playwright\s+test|capture[-_]?screenshots?/i;
 /**
  * What it captures: a spec or script named after screenshots
  * (tests/e2e/screenshots.spec.mjs, scripts/publish-screenshot-gallery.sh), or a
- * screenshots/ folder the job creates or mounts. An artifact *named*
+ * screenshots/ folder the job creates or mounts, or a Playwright visual-docs
+ * config (vigil's `playwright.visual-docs.config.ts`). An artifact *named*
  * "playwright-screenshots" that uploads test-results/ on failure matches neither.
  */
-const SCREENSHOT_TARGET = /[\w./-]*screenshots?[\w.-]*\.(?:m?[jt]s|cjs|sh|py)\b|mkdir\s+(?:-p\s+)?\S*screenshots\b|-v\s+\S*screenshots:/i;
+const SCREENSHOT_TARGET = /[\w./-]*screenshots?[\w.-]*\.(?:m?[jt]s|cjs|sh|py)\b|mkdir\s+(?:-p\s+)?\S*screenshots\b|-v\s+\S*screenshots:|playwright[\w.-]*visual[\w.-]*\.config\.[cm]?[jt]s\b/i;
 
 /**
  * Content check: the workflow regenerates product screenshots, whatever its
@@ -193,7 +197,7 @@ function cleanHeading(h: string): string {
  * (prose lists), and so are headings before the first bullet-bearing one.
  */
 /** Not shipped yet, so there's nothing to screenshot: a `[planned]` tag or a Planned/Roadmap/Future section. */
-const UNSHIPPED = /^(planned|roadmap|future|backlog|ideas?|wip|in progress)\b/i;
+const UNSHIPPED = /^(planned|roadmap|future|backlog|ideas?|wip|in[- ]progress)\b/i;
 
 export function parseFeatures(md: string): Feature[] {
     const out: Feature[] = [];

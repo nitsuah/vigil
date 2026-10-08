@@ -84,8 +84,10 @@ export function visualAutomation(
         ? opts.screenshotWorkflows.length > 0
         : files.some(f => SCREENSHOT_CAPTURE_CODE.test(f)) && files.some(f => PLAYWRIGHT_CONFIG.test(f)) && fileList.some(f => ANY_WORKFLOW.test(f));
     return {
-        // With workflow contents known, a screenshot-named file still has to pass the content check.
-        screenshots: (!opts.screenshotWorkflows && named(/screenshot/i)) || (visual && fileList.some(f => VISUAL_DOCS_PLAYWRIGHT.test(f))) || inHouse,
+        // With workflow contents known (the CLI), only the content check counts; file names are the dashboard's guess.
+        screenshots: opts.screenshotWorkflows
+            ? inHouse
+            : named(/screenshot/i) || (visual && fileList.some(f => VISUAL_DOCS_PLAYWRIGHT.test(f))) || inHouse,
         diagrams: named(/diagram/i) || (visual && diagrams.some(f => /\.(mmd|mermaid)$/i.test(f))),
     };
 }
