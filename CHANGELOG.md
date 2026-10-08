@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Netlify host move
+
+- **Changed:** the live site moved from `ghoverseer.netlify.app` to `gh-vigil.netlify.app` (the old host now 404s). The README link, MCP endpoint docs, post-deploy smoke workflow and `playwright.smoke.config.ts` default point at the new host.
+
 ### Visual showcase
 
 - **Fixed:** the screenshot content check needs its runner and its target in the same workflow job, and ignores trailing `# ...` comments. The audit reports, as info, workflows it couldn't read (a screenshot-/visual-named one keeps its file-name signal), `${{ }}` Pages upload paths it can't resolve, and when no git history is available to check spots for staleness.
