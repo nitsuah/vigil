@@ -40,11 +40,63 @@ const PAGES_HTML = /^(site|pages|showcase|docs|docs\/[^/]+)\/index\.html$/i;
 const PAGES_WORKFLOW = /^\.github\/workflows\/[^/]*pages[^/]*\.ya?ml$/i;
 export const SPOTS_MANIFEST = 'promo/spots.json';
 
-export function detectShowcaseFiles(fileList: string[]): ShowcaseFiles {
+/**
+ * Directories a workflow hands to actions/upload-pages-artifact (its `with: path:`),
+ * normalised without `./` or a trailing slash ('' for the repo root). A step
+ * without `path:` uploads the action's default, `_site`. Expression paths
+ * (`${{ ... }}`) can't be resolved statically and are skipped.
+ */
+export function pagesUploadPaths(yaml: string): string[] {
+    const lines = yaml.split(/\r?\n/);
+    const indentOf = (l: string) => l.match(/^\s*/)![0].length;
+    const out: string[] = [];
+    lines.forEach((line, i) => {
+        if (!/^\s*(-\s+)?uses:\s*['"]?actions\/upload-pages-artifact@/.test(line)) return;
+        // The step is the list item ("- ...") holding this line; it ends at the next line indented no deeper than its dash.
+        let start = i;
+        while (start > 0 && !/^\s*-\s/.test(lines[start])) start--;
+        const dash = indentOf(lines[start]);
+        let path = '_site';
+        for (let j = start; j < lines.length; j++) {
+            const l = lines[j];
+            if (j > start && l.trim() && !/^\s*#/.test(l) && indentOf(l) <= dash) break;
+            const m = l.match(/^\s*(?:-\s+)?path:\s*['"]?([^'"#\s]+)['"]?/);
+            if (m) { path = m[1]; break; }
+        }
+        out.push(path.replace(/^\.(\/|$)/, '').replace(/\/+$/, ''));
+    });
+    return [...new Set(out.filter(p => !p.includes('${{')))];
+}
+
+/** Repo name from a git remote URL (https or scp-style, with or without .git); null if none. */
+export function repoNameFromRemote(url: string): string | null {
+    const m = url.trim().match(/[/:]([^/:]+?)(?:\.git)?\/?$/);
+    return m ? m[1] : null;
+}
+
+/**
+ * Pages HTML: the fixed folders (site/, pages/, showcase/, docs/...), plus
+ * `<dir>/index.html` for each directory a workflow uploads to Pages. `deep`
+ * also takes nested `<dir>/**\/index.html` (apply injects the kit into every page).
+ */
+export function findPagesHtml(fileList: string[], uploadDirs: string[] = [], deep = false): string[] {
+    return fileList.filter(f => {
+        if (IGNORED.test(f)) return false;
+        if (PAGES_HTML.test(f)) return true;
+        return uploadDirs.some(d => {
+            const prefix = d ? `${d}/` : '';
+            if (f === `${prefix}index.html`) return true;
+            // Never sweep a whole repo uploaded from its root.
+            return deep && !!d && f.startsWith(prefix) && f.endsWith('/index.html');
+        });
+    });
+}
+
+export function detectShowcaseFiles(fileList: string[], opts: { pagesDirs?: string[] } = {}): ShowcaseFiles {
     const files = fileList.filter(f => !IGNORED.test(f));
     return {
         videos: files.filter(f => VIDEO.test(f)).slice(0, 30),
-        pagesHtml: files.filter(f => PAGES_HTML.test(f)),
+        pagesHtml: findPagesHtml(files, opts.pagesDirs),
         pagesWorkflows: fileList.filter(f => PAGES_WORKFLOW.test(f)),
         spotsManifest: fileList.includes(SPOTS_MANIFEST) ? SPOTS_MANIFEST : null,
         strayBragOutput: fileList.some(f => /^brag-output(-[^/]*)?\//.test(f)),
@@ -54,6 +106,36 @@ export function detectShowcaseFiles(fileList: string[]): ShowcaseFiles {
 /** Workflow steps that publish a GitHub Pages site (content check; the file list only sees names). */
 // upload-pages-artifact alone only stages the site; deploy-pages publishes it.
 export const PAGES_DEPLOY_STEP = /actions\/deploy-pages|peaceiris\/actions-gh-pages|JamesIves\/github-pages-deploy-action/;
+
+const stripYamlComments = (yaml: string) => yaml.replace(/^\s*#.*$/gm, '');
+
+/** A step that drives a browser capture: Playwright or a capture-screenshots script. */
+const SCREENSHOT_RUNNER = /playwright\s+test|capture[-_]?screenshots?/i;
+/**
+ * What it captures: a spec or script named after screenshots
+ * (tests/e2e/screenshots.spec.mjs, scripts/publish-screenshot-gallery.sh), or a
+ * screenshots/ folder the job creates or mounts. An artifact *named*
+ * "playwright-screenshots" that uploads test-results/ on failure matches neither.
+ */
+const SCREENSHOT_TARGET = /[\w./-]*screenshots?[\w.-]*\.(?:m?[jt]s|cjs|sh|py)\b|mkdir\s+(?:-p\s+)?\S*screenshots\b|-v\s+\S*screenshots:/i;
+
+/**
+ * Content check: the workflow regenerates product screenshots, whatever its
+ * file name (ats-fill's ci.yml has a screenshot-gallery job). Uploading
+ * Playwright failure screenshots as an artifact does not count.
+ */
+export function isScreenshotWorkflow(yaml: string): boolean {
+    const y = stripYamlComments(yaml);
+    return SCREENSHOT_RUNNER.test(y) && SCREENSHOT_TARGET.test(y);
+}
+
+/** Store listing images, promo tiles, or icon/favicon/logo generation. */
+const BRAND_ASSETS = /store-assets|promo[-_ ]tiles?|pwa-asset-generator|assets-generator|\b(?:generate|render|build)[-_ ]?(?:icons?|favicons?|logos?|brand(?:ing)?)\b/i;
+
+/** Content check: the workflow generates store/brand assets. Informational only. */
+export function isBrandWorkflow(yaml: string): boolean {
+    return BRAND_ASSETS.test(stripYamlComments(yaml));
+}
 
 /**
  * `automated` is per element: a screenshot workflow doesn't make a static
@@ -227,11 +309,15 @@ export interface ShowcaseAuditInput {
     pagesHtml: Record<string, string>;
     /** ISO date FEATURES.md last changed, when git history is available. */
     featuresChanged?: string | null;
+    /** Workflows that generate store/brand assets (content check). Informational, never a gap. */
+    brandWorkflows?: string[];
 }
 
 export interface ShowcaseAudit {
     elements: ShowcaseElements;
     coverage: { features: number; withVisual: number; exempt: number };
+    /** Workflows that generate store/brand assets. Not scored. */
+    brandAutomation: string[];
     gaps: Gap[];
 }
 
@@ -311,7 +397,10 @@ export function auditShowcase(input: ShowcaseAuditInput): ShowcaseAudit {
         add('warn', 'no-manifest', `No ${SPOTS_MANIFEST}. Run apply to scaffold it from FEATURES.md.`);
     }
 
+    const brandAutomation = input.brandWorkflows ?? [];
+    if (brandAutomation.length) add('info', 'brand-automation', `brand automation: ${brandAutomation.join(', ')}`);
+
     const order: Record<GapSeverity, number> = { error: 0, warn: 1, info: 2 };
     gaps.sort((a, b) => order[a.severity] - order[b.severity]);
-    return { elements, coverage: { features: total, withVisual, exempt }, gaps };
+    return { elements, coverage: { features: total, withVisual, exempt }, brandAutomation, gaps };
 }

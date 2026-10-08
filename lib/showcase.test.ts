@@ -3,10 +3,15 @@ import {
     auditShowcase,
     classifyElements,
     detectShowcaseFiles,
+    findPagesHtml,
     hasExpandKit,
     injectExpandKit,
+    isBrandWorkflow,
+    isScreenshotWorkflow,
     PAGES_DEPLOY_STEP,
+    pagesUploadPaths,
     parseFeatures,
+    repoNameFromRemote,
     scaffoldSpots,
     type SpotsManifest,
 } from './showcase';
@@ -203,5 +208,137 @@ describe('strict video tracking and per-element automation', () => {
         expect(visualAutomation(['playwright.visual-docs.config.ts'], wf, ['docs/diagrams/a.svg'])).toEqual({ screenshots: true, diagrams: false });
         expect(visualAutomation([], wf, ['docs/diagrams/a.mmd'])).toEqual({ screenshots: false, diagrams: true });
         expect(visualAutomation([], ['.github/workflows/screenshots.yml'], [])).toEqual({ screenshots: true, diagrams: false });
+    });
+});
+
+// Trimmed from nitsuah/ats-fill .github/workflows/ci.yml.
+const ATS_E2E_JOB = `
+  e2e:
+    steps:
+      - name: Run Playwright
+        run: docker run --rm -v \${{ github.workspace }}/test-results:/app/test-results ats-fill:e2e sh -c "npm run test:e2e && npx playwright test"
+      - name: Upload failure screenshots
+        uses: actions/upload-artifact@v7.0.1
+        if: failure()
+        with:
+          name: playwright-screenshots
+          path: test-results/
+`;
+const ATS_GALLERY_JOB = `
+  screenshot-gallery:
+    steps:
+      - name: Capture product screenshots
+        run: |
+          rm -rf screenshots
+          mkdir -p screenshots
+          docker run --rm -v \${{ github.workspace }}/screenshots:/app/screenshots ats-fill:e2e \\
+            sh -c "npx playwright test --config config/playwright.config.mjs tests/e2e/screenshots.spec.mjs"
+      - name: Validate screenshot gallery
+        run: node scripts/validate-screenshot-gallery.mjs
+      - name: Publish screenshot gallery PR
+        run: bash scripts/publish-screenshot-gallery.sh
+`;
+const ATS_STORE_JOB = `
+  chrome-web-store-assets:
+    steps:
+      - name: Generate store screenshots and promo tiles
+        run: |
+          mkdir -p store-assets
+          npx playwright test tests/e2e/store-assets.spec.mjs
+`;
+
+describe('in-house screenshot pipelines and brand automation', () => {
+    it('counts a screenshot-gallery job inside a generically named ci.yml', () => {
+        expect(isScreenshotWorkflow(ATS_E2E_JOB + ATS_GALLERY_JOB)).toBe(true);
+        expect(isScreenshotWorkflow('steps:\n  - run: node scripts/capture-screenshots.mjs\n')).toBe(true);
+    });
+
+    it('does not count a job that only uploads Playwright failure screenshots', () => {
+        expect(isScreenshotWorkflow(ATS_E2E_JOB)).toBe(false);
+        expect(isScreenshotWorkflow('- run: npx playwright test\n- uses: actions/upload-artifact@v4\n  with:\n    name: screenshots\n    path: test-results/**/*.png\n')).toBe(false);
+        // a commented-out capture step is not automation
+        expect(isScreenshotWorkflow('- run: npx playwright test\n# - run: node scripts/capture-screenshots.mjs\n')).toBe(false);
+    });
+
+    it('CLI: content evidence replaces the file-name guess for screenshots', () => {
+        const fileList = ['.github/workflows/ci.yml', 'config/playwright.config.mjs', 'tests/e2e/screenshots.spec.mjs', 'screenshots/a.png'];
+        expect(visualAutomation(fileList, [], [], { screenshotWorkflows: ['.github/workflows/ci.yml'] }).screenshots).toBe(true);
+        expect(visualAutomation(fileList, [], [], { screenshotWorkflows: [] }).screenshots).toBe(false);
+    });
+
+    it('dashboard: a screenshot spec/script + Playwright config + a workflow counts', () => {
+        const ats = ['.github/workflows/ci.yml', 'config/playwright.config.mjs', 'tests/e2e/screenshots.spec.mjs', 'screenshots/popup.png'];
+        expect(detectVisualDocs(ats, '').details.elements.screenshots).toBe('ci');
+        expect(visualAutomation(['.github/workflows/ci.yml', 'playwright.config.ts', 'scripts/capture-screenshots.mjs'], [], []).screenshots).toBe(true);
+        // each part is required
+        expect(detectVisualDocs(ats.filter(f => !f.startsWith('.github/')), '').details.elements.screenshots).toBe('static');
+        expect(detectVisualDocs(ats.filter(f => !f.includes('playwright')), '').details.elements.screenshots).toBe('static');
+        expect(detectVisualDocs(ats.filter(f => !f.endsWith('.spec.mjs')), '').details.elements.screenshots).toBe('static');
+        // screenshot images and build output are not capture code
+        expect(visualAutomation(['.github/workflows/ci.yml', 'playwright.config.ts', 'node_modules/x/screenshot.js', 'docs/screenshots/a.png'], [], []).screenshots).toBe(false);
+    });
+
+    it('reports brand automation as an info line, never a warning', () => {
+        expect(isBrandWorkflow(ATS_STORE_JOB)).toBe(true);
+        expect(isBrandWorkflow('- run: npm run generate-icons')).toBe(true);
+        expect(isBrandWorkflow(ATS_E2E_JOB + ATS_GALLERY_JOB)).toBe(false);
+        expect(isBrandWorkflow('- run: cp public/favicon.svg site/')).toBe(false);
+        const files = detectShowcaseFiles([]);
+        const elements = classifyElements({ diagrams: [], screenshots: [], automated: NONE, files });
+        const input = { fileList: [], files, elements, readme: null, features: null, manifest: null, pagesHtml: {} };
+        const a = auditShowcase({ ...input, brandWorkflows: ['.github/workflows/ci.yml'] });
+        expect(a.brandAutomation).toEqual(['.github/workflows/ci.yml']);
+        expect(a.gaps.filter(g => g.code === 'brand-automation')).toEqual([
+            { severity: 'info', code: 'brand-automation', message: 'brand automation: .github/workflows/ci.yml' },
+        ]);
+        expect(auditShowcase(input).brandAutomation).toEqual([]);
+        expect(auditShowcase(input).gaps.some(g => g.code === 'brand-automation')).toBe(false);
+    });
+});
+
+// Trimmed from nitsuah/nitsuah-io .github/workflows/deploy-github-pages.yml.
+const BLOG_PAGES = `
+jobs:
+  build:
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: github-pages-blog
+
+  deploy:
+    steps:
+      - uses: actions/deploy-pages@v4
+        with:
+          path: not-this-one
+`;
+
+describe('Pages folder from the upload-pages-artifact step', () => {
+    it('reads the uploaded path, normalised, and only from that step', () => {
+        expect(pagesUploadPaths(BLOG_PAGES)).toEqual(['github-pages-blog']);
+        expect(pagesUploadPaths('- uses: actions/upload-pages-artifact@v3\n  with:\n    path: ./public/\n')).toEqual(['public']);
+        expect(pagesUploadPaths("- with:\n    path: 'out'\n  uses: actions/upload-pages-artifact@v3\n")).toEqual(['out']);
+        expect(pagesUploadPaths('- uses: actions/upload-pages-artifact@v3\n- uses: actions/deploy-pages@v4\n')).toEqual(['_site']);
+        expect(pagesUploadPaths('- uses: actions/upload-pages-artifact@v3\n  with:\n    path: ${{ env.DIR }}\n')).toEqual([]);
+        expect(pagesUploadPaths('- uses: actions/upload-artifact@v4\n  with:\n    path: site\n')).toEqual([]);
+    });
+
+    it('treats <path>/index.html as Pages HTML, and nested pages only for apply', () => {
+        const fileList = ['github-pages-blog/index.html', 'github-pages-blog/blog/post/index.html', 'site/index.html', 'other/index.html'];
+        expect(detectShowcaseFiles(fileList).pagesHtml).toEqual(['site/index.html']); // dashboard: fixed list
+        expect(detectShowcaseFiles(fileList, { pagesDirs: ['github-pages-blog'] }).pagesHtml).toEqual(['github-pages-blog/index.html', 'site/index.html']);
+        expect(findPagesHtml(fileList, ['github-pages-blog'], true)).toEqual(['github-pages-blog/index.html', 'github-pages-blog/blog/post/index.html', 'site/index.html']);
+        // a root upload takes only the top-level page, never every index.html in the repo
+        expect(findPagesHtml(['index.html', 'other/index.html'], [''], true)).toEqual(['index.html']);
+    });
+
+    it('names the repo from its git remote', () => {
+        expect(repoNameFromRemote('https://github.com/nitsuah/vigil.git\n')).toBe('vigil');
+        expect(repoNameFromRemote('git@github.com:nitsuah/nitsuah-io.git')).toBe('nitsuah-io');
+        expect(repoNameFromRemote('https://github.com/nitsuah/ats-fill')).toBe('ats-fill');
+        expect(repoNameFromRemote('')).toBeNull();
     });
 });
