@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Post-deploy smoke
+
+- **Fixed:** the smoke workflow's wait step fails within a minute when `SITE_URL` has no Netlify site (three site-not-found 404s in a row) and logs each attempt's HTTP status. Before, `curl -f` hid the 404 as "unreachable" and the job timed out after 20 minutes with "deploy timed out". That is how the Netlify rename `ghoverseer` → `gh-vigil` read as a failing deploy on every `main` push from 2026-09-30 until #272 updated the host. The README deploy badge now links the renamed project.
+
 ### Netlify host move
 
 - **Changed:** the live site moved from `ghoverseer.netlify.app` to `gh-vigil.netlify.app` (the old host now 404s). The README link, MCP endpoint docs, post-deploy smoke workflow and `playwright.smoke.config.ts` default point at the new host.
