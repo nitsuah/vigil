@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Docs
+
+- **Docs:** FEATURES.md documents chat-driven task operations (`parseTaskOperationProposal`, `POST /api/repos/[name]/tasks`): the five operations, how proposals are parsed and applied, auth and validation, and that every change lands as a PR (#261). `promo/spots.json` maps the new entry to the chat screenshot. The generated `promo/spots.json` is now in `.prettierignore`, so the pre-commit hook no longer reflows it away from `showcase apply`'s output.
+
 ### Post-deploy smoke
 
 - **Fixed:** the smoke workflow's wait step fails within a minute when `SITE_URL` has no Netlify site (three site-not-found 404s in a row) and logs each attempt's HTTP status. Before, `curl -f` hid the 404 as "unreachable" and the job timed out after 20 minutes with "deploy timed out". That is how the Netlify rename `ghoverseer` → `gh-vigil` read as a failing deploy on every `main` push from 2026-09-30 until #272 updated the host. The README deploy badge now links the renamed project.

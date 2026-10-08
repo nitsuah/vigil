@@ -480,6 +480,15 @@
       "spots": []
     },
     {
+      "id": "chat-driven-task-operations",
+      "title": "Chat-Driven Task Operations",
+      "category": "AI-Powered Features",
+      "screenshots": [
+        "docs/screenshots/per-repo-conversational-interface.png"
+      ],
+      "spots": []
+    },
+    {
       "id": "pr-preview-modal",
       "title": "PR Preview Modal",
       "category": "Documentation Management",
