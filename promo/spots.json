@@ -8,15 +8,25 @@
       "id": "health-scoring",
       "title": "Health Scoring",
       "category": "Repository Intelligence",
-      "screenshots": ["docs/screenshots/dashboard.png"],
-      "spots": ["brag-30s", "health-21s", "health-21s-vert"]
+      "screenshots": [
+        "docs/screenshots/dashboard.png"
+      ],
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "documentation-tracking",
       "title": "Documentation Tracking",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s", "health-21s-vert"]
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "template-health-detection",
@@ -46,7 +56,9 @@
       "id": "code-coverage-visualization",
       "title": "Code Coverage Visualization",
       "category": "Repository Intelligence",
-      "screenshots": ["docs/screenshots/repo-details.png"],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -67,7 +79,9 @@
       "id": "lines-of-code-loc",
       "title": "Lines of Code (LOC)",
       "category": "Repository Intelligence",
-      "screenshots": ["docs/screenshots/repo-details.png"],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -81,7 +95,9 @@
       "id": "ci-cd-status",
       "title": "CI/CD Status",
       "category": "Repository Intelligence",
-      "screenshots": ["docs/screenshots/dashboard.png"],
+      "screenshots": [
+        "docs/screenshots/dashboard.png"
+      ],
       "spots": []
     },
     {
@@ -95,7 +111,9 @@
       "id": "contributor-analytics",
       "title": "Contributor Analytics",
       "category": "Repository Intelligence",
-      "screenshots": ["docs/screenshots/repo-details.png"],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -148,21 +166,32 @@
       "title": "Best Practices Detection",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s", "health-21s-vert"]
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "visual-docs-signal",
       "title": "Visual Docs Signal",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s"]
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "community-standards",
       "title": "Community Standards",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s", "health-21s-vert"]
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "org-level-fallback-awareness",
@@ -183,7 +212,9 @@
       "id": "repository-tiers",
       "title": "Repository Tiers",
       "category": "Repository Intelligence",
-      "screenshots": ["docs/screenshots/responsive-design.png"],
+      "screenshots": [
+        "docs/screenshots/responsive-design.png"
+      ],
       "spots": []
     },
     {
@@ -205,28 +236,43 @@
       "id": "mcp-server",
       "title": "MCP Server",
       "category": "Cross-Repo Orchestration",
-      "screenshots": ["docs/diagrams/architecture.svg"],
-      "spots": ["brag-30s", "agents-21s"]
+      "screenshots": [
+        "docs/diagrams/architecture.svg"
+      ],
+      "spots": [
+        "brag-30s",
+        "agents-21s"
+      ]
     },
     {
       "id": "cross-repo-task-rollup",
       "title": "Cross-Repo Task Rollup",
       "category": "Cross-Repo Orchestration",
       "screenshots": [],
-      "spots": ["brag-30s", "work-21s", "agents-21s"]
+      "spots": [
+        "brag-30s",
+        "work-21s",
+        "agents-21s"
+      ]
     },
     {
       "id": "cross-repo-relationship-map",
       "title": "Cross-Repo Relationship Map",
       "category": "Cross-Repo Orchestration",
       "screenshots": [],
-      "spots": ["brag-30s", "work-21s", "agents-21s"]
+      "spots": [
+        "brag-30s",
+        "work-21s",
+        "agents-21s"
+      ]
     },
     {
       "id": "llm-context-endpoint",
       "title": "LLM Context Endpoint",
       "category": "Cross-Repo Orchestration",
-      "screenshots": ["docs/diagrams/architecture.svg"],
+      "screenshots": [
+        "docs/diagrams/architecture.svg"
+      ],
       "spots": []
     },
     {
@@ -234,7 +280,10 @@
       "title": "Claude Code Skill",
       "category": "Agent Prompt Toolkit",
       "screenshots": [],
-      "spots": ["brag-30s", "agents-21s"]
+      "spots": [
+        "brag-30s",
+        "agents-21s"
+      ]
     },
     {
       "id": "flow-tasks-prompt",
@@ -320,13 +369,18 @@
       "title": "AI Template Enrichment",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s"]
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "smart-repo-type-detection",
       "title": "Smart Repo Type Detection",
       "category": "AI-Powered Features",
-      "screenshots": ["docs/screenshots/dashboard.png"],
+      "screenshots": [
+        "docs/screenshots/dashboard.png"
+      ],
       "spots": []
     },
     {
@@ -411,21 +465,27 @@
       "id": "per-repo-conversational-interface",
       "title": "Per-Repo Conversational Interface",
       "category": "AI-Powered Features",
-      "screenshots": ["docs/screenshots/per-repo-conversational-interface.png"],
+      "screenshots": [
+        "docs/screenshots/per-repo-conversational-interface.png"
+      ],
       "spots": []
     },
     {
       "id": "chat-driven-doc-edit-proposals",
       "title": "Chat-Driven Doc-Edit Proposals",
       "category": "AI-Powered Features",
-      "screenshots": ["docs/screenshots/per-repo-conversational-interface.png"],
+      "screenshots": [
+        "docs/screenshots/per-repo-conversational-interface.png"
+      ],
       "spots": []
     },
     {
       "id": "chat-driven-task-operations",
       "title": "Chat-Driven Task Operations",
       "category": "AI-Powered Features",
-      "screenshots": ["docs/screenshots/per-repo-conversational-interface.png"],
+      "screenshots": [
+        "docs/screenshots/per-repo-conversational-interface.png"
+      ],
       "spots": []
     },
     {
@@ -433,7 +493,11 @@
       "title": "PR Preview Modal",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s", "health-21s-vert"]
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "documentation-management-ai-template-enrichment",
@@ -455,35 +519,53 @@
       "title": "Inline Edit/Generate Toggle",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s"]
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "auto-fix-missing-docs",
       "title": "Auto-Fix Missing Docs",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s", "health-21s-vert"]
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "auto-fix-best-practices",
       "title": "Auto-Fix Best Practices",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s", "health-21s-vert"]
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "auto-fix-community-standards",
       "title": "Auto-Fix Community Standards",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s", "health-21s-vert"]
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "batch-operations",
       "title": "Batch Operations",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s"]
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "standardized-templates",
@@ -506,7 +588,10 @@
       "title": "Doc Health Scoring",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": ["brag-30s", "health-21s"]
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "documentation-management-template-health-detection",
@@ -616,36 +701,53 @@
       "id": "task-management",
       "title": "Task Management",
       "category": "Project Tracking",
-      "screenshots": ["docs/screenshots/repo-details.png"],
-      "spots": ["brag-30s", "work-21s"]
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
+      "spots": [
+        "brag-30s",
+        "work-21s"
+      ]
     },
     {
       "id": "roadmap-visualization",
       "title": "Roadmap Visualization",
       "category": "Project Tracking",
-      "screenshots": ["docs/screenshots/repo-details.png"],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
       "id": "per-repo-roadmap-progress",
       "title": "Per-Repo Roadmap Progress",
       "category": "Project Tracking",
-      "screenshots": ["docs/screenshots/repo-details.png"],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
       "id": "workflow-pipeline-stage-indicator",
       "title": "Workflow Pipeline Stage Indicator",
       "category": "Project Tracking",
-      "screenshots": ["docs/screenshots/repo-details.png", "docs/screenshots/pmo.png"],
+      "screenshots": [
+        "docs/screenshots/repo-details.png",
+        "docs/screenshots/pmo.png"
+      ],
       "spots": []
     },
     {
       "id": "pmo-mode-dashboard",
       "title": "PMO Mode Dashboard",
       "category": "Project Tracking",
-      "screenshots": ["docs/screenshots/pmo.png"],
-      "spots": ["brag-30s", "work-21s"]
+      "screenshots": [
+        "docs/screenshots/pmo.png"
+      ],
+      "spots": [
+        "brag-30s",
+        "work-21s"
+      ]
     },
     {
       "id": "dev-flow-handoff",
@@ -696,7 +798,9 @@
       "id": "expandable-details",
       "title": "Expandable Details",
       "category": "Project Tracking",
-      "screenshots": ["docs/screenshots/repo-details.png"],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -734,8 +838,16 @@
       "id": "modern-dashboard",
       "title": "Modern Dashboard",
       "category": "User Interface",
-      "screenshots": ["docs/screenshots/dashboard.png"],
-      "spots": ["brag-30s", "health-21s", "work-21s", "agents-21s", "health-21s-vert"]
+      "screenshots": [
+        "docs/screenshots/dashboard.png"
+      ],
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "work-21s",
+        "agents-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "three-row-detail-layout",
@@ -819,7 +931,9 @@
       "id": "responsive-design",
       "title": "Responsive Design",
       "category": "User Interface",
-      "screenshots": ["docs/screenshots/responsive-design.png"],
+      "screenshots": [
+        "docs/screenshots/responsive-design.png"
+      ],
       "spots": []
     },
     {
@@ -834,7 +948,9 @@
       "id": "repository-stats",
       "title": "Repository Stats",
       "category": "User Interface",
-      "screenshots": ["docs/screenshots/repo-details.png"],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -1096,7 +1212,9 @@
       "id": "webhook-driven-sync",
       "title": "Webhook-Driven Sync",
       "category": "Synchronization",
-      "screenshots": ["docs/diagrams/architecture.svg"],
+      "screenshots": [
+        "docs/diagrams/architecture.svg"
+      ],
       "spots": []
     },
     {
@@ -1671,7 +1789,11 @@
   "reels": [
     {
       "id": "hero",
-      "spots": ["health-21s", "work-21s", "agents-21s"],
+      "spots": [
+        "health-21s",
+        "work-21s",
+        "agents-21s"
+      ],
       "published": "site/assets/vigil.mp4"
     }
   ],
