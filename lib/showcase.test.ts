@@ -35,6 +35,23 @@ Intro prose with a - **bold** that is not a bullet.
 * **Resume Learning**: duplicate title in another category
 `;
 
+describe('parseFeatures status tags and unshipped work', () => {
+    it('reads `[shipped]` / [x] tagged bullets and skips planned items and Planned sections', () => {
+        const md = [
+            '## Scanning',
+            '- `[shipped]` **Barcode Scanning** — webcam scanning',
+            '- [x] **Capture Queue**: stage frames',
+            '- `[planned — 2027 Q1]` **Cloud Sync** — later',
+            '- `[planned]` **Share Links** — later',
+            '## Planned',
+            '- **Offline Mode** — someday',
+            '## Fun',
+            '- **Be Kind Rewind** — easter egg',
+        ].join('\n');
+        expect(parseFeatures(md).map(f => f.id)).toEqual(['barcode-scanning', 'capture-queue', 'be-kind-rewind']);
+    });
+});
+
 describe('parseFeatures', () => {
     it('reads bold-named bullets under emoji headings and de-duplicates ids', () => {
         expect(parseFeatures(FEATURES)).toEqual([

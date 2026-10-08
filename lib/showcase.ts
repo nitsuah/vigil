@@ -192,19 +192,27 @@ function cleanHeading(h: string): string {
  * `- **Name**: description` bullets. Bullets without a bold name are skipped
  * (prose lists), and so are headings before the first bullet-bearing one.
  */
+/** Not shipped yet, so there's nothing to screenshot: a `[planned]` tag or a Planned/Roadmap/Future section. */
+const UNSHIPPED = /^(planned|roadmap|future|backlog|ideas?|wip|in progress)\b/i;
+
 export function parseFeatures(md: string): Feature[] {
     const out: Feature[] = [];
     const seen = new Set<string>();
     let category = 'General';
+    let skipSection = false;
     for (const line of md.split(/\r?\n/)) {
         const h = line.match(/^#{2,4}\s+(.+?)\s*#*\s*$/);
         if (h) {
             category = cleanHeading(h[1]);
+            skipSection = UNSHIPPED.test(category);
             continue;
         }
-        const b = line.match(/^\s{0,3}[-*]\s+\*\*(.+?)\*\*\s*[:—–-]?/);
+        if (skipSection) continue;
+        // Optional status tag before the name: `[shipped]`, [x], [ ] (vhs, agent-board style).
+        const b = line.match(/^\s{0,3}[-*]\s+(?:`\[([^\]`]*)\]`\s+|\[([ xX])\]\s+)?\*\*(.+?)\*\*\s*[:—–-]?/);
         if (!b) continue;
-        const title = b[1].replace(/:$/, '').trim();
+        if (b[1] !== undefined && UNSHIPPED.test(b[1].trim())) continue;
+        const title = b[3].replace(/:$/, '').trim();
         let id = slugify(title);
         if (!id) continue;
         if (seen.has(id)) id = slugify(`${category}-${title}`);
