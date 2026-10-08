@@ -199,19 +199,23 @@ export function parseFeatures(md: string): Feature[] {
     const out: Feature[] = [];
     const seen = new Set<string>();
     let category = 'General';
-    let skipSection = false;
+    // Level of the unshipped heading being skipped; its subsections stay skipped until a heading at that level or higher.
+    let skipLevel = 0;
     for (const line of md.split(/\r?\n/)) {
-        const h = line.match(/^#{2,4}\s+(.+?)\s*#*\s*$/);
+        const h = line.match(/^(#{2,4})\s+(.+?)\s*#*\s*$/);
         if (h) {
-            category = cleanHeading(h[1]);
-            skipSection = UNSHIPPED.test(category);
+            const level = h[1].length;
+            if (skipLevel && level > skipLevel) continue;
+            category = cleanHeading(h[2]);
+            skipLevel = UNSHIPPED.test(category) ? level : 0;
             continue;
         }
-        if (skipSection) continue;
+        if (skipLevel) continue;
         // Optional status tag before the name: `[shipped]`, [x], [ ] (vhs, agent-board style).
         const b = line.match(/^\s{0,3}[-*]\s+(?:`\[([^\]`]*)\]`\s+|\[([ xX])\]\s+)?\*\*(.+?)\*\*\s*[:—–-]?/);
         if (!b) continue;
         if (b[1] !== undefined && UNSHIPPED.test(b[1].trim())) continue;
+        if (b[2] === ' ') continue; // unchecked box: not done yet
         const title = b[3].replace(/:$/, '').trim();
         let id = slugify(title);
         if (!id) continue;

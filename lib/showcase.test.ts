@@ -50,6 +50,23 @@ describe('parseFeatures status tags and unshipped work', () => {
         ].join('\n');
         expect(parseFeatures(md).map(f => f.id)).toEqual(['barcode-scanning', 'capture-queue', 'be-kind-rewind']);
     });
+
+    it('skips unchecked boxes and subsections nested under a Planned section', () => {
+        const md = [
+            '## Core',
+            '- [x] **Done Thing** — shipped',
+            '- [ ] **Half Thing** — not yet',
+            '## Planned',
+            '### Sync',
+            '- **Cloud Sync** — later',
+            '#### Details',
+            '- **Conflict UI** — later',
+            '## Fun',
+            '### Extras',
+            '- **Be Kind Rewind** — easter egg',
+        ].join('\n');
+        expect(parseFeatures(md).map(f => f.id)).toEqual(['done-thing', 'be-kind-rewind']);
+    });
 });
 
 describe('parseFeatures', () => {
@@ -281,6 +298,10 @@ describe('in-house screenshot pipelines and brand automation', () => {
         const fileList = ['.github/workflows/ci.yml', 'config/playwright.config.mjs', 'tests/e2e/screenshots.spec.mjs', 'screenshots/a.png'];
         expect(visualAutomation(fileList, [], [], { screenshotWorkflows: ['.github/workflows/ci.yml'] }).screenshots).toBe(true);
         expect(visualAutomation(fileList, [], [], { screenshotWorkflows: [] }).screenshots).toBe(false);
+        // a screenshot-named workflow that fails the content check doesn't count either
+        const named = ['.github/workflows/screenshots.yml'];
+        expect(visualAutomation(named, named, [], { screenshotWorkflows: [] }).screenshots).toBe(false);
+        expect(visualAutomation(named, named, []).screenshots).toBe(true);
     });
 
     it('dashboard: a screenshot spec/script + Playwright config + a workflow counts', () => {

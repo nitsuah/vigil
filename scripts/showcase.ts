@@ -191,7 +191,9 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
     }
     if (s.featuresPath) {
         const features = parseFeatures(read(root, s.featuresPath) ?? '');
-        const top = [...pagesHtml].sort((a, b) => a.split('/').length - b.split('/').length)[0];
+        // Prefer the folder a workflow actually uploads over fixed locations like site/.
+        const uploaded = pagesHtml.filter(p => s.pagesDirs.some(d => p.startsWith(d.replace(/\/?$/, '/'))));
+        const top = [...(uploaded.length ? uploaded : pagesHtml)].sort((a, b) => a.split('/').length - b.split('/').length)[0];
         const pagesDir = top ? path.posix.dirname(top) : null;
         const before = s.manifest ? JSON.stringify(s.manifest) : null;
         const next = scaffoldSpots({
@@ -202,7 +204,11 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
             pagesDir,
             page: pagesDir ? `https://nitsuah.github.io/${product}/` : null,
         });
-        if (productFlag) next.product = productFlag; // also corrects a manifest scaffolded under the wrong name
+        if (productFlag && next.product !== productFlag) {
+            // Also corrects a manifest scaffolded under the wrong name, including the Pages URL derived from it (a custom URL is kept).
+            if (next.page === `https://nitsuah.github.io/${next.product}/`) next.page = `https://nitsuah.github.io/${productFlag}/`;
+            next.product = productFlag;
+        }
         const after = JSON.stringify(next);
         if (after !== before) {
             changes.push(`${SPOTS_MANIFEST}: ${before ? 'updated' : 'created'} (${next.features.length} features)`);
@@ -230,7 +236,9 @@ function main(argv: string[]) {
 
     if (cmd === 'apply') {
         if (dirs.length !== 1) throw new Error('apply takes exactly one repo directory');
-        apply(dirs[0], flags.has('--dry-run'), opt('--product'));
+        const product = opt('--product');
+        if (rest.includes('--product') && (!product || product.startsWith('-'))) throw new Error('--product needs a name');
+        apply(dirs[0], flags.has('--dry-run'), product);
         return;
     }
     if (cmd !== 'audit') {
