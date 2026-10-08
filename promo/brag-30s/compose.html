@@ -24,6 +24,9 @@
   .pulse { position: absolute; left: 0; top: 0; border-radius: 10px; border: 2px solid #f0abfc; box-shadow: 0 0 24px rgba(240,171,252,0.6); opacity: 0; }
   .pill { position: absolute; padding: 12px 24px; border-radius: 999px; background: rgba(16,185,129,0.16); border: 1px solid rgba(52,211,153,0.6); color: #6ee7b7; font-weight: 700; font-size: 28px; opacity: 0; white-space: nowrap; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
   /* hook */
+  #hookBug { position: absolute; left: 72px; top: 54px; gap: 16px; }
+  #hookBug span { font-size: 34px; }
+  #hookBug em { font-style: normal; font-size: 24px; font-weight: 600; color: #94a3b8; letter-spacing: 0.01em; margin-left: 4px; }
   #chips { position: absolute; left: 50%; top: 190px; transform: translateX(-50%); display: grid; grid-template-columns: repeat(5, 300px); gap: 18px; }
   .chip { height: 76px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.10); background: rgba(15,23,42,0.85); display: flex; align-items: center; justify-content: space-between; padding: 0 22px; font-size: 26px; font-weight: 600; color: #cbd5e1; }
   .chip b { font-size: 30px; font-weight: 900; }
@@ -72,6 +75,7 @@
 <div id="bg"></div><div id="glowA"></div><div id="glowB"></div><div id="dots"></div>
 
 <div id="hook" class="layer">
+  <div class="brand" id="hookBug"></div>
   <div id="chips"></div>
   <div id="count"></div>
   <div id="question"><span class="grad" id="qtext"></span><span class="caret" id="qcaret"></span></div>
@@ -80,7 +84,7 @@
 <div id="reveal" class="layer">
   <div id="revLeft">
     <div class="brand" id="revBrand"></div>
-    <div class="line"><span class="grad">Every repo, graded.</span><br />One dashboard.</div>
+    <div class="line" id="revLine"><span class="grad">Every repo, graded.</span><br />One dashboard.</div>
   </div>
   <div id="revStage"><div class="shot" id="revShot"><img src="crops/dashboard.png" /></div></div>
 </div>
@@ -133,8 +137,8 @@
 <div id="outro" class="layer">
   <div class="brand" id="outBrand"></div>
   <div class="tag">Keep watch over <span class="grad">every repo.</span></div>
-  <div class="feats">Health · Docs · Best practices · Community standards · Open work · Relationships · MCP</div>
-  <div class="chips"><div>github.com/nitsuah/vigil</div><div>MCP for Claude Code</div></div>
+  <div class="feats" id="outFeats">Health · Docs · Best practices · Community standards · Open work · Relationships · MCP</div>
+  <div class="chips" id="outChips"><div>github.com/nitsuah/vigil</div><div>MCP for Claude Code</div></div>
 </div>
 
 <script>
@@ -143,6 +147,12 @@ const $ = (id) => document.getElementById(id);
 const ICON = (px) => `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="3.5" x2="12" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="17" x2="12" y2="20.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="3.5" y1="12" x2="7" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="17" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>`;
 $('revBrand').innerHTML = ICON(100) + '<span class="grad" style="font-size:110px">Vigil</span>';
 $('outBrand').innerHTML = ICON(170) + '<span class="grad">Vigil</span>';
+$('hookBug').innerHTML = ICON(46) + '<span class="grad">Vigil</span><em>GitHub portfolio health</em>';
+// Per-spot copy (spots that reuse this composition via "base" in spot.json).
+if (S.format === 'vertical') $('hookBug').style.display = 'none'; // the vertical shell shows the brand
+if (S.revealLine)$('revLine').innerHTML = S.revealLine;
+if (S.outroFeats) $('outFeats').textContent = S.outroFeats;
+if (S.outroChips) $('outChips').innerHTML = S.outroChips.map((c) => `<div>${c}</div>`).join('');
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const prog = (t, a, b) => clamp((t - a) / (b - a));
@@ -153,6 +163,16 @@ const lerp = (a, b, x) => a + (b - a) * x;
 const grade = (h) => (h >= 95 ? 'A+' : h >= 90 ? 'A' : h >= 80 ? 'B' : h >= 70 ? 'C' : h >= 60 ? 'D' : 'F');
 const gcol = (h) => (h >= 90 ? '#34d399' : h >= 80 ? '#60a5fa' : h >= 70 ? '#facc15' : h >= 60 ? '#fb923c' : '#f87171');
 const scene = Object.fromEntries(S.scenes.map(([id, a, b]) => [id, { a, b }]));
+// Every scene's choreography below is written in this file's own (brag-30s)
+// timeline. A spot that reuses it lists any subset of those scenes, in any
+// order and length; each scene's spot time maps linearly onto its source time.
+const src = Object.fromEntries((S.srcScenes || S.scenes).map(([id, a, b]) => [id, { a, b }]));
+const srcTime = (t, id) => src[id].a + (t - scene[id].a) * (src[id].b - src[id].a) / (scene[id].b - scene[id].a);
+// Chapter numbers follow the spot's own order.
+S.scenes.filter(([id]) => !['hook', 'reveal', 'outro'].includes(id)).forEach(([id], i) => {
+  const k = document.querySelector(`#${id} .kicker b`);
+  if (k) k.textContent = String(i + 1).padStart(2, '0');
+});
 
 // Headline words rise in one after another.
 const heads = [...document.querySelectorAll('[data-words]')].map((h) => {
@@ -236,6 +256,7 @@ window.render = (t) => {
     el.style.filter = st.o && st.blur > 0.05 ? `blur(${st.blur}px)` : 'none';
   });
   heads.forEach(({ words, sceneId }) => {
+    if (!scene[sceneId]) return;
     const a = scene[sceneId].a;
     words.forEach((w, i) => {
       const k = eOut(prog(t, a + 0.12 + i * 0.07, a + 0.5 + i * 0.07));
@@ -243,6 +264,10 @@ window.render = (t) => {
     });
   });
 
+  // Each scene runs on its own source clock (see srcTime); absent scenes get t = -1.
+  const now = t;
+  const T = (id) => (scene[id] ? srcTime(clamp(now, scene[id].a, scene[id].b), id) : -1);
+  { const t = T('hook');
   // hook
   chipEls.forEach((c, i) => {
     const k = prog(t, H.chipsStart + i * H.chipGap, H.chipsStart + i * H.chipGap + 0.35);
@@ -250,11 +275,13 @@ window.render = (t) => {
   });
   const ck = prog(t, H.countAt, H.countAt + 0.3);
   $('count').style.opacity = ck; $('count').style.transform = `translateY(${(1 - eOut(ck)) * 16}px)`;
-  const q = 'What do I work on next?';
+  const q = S.hookQuestion || 'What do I work on next?';
   const nq = clamp(Math.floor((t - H.typeAt) * H.typeCps), 0, q.length);
   $('qtext').textContent = q.slice(0, nq);
   $('qcaret').style.opacity = t < H.typeAt ? 0 : (nq < q.length || Math.floor(t * 2.5) % 2 === 0 ? 1 : 0);
 
+  }
+  { const t = T('reveal');
   // reveal
   const b2 = eOut(prog(t, 3.1, 3.7));
   $('revLeft').style.transform = `translateX(${(1 - b2) * -40}px)`; $('revLeft').style.opacity = b2;
@@ -262,6 +289,8 @@ window.render = (t) => {
   $('revShot').style.transform = `rotateY(${lerp(34, -7, d2) - drift * 2}deg) translateX(${(1 - d2) * 260}px) scale(${lerp(0.9, 1, d2) + drift * 0.025})`;
   $('revShot').style.opacity = d2;
 
+  }
+  { const t = T('inspect');
   // inspect: three checklist cards, then Fix All pulses and gets clicked
   S.cards.forEach((at, i) => {
     const k = eOut(prog(t, at, at + 0.55));
@@ -273,6 +302,8 @@ window.render = (t) => {
   pulse($('pulseFix'), t, 9.7, 10.5, fixAll, 170, 62);
   cursor($('curFix'), $('ringFix'), t, 9.4, { x: 1540, y: 1000 }, fixAll, S.clicks.fixAll, prog(t, 9.2, 9.5));
 
+  }
+  { const t = T('fix');
   // fix: the real PR preview, slow push-in, Create PR is clicked
   const fk = 1 + 0.05 * eInOut(prog(t, 11, 15));
   $('fixWrap').style.transform = `scale(${fk})`;
@@ -284,12 +315,16 @@ window.render = (t) => {
   $('prPill').style.opacity = pp;
   $('prPill').style.transform = `translate(${960 - 290}px, ${880}px) scale(${lerp(0.8, 1, eBack(pp))})`;
 
+  }
+  { const t = T('prioritize');
   // prioritize
   const g3 = eOut(prog(t, 15.1, 15.7)), kb3 = prog(t, 15.7, 19);
   $('priShot').style.transform = `translateY(${(1 - g3) * 50}px) scale(${1 + kb3 * 0.012})`;
   $('priB').style.opacity = prog(t, S.clicks.p2 + 0.05, S.clicks.p2 + 0.35);
   cursor($('curP2'), $('ringP2'), t, 15.9, { x: 1500, y: 980 }, p2, S.clicks.p2, prog(t, 15.7, 16.0));
 
+  }
+  { const t = T('connect');
   // connect
   const g4 = eOut(prog(t, 19.1, 19.7)), kb4 = prog(t, 19.7, 23);
   $('conShot').style.transform = `translateY(${(1 - g4) * 50}px) scale(${1 + kb4 * 0.01})`;
@@ -298,6 +333,8 @@ window.render = (t) => {
   $('confirmPill').style.opacity = cp;
   $('confirmPill').style.transform = `translate(${confirmAt.x - 250}px, ${confirmAt.y - 22}px) scale(${lerp(0.7, 1, eBack(cp))})`;
 
+  }
+  { const t = T('ask');
   // ask
   const tm = eOut(prog(t, 23.05, 23.5));
   $('term').style.transform = `translateY(${(1 - tm) * 40}px)`;
@@ -305,6 +342,8 @@ window.render = (t) => {
   typeEl.textContent = S.question.slice(0, typed);
   lineEls.forEach((el, i) => { const k = prog(t, lines[i].at, lines[i].at + 0.2); el.style.opacity = k; el.style.transform = `translateY(${(1 - k) * 8}px)`; });
 
+  }
+  { const t = T('outro');
   // outro
   const O = S.outroAt;
   const o1 = eBack(prog(t, O + 0.1, O + 0.7));
@@ -314,6 +353,7 @@ window.render = (t) => {
   const o3 = prog(t, O + 1.15, O + 1.5);
   document.querySelector('#outro .chips').style.opacity = o3;
   document.querySelector('#outro .chips').style.transform = `translateY(${(1 - eOut(o3)) * 14}px)`;
+  }
 };
 
 window.ready = (async () => {

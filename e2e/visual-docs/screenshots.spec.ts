@@ -165,3 +165,37 @@ test('pmo', async ({ page }) => {
   await expect(page.getByRole('article', { name: 'nitsuah/skyview' })).toBeVisible();
   await page.screenshot({ path: `${OUT}/pmo.png` });
 });
+
+// Screenshots named after a feature id in promo/spots.json are linked to that
+// feature automatically (`npm run showcase -- apply .`).
+test('per-repo chat', async ({ page }) => {
+  await signedInContext(page);
+  // A seeded thread, so the shot never calls an AI provider. The reply carries a
+  // doc-edit proposal card (chat-driven-doc-edit-proposals).
+  const at = NOW.toISOString();
+  const thread = {
+    vigil: [
+      { id: 'u1', role: 'user', content: 'Summarize my stale docs', createdAt: at },
+      {
+        id: 'a1', role: 'assistant', createdAt: at,
+        content: 'Two docs need attention:\n\n- **ROADMAP.md** still lists *AI-assisted roadmap management* as planned for 2027 Q1 with no linked PR.\n- **METRICS.md** was last updated 41 days ago, so the 81.2% coverage figure may be stale.\n\nI drafted a METRICS.md refresh below.',
+        proposal: { docType: 'metrics', summary: 'Refresh METRICS.md with the current coverage and test counts', content: '# Metrics\n\n| Metric | Value |\n|---|---|\n| Coverage | 81.2% |\n| Test files | 64 |\n' },
+      },
+    ],
+  };
+  await page.addInitScript((t) => {
+    window.localStorage.setItem('vigil.repo-chat.v1.demo%40example.com', t);
+  }, JSON.stringify(thread));
+  await page.goto('/');
+  await expect(page.locator('table tbody')).toContainText('agent-board', { timeout: 30_000 });
+  await page.locator('table tbody').getByRole('button', { name: 'Chat about vigil' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Refresh METRICS.md');
+  await page.screenshot({ path: `${OUT}/per-repo-conversational-interface.png` });
+});
+
+test('mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByText('Drone services marketplace').first()).toBeVisible({ timeout: 30_000 });
+  await page.screenshot({ path: `${OUT}/responsive-design.png` });
+});

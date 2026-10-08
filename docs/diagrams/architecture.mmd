@@ -9,7 +9,7 @@ flowchart LR
     sync[lib/sync.ts<br/>parsers · best practices<br/>community standards · health score]
     ui[Dashboard + PMO<br/>app/page.tsx · app/pmo]
     routes[API routes<br/>/api/repos · /api/pmo · /api/agent]
-    mcp[MCP server<br/>POST /api/mcp · 8 tools]
+    mcp[MCP server<br/>POST /api/mcp · 10 tools]
     ctx[LLM context<br/>GET /api/context]
     ai[AI failover<br/>Gemini · OpenAI · Anthropic]
   end
@@ -19,6 +19,7 @@ flowchart LR
   user[Owner in browser]
 
   repos --> sync
+  repos -- push webhook<br/>/api/webhooks/github --> sync
   api --> sync
   sync --> db
   db --> routes --> ui

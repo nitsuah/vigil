@@ -1,11 +1,14 @@
 // Renders a spot's compose.html frame by frame (every frame is a pure
 // function of time: window.render(t)). capture.json and spot.json are
-// injected as window.PROMO / window.SPOT so the page never fetches file://.
+// injected as window.PROMO / window.SPOT (into every frame, so a vertical
+// spot's embedded landscape composition sees them too) so the page never
+// fetches file://.
 //
 // Usage (inside the promo image): node render.js <spot> [times]
 //   times: optional comma list, e.g. "1.8,2.6" → stills only
 const { chromium } = require('playwright');
 const fs = require('fs');
+const loadSpot = require('./spot-config');
 
 const spot = process.argv[2];
 const stills = process.argv[3];
@@ -13,9 +16,10 @@ const WORK = `/out/${spot}`;
 
 (async () => {
     const promo = JSON.parse(fs.readFileSync('/out/capture/capture.json', 'utf8'));
-    const spotCfg = JSON.parse(fs.readFileSync(`/repo/promo/${spot}/spot.json`, 'utf8'));
+    const spotCfg = loadSpot('/repo/promo', spot);
+    const width = spotCfg.width ?? 1920, height = spotCfg.height ?? 1080;
     const browser = await chromium.launch({ args: ['--allow-file-access-from-files'] });
-    const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+    const page = await browser.newPage({ viewport: { width, height } });
     page.on('console', (m) => console.log('[page]', m.text()));
     page.on('pageerror', (e) => {
         console.error('[page error]', e.message);
@@ -24,7 +28,7 @@ const WORK = `/out/${spot}`;
     await page.addInitScript(([p, s]) => { window.PROMO = p; window.SPOT = s; }, [promo, spotCfg]);
     await page.goto(`file://${WORK}/compose.html`);
     await page.evaluate(() => window.ready);
-    const { duration, fps } = await page.evaluate(() => ({ duration: window.SPOT.duration, fps: window.SPOT.fps }));
+    const { duration, fps } = spotCfg;
 
     const times = stills
         ? stills.split(',').map(Number)

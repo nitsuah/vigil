@@ -8,42 +8,57 @@
       "id": "health-scoring",
       "title": "Health Scoring",
       "category": "Repository Intelligence",
-      "screenshots": [],
-      "spots": []
+      "screenshots": [
+        "docs/screenshots/dashboard.png"
+      ],
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "documentation-tracking",
       "title": "Documentation Tracking",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "template-health-detection",
       "title": "Template Health Detection",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "template-version-tracking",
       "title": "Template Version Tracking",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "malformed-doc-detection",
       "title": "Malformed Doc Detection",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "code-coverage-visualization",
       "title": "Code Coverage Visualization",
       "category": "Repository Intelligence",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -64,7 +79,9 @@
       "id": "lines-of-code-loc",
       "title": "Lines of Code (LOC)",
       "category": "Repository Intelligence",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -78,7 +95,9 @@
       "id": "ci-cd-status",
       "title": "CI/CD Status",
       "category": "Repository Intelligence",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/dashboard.png"
+      ],
       "spots": []
     },
     {
@@ -92,7 +111,9 @@
       "id": "contributor-analytics",
       "title": "Contributor Analytics",
       "category": "Repository Intelligence",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -100,21 +121,24 @@
       "title": "Bus Factor Analysis",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "commit-frequency",
       "title": "Commit Frequency",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "pr-merge-time",
       "title": "PR Merge Time",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "token-density-comment-to-code-ratio",
@@ -142,21 +166,32 @@
       "title": "Best Practices Detection",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "visual-docs-signal",
       "title": "Visual Docs Signal",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "community-standards",
       "title": "Community Standards",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "org-level-fallback-awareness",
@@ -170,13 +205,16 @@
       "title": "Extended File Location Detection",
       "category": "Repository Intelligence",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "repository-tiers",
       "title": "Repository Tiers",
       "category": "Repository Intelligence",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/responsive-design.png"
+      ],
       "spots": []
     },
     {
@@ -191,34 +229,50 @@
       "title": "Agent Dispatch Bridge",
       "category": "Cross-Repo Orchestration",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "mcp-server",
       "title": "MCP Server",
       "category": "Cross-Repo Orchestration",
-      "screenshots": [],
-      "spots": []
+      "screenshots": [
+        "docs/diagrams/architecture.svg"
+      ],
+      "spots": [
+        "brag-30s",
+        "agents-21s"
+      ]
     },
     {
       "id": "cross-repo-task-rollup",
       "title": "Cross-Repo Task Rollup",
       "category": "Cross-Repo Orchestration",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "work-21s",
+        "agents-21s"
+      ]
     },
     {
       "id": "cross-repo-relationship-map",
       "title": "Cross-Repo Relationship Map",
       "category": "Cross-Repo Orchestration",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "work-21s",
+        "agents-21s"
+      ]
     },
     {
       "id": "llm-context-endpoint",
       "title": "LLM Context Endpoint",
       "category": "Cross-Repo Orchestration",
-      "screenshots": [],
+      "screenshots": [
+        "docs/diagrams/architecture.svg"
+      ],
       "spots": []
     },
     {
@@ -226,35 +280,42 @@
       "title": "Claude Code Skill",
       "category": "Agent Prompt Toolkit",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "agents-21s"
+      ]
     },
     {
       "id": "flow-tasks-prompt",
       "title": "FLOW-TASKS Prompt",
       "category": "Agent Prompt Toolkit",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "handoff-prompt",
       "title": "HANDOFF Prompt",
       "category": "Agent Prompt Toolkit",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "pm-prompt-v1-2",
       "title": "PM Prompt v1.2",
       "category": "Agent Prompt Toolkit",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "test-prompt-v2",
       "title": "TEST Prompt v2",
       "category": "Agent Prompt Toolkit",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-summaries",
@@ -268,48 +329,58 @@
       "title": "Multi-Provider AI Failover",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-health-endpoint",
       "title": "AI Health Endpoint",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "runtime-model-auto-discovery",
       "title": "Runtime Model Auto-Discovery",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "hot-model-swapping",
       "title": "Hot Model Swapping",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "self-healing-ai",
       "title": "Self-Healing AI",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-template-enrichment",
       "title": "AI Template Enrichment",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "smart-repo-type-detection",
       "title": "Smart Repo Type Detection",
       "category": "AI-Powered Features",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/dashboard.png"
+      ],
       "spots": []
     },
     {
@@ -317,7 +388,8 @@
       "title": "Gemini Health Monitoring",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-feature-suggestions",
@@ -338,62 +410,73 @@
       "title": "Provider Circuit Breaker",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "structured-model-switch-logging",
       "title": "Structured Model-Switch Logging",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "non-inferential-health-endpoint",
       "title": "Non-Inferential Health Endpoint",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "centralized-gemini-model-discovery",
       "title": "Centralized Gemini Model Discovery",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "auto-discovery-fallback",
       "title": "Auto-Discovery Fallback",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "model-caching-1-hour-ttl",
       "title": "Model Caching (1-hour TTL)",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "unified-geminimodelname-env-var",
       "title": "Unified `GEMINI_MODEL_NAME` Env Var",
       "category": "AI-Powered Features",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "per-repo-conversational-interface",
       "title": "Per-Repo Conversational Interface",
       "category": "AI-Powered Features",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/per-repo-conversational-interface.png"
+      ],
       "spots": []
     },
     {
       "id": "chat-driven-doc-edit-proposals",
       "title": "Chat-Driven Doc-Edit Proposals",
       "category": "AI-Powered Features",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/per-repo-conversational-interface.png"
+      ],
       "spots": []
     },
     {
@@ -401,14 +484,19 @@
       "title": "PR Preview Modal",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "documentation-management-ai-template-enrichment",
       "title": "AI Template Enrichment",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "diff-view",
@@ -422,182 +510,235 @@
       "title": "Inline Edit/Generate Toggle",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "auto-fix-missing-docs",
       "title": "Auto-Fix Missing Docs",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "auto-fix-best-practices",
       "title": "Auto-Fix Best Practices",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "auto-fix-community-standards",
       "title": "Auto-Fix Community Standards",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "batch-operations",
       "title": "Batch Operations",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "standardized-templates",
       "title": "Standardized Templates",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "agent-instructions-prompt-md",
       "title": "Agent Instructions (PROMPT.md)",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "doc-health-scoring",
       "title": "Doc Health Scoring",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [
+        "brag-30s",
+        "health-21s"
+      ]
     },
     {
       "id": "documentation-management-template-health-detection",
       "title": "Template Health Detection",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "oauth-error-handling",
       "title": "OAuth Error Handling",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "github-error-parsing",
       "title": "GitHub Error Parsing",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "authorization-auto-redirect",
       "title": "Authorization Auto-Redirect",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "error-instructions",
       "title": "Error Instructions",
       "category": "Documentation Management",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "template-path-debugging",
       "title": "Template Path Debugging",
       "category": "Developer Experience",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "features-display-order",
       "title": "Features Display Order",
       "category": "Developer Experience",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "duplicate-metrics-prevention",
       "title": "Duplicate Metrics Prevention",
       "category": "Developer Experience",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "windows-line-endings-support",
       "title": "Windows Line Endings Support",
       "category": "Developer Experience",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "graphql-rate-limit-safety",
       "title": "GraphQL Rate Limit Safety",
       "category": "Developer Experience",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "typescript-build-stability",
       "title": "TypeScript Build Stability",
       "category": "Developer Experience",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "batched-db-queries",
       "title": "Batched DB Queries",
       "category": "Developer Experience",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "db-scaling-assessment",
       "title": "DB Scaling Assessment",
       "category": "Developer Experience",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "task-management",
       "title": "Task Management",
       "category": "Project Tracking",
-      "screenshots": [],
-      "spots": []
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
+      "spots": [
+        "brag-30s",
+        "work-21s"
+      ]
     },
     {
       "id": "roadmap-visualization",
       "title": "Roadmap Visualization",
       "category": "Project Tracking",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
       "id": "per-repo-roadmap-progress",
       "title": "Per-Repo Roadmap Progress",
       "category": "Project Tracking",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
       "id": "workflow-pipeline-stage-indicator",
       "title": "Workflow Pipeline Stage Indicator",
       "category": "Project Tracking",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/repo-details.png",
+        "docs/screenshots/pmo.png"
+      ],
       "spots": []
     },
     {
       "id": "pmo-mode-dashboard",
       "title": "PMO Mode Dashboard",
       "category": "Project Tracking",
-      "screenshots": [],
-      "spots": []
+      "screenshots": [
+        "docs/screenshots/pmo.png"
+      ],
+      "spots": [
+        "brag-30s",
+        "work-21s"
+      ]
     },
     {
       "id": "dev-flow-handoff",
@@ -625,27 +766,32 @@
       "title": "Testing Metrics",
       "category": "Project Tracking",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ci-cd-monitoring",
       "title": "CI/CD Monitoring",
       "category": "Project Tracking",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "vulnerability-alerts",
       "title": "Vulnerability Alerts",
       "category": "Project Tracking",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "expandable-details",
       "title": "Expandable Details",
       "category": "Project Tracking",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -660,56 +806,71 @@
       "title": "Smart Row Expansion",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "data-tour-attributes",
       "title": "Data-Tour Attributes",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "tour-navigation-controls",
       "title": "Tour Navigation Controls",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "modern-dashboard",
       "title": "Modern Dashboard",
       "category": "User Interface",
-      "screenshots": [],
-      "spots": []
+      "screenshots": [
+        "docs/screenshots/dashboard.png"
+      ],
+      "spots": [
+        "brag-30s",
+        "health-21s",
+        "work-21s",
+        "agents-21s",
+        "health-21s-vert"
+      ]
     },
     {
       "id": "three-row-detail-layout",
       "title": "Three-Row Detail Layout",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "left-sidebar",
       "title": "Left Sidebar",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "synchronized-expand-collapse",
       "title": "Synchronized Expand/Collapse",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "color-coded-sections",
       "title": "Color-Coded Sections",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "enhanced-health-shields",
@@ -723,28 +884,32 @@
       "title": "Profile Section Compass Rose",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "dynamic-text-expansion",
       "title": "Dynamic Text Expansion",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "color-coded-filter-dropdowns",
       "title": "Color-Coded Filter Dropdowns",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "clickable-repository-names",
       "title": "Clickable Repository Names",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "filtering-sorting",
@@ -757,7 +922,9 @@
       "id": "responsive-design",
       "title": "Responsive Design",
       "category": "User Interface",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/responsive-design.png"
+      ],
       "spots": []
     },
     {
@@ -765,13 +932,16 @@
       "title": "Visual Indicators",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "repository-stats",
       "title": "Repository Stats",
       "category": "User Interface",
-      "screenshots": [],
+      "screenshots": [
+        "docs/screenshots/repo-details.png"
+      ],
       "spots": []
     },
     {
@@ -779,210 +949,240 @@
       "title": "CI/CD Badges",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "test-metrics",
       "title": "Test Metrics",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "vulnerability-warnings",
       "title": "Vulnerability Warnings",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "expandable-cards",
       "title": "Expandable Cards",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "show-more-less-controls",
       "title": "Show More/Less Controls",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-summary-component",
       "title": "AI Summary Component",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "bold-text-parsing",
       "title": "Bold Text Parsing",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "always-visible-refresh",
       "title": "Always-Visible Refresh",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "force-refresh",
       "title": "Force Refresh",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "subsection-support-in-tasks",
       "title": "Subsection Support in Tasks",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "visual-hierarchy-improvements",
       "title": "Visual Hierarchy Improvements",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "organized-button-layout",
       "title": "Organized Button Layout",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "green-play-button",
       "title": "Green Play Button",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "purple-github-button",
       "title": "Purple GitHub Button",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "authenticated-controls",
       "title": "Authenticated Controls",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "optimized-table-structure",
       "title": "Optimized Table Structure",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "status-icon-preservation",
       "title": "Status Icon Preservation",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "responsive-card-width",
       "title": "Responsive Card Width",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "enhanced-filter-visibility",
       "title": "Enhanced Filter Visibility",
       "category": "User Interface",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "markdown-sanitization",
       "title": "Markdown Sanitization",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "battle-tested-rendering",
       "title": "Battle-Tested Rendering",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "github-flavored-markdown",
       "title": "GitHub Flavored Markdown",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "link-security",
       "title": "Link Security",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "event-isolation",
       "title": "Event Isolation",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "custom-component-renderers",
       "title": "Custom Component Renderers",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "dependency-hygiene",
       "title": "Dependency Hygiene",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "repo-access-scoping-cwe-639",
       "title": "Repo Access Scoping (CWE-639)",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "authenticated-repo-chat",
       "title": "Authenticated Repo Chat",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "row-error-boundary",
       "title": "Row Error Boundary",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "production-smoke-tests",
       "title": "Production Smoke Tests",
       "category": "Security & Content Safety",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "manual-sync",
@@ -996,13 +1196,16 @@
       "title": "Automated Sync",
       "category": "Synchronization",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "webhook-driven-sync",
       "title": "Webhook-Driven Sync",
       "category": "Synchronization",
-      "screenshots": [],
+      "screenshots": [
+        "docs/diagrams/architecture.svg"
+      ],
       "spots": []
     },
     {
@@ -1010,7 +1213,8 @@
       "title": "Default Repositories",
       "category": "Synchronization",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "custom-repository-support",
@@ -1024,434 +1228,448 @@
       "title": "Rate Limit Monitoring",
       "category": "Synchronization",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "debug-tools",
       "title": "Debug Tools",
       "category": "Synchronization",
       "screenshots": [],
-      "spots": []
-    },
-    {
-      "id": "ai-assisted-roadmap-management",
-      "title": "AI-Assisted Roadmap Management",
-      "category": "Planned & Upcoming Features",
-      "screenshots": [],
-      "spots": []
-    },
-    {
-      "id": "3d-cross-repo-dependency-graph",
-      "title": "3D Cross-Repo Dependency Graph",
-      "category": "Planned & Upcoming Features",
-      "screenshots": [],
-      "spots": []
-    },
-    {
-      "id": "zombie-branch-detection",
-      "title": "Zombie-Branch Detection",
-      "category": "Planned & Upcoming Features",
-      "screenshots": [],
-      "spots": []
-    },
-    {
-      "id": "autonomous-plan-execution",
-      "title": "Autonomous Plan Execution",
-      "category": "Planned & Upcoming Features",
-      "screenshots": [],
-      "spots": []
-    },
-    {
-      "id": "portfolio-intelligence-dashboard",
-      "title": "Portfolio Intelligence Dashboard",
-      "category": "Planned & Upcoming Features",
-      "screenshots": [],
-      "spots": []
-    },
-    {
-      "id": "mobile-responsive-pwa",
-      "title": "Mobile-Responsive PWA",
-      "category": "Planned & Upcoming Features",
-      "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-model-failover",
       "title": "AI Model Failover",
       "category": "AI/ML & Market Trends",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-ml-market-trends-self-healing-ai",
       "title": "Self-Healing AI",
       "category": "AI/ML & Market Trends",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-ml-market-trends-ai-doc-improvement",
       "title": "AI Doc Improvement",
       "category": "AI/ML & Market Trends",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-ml-market-trends-ai-feature-suggestions",
       "title": "AI Feature Suggestions",
       "category": "AI/ML & Market Trends",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ai-ml-market-trends-ai-summaries",
       "title": "AI Summaries",
       "category": "AI/ML & Market Trends",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "security-signal-integration",
       "title": "Security Signal Integration",
       "category": "AI/ML & Market Trends",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "real-time-analytics",
       "title": "Real-Time Analytics",
       "category": "AI/ML & Market Trends",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "quarterly-review",
       "title": "Quarterly Review",
       "category": "Market-Relevant Improvements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "community-feedback-loop",
       "title": "Community Feedback Loop",
       "category": "Market-Relevant Improvements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "compliance-best-practices",
       "title": "Compliance & Best Practices",
       "category": "Market-Relevant Improvements",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "features-md",
       "title": "FEATURES.md",
       "category": "Tracked Documentation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "roadmap-md",
       "title": "ROADMAP.md",
       "category": "Tracked Documentation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "tasks-md",
       "title": "TASKS.md",
       "category": "Tracked Documentation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "metrics-md",
       "title": "METRICS.md",
       "category": "Tracked Documentation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "readme-md",
       "title": "README.md",
       "category": "Tracked Documentation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "license-md",
       "title": "LICENSE.md",
       "category": "Tracked Documentation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "changelog-md",
       "title": "CHANGELOG.md",
       "category": "Tracked Documentation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "contributing-md",
       "title": "CONTRIBUTING.md",
       "category": "Tracked Documentation",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "codeofconduct-md",
       "title": "CODE_OF_CONDUCT.md",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "community-standards-contributing-md",
       "title": "CONTRIBUTING.md",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "security-md",
       "title": "SECURITY.md",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "license",
       "title": "LICENSE",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "community-standards-changelog-md",
       "title": "CHANGELOG.md",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "issue-templates",
       "title": "Issue Templates",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "pull-request-templates",
       "title": "Pull Request Templates",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "codeowners",
       "title": "CODEOWNERS",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "copilot-instructions",
       "title": "Copilot Instructions",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "funding-yml",
       "title": "FUNDING.yml",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "community-standards-flow-tasks-prompt",
       "title": "FLOW-TASKS Prompt",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "community-standards-handoff-prompt",
       "title": "HANDOFF Prompt",
       "category": "Community Standards",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "ci-cd-integration",
       "title": "CI/CD Integration",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "pre-commit-hooks",
       "title": "Pre-commit Hooks",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "linting-configuration",
       "title": "Linting Configuration",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "branch-protection",
       "title": "Branch Protection",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "testing-framework",
       "title": "Testing Framework",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "gitignore",
       "title": "`.gitignore`",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "netlify-badge",
       "title": "Netlify Badge",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "env-example",
       "title": "`.env.example`",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "dependabot",
       "title": "Dependabot",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "docker",
       "title": "Docker",
       "category": "Best Practices",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "next-js-16",
       "title": "Next.js 16",
       "category": "Frontend",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "typescript",
       "title": "TypeScript",
       "category": "Frontend",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "tailwind-css",
       "title": "Tailwind CSS",
       "category": "Frontend",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "lucide-react",
       "title": "Lucide React",
       "category": "Frontend",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "neon-postgresql",
       "title": "Neon (PostgreSQL)",
       "category": "Backend",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "netlify-functions",
       "title": "Netlify Functions",
       "category": "Backend",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "nextauth-v5",
       "title": "NextAuth v5",
       "category": "Backend",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "github-api",
       "title": "GitHub API",
       "category": "APIs & Services",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "google-gemini",
       "title": "Google Gemini",
       "category": "APIs & Services",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "octokit",
       "title": "Octokit",
       "category": "APIs & Services",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "platform",
       "title": "Platform",
       "category": "Deployment",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "database",
       "title": "Database",
       "category": "Deployment",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "functions",
       "title": "Functions",
       "category": "Deployment",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "scheduled-jobs",
       "title": "Scheduled Jobs",
       "category": "Deployment",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     }
   ],
   "spots": [
@@ -1460,23 +1678,143 @@
       "seconds": 30,
       "format": "landscape",
       "tool": "promo/build.sh",
-      "features": [],
+      "features": [
+        "health-scoring",
+        "modern-dashboard",
+        "documentation-tracking",
+        "doc-health-scoring",
+        "best-practices-detection",
+        "visual-docs-signal",
+        "community-standards",
+        "auto-fix-missing-docs",
+        "auto-fix-best-practices",
+        "auto-fix-community-standards",
+        "batch-operations",
+        "pr-preview-modal",
+        "ai-template-enrichment",
+        "inline-edit-generate-toggle",
+        "cross-repo-task-rollup",
+        "pmo-mode-dashboard",
+        "task-management",
+        "cross-repo-relationship-map",
+        "mcp-server",
+        "claude-code-skill"
+      ],
       "published": "site/assets/vigil.mp4",
       "rendered": "2026-09-27"
+    },
+    {
+      "id": "health-21s",
+      "seconds": 21,
+      "format": "landscape",
+      "tool": "promo/build.sh",
+      "features": [
+        "health-scoring",
+        "modern-dashboard",
+        "documentation-tracking",
+        "doc-health-scoring",
+        "best-practices-detection",
+        "visual-docs-signal",
+        "community-standards",
+        "auto-fix-missing-docs",
+        "auto-fix-best-practices",
+        "auto-fix-community-standards",
+        "batch-operations",
+        "pr-preview-modal",
+        "ai-template-enrichment",
+        "inline-edit-generate-toggle"
+      ],
+      "published": "site/assets/health-21s.mp4",
+      "rendered": "2026-10-08"
+    },
+    {
+      "id": "work-21s",
+      "seconds": 21,
+      "format": "landscape",
+      "tool": "promo/build.sh",
+      "features": [
+        "modern-dashboard",
+        "cross-repo-task-rollup",
+        "pmo-mode-dashboard",
+        "task-management",
+        "cross-repo-relationship-map"
+      ],
+      "published": "site/assets/work-21s.mp4",
+      "rendered": "2026-10-08"
+    },
+    {
+      "id": "agents-21s",
+      "seconds": 21,
+      "format": "landscape",
+      "tool": "promo/build.sh",
+      "features": [
+        "modern-dashboard",
+        "mcp-server",
+        "claude-code-skill",
+        "cross-repo-task-rollup",
+        "cross-repo-relationship-map"
+      ],
+      "published": "site/assets/agents-21s.mp4",
+      "rendered": "2026-10-08"
+    },
+    {
+      "id": "health-21s-vert",
+      "seconds": 24.5,
+      "format": "vertical",
+      "tool": "promo/build.sh",
+      "features": [
+        "health-scoring",
+        "modern-dashboard",
+        "documentation-tracking",
+        "best-practices-detection",
+        "community-standards",
+        "auto-fix-missing-docs",
+        "auto-fix-best-practices",
+        "auto-fix-community-standards",
+        "pr-preview-modal"
+      ],
+      "published": "site/assets/health-21s-vert.mp4",
+      "rendered": "2026-10-08"
     }
   ],
   "reels": [
     {
       "id": "hero",
       "spots": [
-        "brag-30s"
+        "health-21s",
+        "work-21s",
+        "agents-21s"
       ],
-      "published": null
+      "published": "site/assets/vigil.mp4"
     }
   ],
   "brand": {
-    "source": null,
-    "derived": [],
-    "manual": []
+    "source": "app/icon.svg",
+    "derived": [
+      "app/favicon.ico",
+      "components/icons/VigilIcon.tsx",
+      "site/index.html (inline favicon + header mark)",
+      "promo/brag-30s/compose.html (ICON)",
+      "promo/health-21s-vert/compose.html (ICON)",
+      "site/assets/poster.jpg (og:image, reel poster)"
+    ],
+    "manual": [
+      {
+        "what": "GitHub social preview image (upload site/assets/poster.jpg; repo link previews use it)",
+        "url": "https://github.com/nitsuah/vigil/settings"
+      },
+      {
+        "what": "YouTube: upload the hero reel (promo/out/reel-hero/reel-hero.mp4) with share-copy from the spots",
+        "url": "https://studio.youtube.com/"
+      },
+      {
+        "what": "YouTube Shorts: upload promo/out/health-21s-vert/health-21s-vert.mp4 with promo/health-21s-vert/share-copy.txt",
+        "url": "https://studio.youtube.com/"
+      },
+      {
+        "what": "LinkedIn: post a 21s spot (promo/out/<spot>/<spot>.mp4) with its share-copy.txt",
+        "url": "https://www.linkedin.com/feed/"
+      }
+    ]
   }
 }

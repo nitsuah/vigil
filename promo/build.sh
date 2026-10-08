@@ -6,7 +6,8 @@
 #   promo/build.sh brag-30s --stills 1.8,4.5,9.2    # quick look at a few frames
 #   promo/build.sh brag-30s --audio                 # re-synth audio + remux only
 #   promo/build.sh brag-30s --recapture             # re-shoot the app (after UI/seed changes)
-#   promo/build.sh brag-30s --publish               # also update site/assets/ (landing page hero)
+#   promo/build.sh health-21s --publish             # also copy it to site/assets/<spot>.mp4/.jpg
+#   promo/reel.sh hero --publish                    # join the spots into the hero reel (site/assets/vigil.mp4)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO="$(pwd -W 2>/dev/null || pwd)"   # Windows path under Git Bash
@@ -34,9 +35,11 @@ MSYS_NO_PATHCONV=1 docker run --rm --init \
 
 if [ "$PUBLISH" = 1 ] && [ "$MODE" != stills ]; then
   mkdir -p site/assets
-  cp "promo/out/$SPOT/$SPOT-web.mp4" site/assets/vigil.mp4
-  cp "promo/out/$SPOT/$SPOT.jpg" site/assets/poster.jpg
+  # Each spot publishes under its own name; the landing-page hero (vigil.mp4 +
+  # poster.jpg) is the hero reel, built from the spots by promo/reel.sh.
+  cp "promo/out/$SPOT/$SPOT-web.mp4" "site/assets/$SPOT.mp4"
+  cp "promo/out/$SPOT/$SPOT.jpg" "site/assets/$SPOT.jpg"
   # details.webp (the whole expanded panel) is for video framing only.
   for f in promo/out/capture/web/*.webp; do [ "$(basename "$f")" = details.webp ] || cp "$f" site/assets/; done
-  echo "published → site/assets/"
+  echo "published → site/assets/$SPOT.mp4"
 fi

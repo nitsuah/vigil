@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  /* 1080×1920 shell for vertical shorts: the landscape composition (inner.html,
+     staged by pipeline.sh from the base spot) plays full-width in the middle,
+     with the brand above and burned-in captions from spot.json "narration" below. */
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #020617; font-family: Inter, sans-serif; color: #e2e8f0; }
+  #glowA, #glowB, #dots { position: absolute; inset: -200px; }
+  #glowA { background: radial-gradient(620px 520px at 50% 50%, rgba(128,45,255,0.22), transparent 70%); }
+  #glowB { background: radial-gradient(680px 560px at 50% 50%, rgba(59,0,128,0.26), transparent 70%); }
+  #dots { background-image: radial-gradient(rgba(165,180,252,0.10) 1.2px, transparent 1.2px); background-size: 34px 34px; mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%); }
+  .grad { background: linear-gradient(90deg, #a5b4fc, #d8b4fe 55%, #f0abfc); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #brand { position: absolute; left: 0; right: 0; top: 190px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  #brand .row { display: flex; align-items: center; gap: 22px; }
+  #brand .row svg { color: #a5b4fc; filter: drop-shadow(0 0 18px rgba(168,85,247,0.55)); }
+  #brand .row span { font-size: 96px; font-weight: 800; letter-spacing: -0.02em; }
+  #brand .sub { font-size: 34px; font-weight: 600; color: #94a3b8; }
+  #frame { position: absolute; left: 0; top: 520px; width: 1080px; height: 607.5px; overflow: hidden; box-shadow: 0 40px 120px rgba(0,0,0,0.6); border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  #inner { width: 1920px; height: 1080px; border: 0; transform: scale(0.5625); transform-origin: 0 0; display: block; }
+  #cap { position: absolute; left: 70px; right: 70px; top: 1240px; text-align: center; font-size: 66px; font-weight: 800; line-height: 1.2; letter-spacing: -0.02em; }
+  #cap .w { display: inline-block; white-space: pre; transition: none; }
+  #url { position: absolute; left: 0; right: 0; top: 1690px; display: flex; justify-content: center; }
+  #url div { font-family: 'JetBrains Mono', monospace; font-size: 34px; padding: 16px 30px; border-radius: 14px; background: rgba(15,23,42,0.9); border: 1px solid rgba(165,180,252,0.3); color: #c7d2fe; }
+</style>
+</head>
+<body>
+<div id="glowA"></div><div id="glowB"></div><div id="dots"></div>
+<div id="brand"><div class="row" id="brandRow"></div><div class="sub">GitHub portfolio health</div></div>
+<div id="frame"><iframe id="inner" src="inner.html" scrolling="no"></iframe></div>
+<div id="cap"></div>
+<div id="url"></div>
+
+<script>
+const S = window.SPOT;
+const $ = (id) => document.getElementById(id);
+const ICON = (px) => `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="3.5" x2="12" y2="7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="17" x2="12" y2="20.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="3.5" y1="12" x2="7" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="17" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>`;
+$('brandRow').innerHTML = ICON(92) + '<span class="grad">Vigil</span>';
+$('url').innerHTML = `<div>${(S.outroChips || ['nitsuah.github.io/vigil'])[0]}</div>`;
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const eOut = (x) => 1 - Math.pow(1 - x, 3);
+
+// Captions: one narration line at a time; words light up as they're spoken
+// (spread evenly over the line's measured duration).
+const lines = S.narration.lines.map((l) => ({ ...l, words: l.text.split(' ') }));
+let shown = null;
+function caption(t) {
+  const l = lines.find((x) => t >= x.at - 0.15 && t < x.at + x.dur + 0.45) || null;
+  if (l !== shown) {
+    $('cap').innerHTML = l ? l.words.map((w, i) => `<span class="w" data-i="${i}">${w}${i < l.words.length - 1 ? ' ' : ''}</span>`).join('') : '';
+    shown = l;
+  }
+  if (!l) return;
+  const k = eOut(prog(t, l.at - 0.15, l.at + 0.1)) * (1 - prog(t, l.at + l.dur + 0.2, l.at + l.dur + 0.45));
+  $('cap').style.opacity = k;
+  $('cap').style.transform = `translateY(${(1 - k) * 18}px)`;
+  const per = l.dur / l.words.length;
+  $('cap').querySelectorAll('.w').forEach((el, i) => {
+    const on = prog(t, l.at + i * per - 0.05, l.at + i * per + 0.12);
+    el.style.color = on > 0 ? `rgba(248,250,252,${0.35 + 0.65 * on})` : 'rgba(248,250,252,0.35)';
+  });
+}
+
+window.render = (t) => {
+  $('glowA').style.transform = `translate(${Math.sin(t * 0.21) * 140 - 200}px, ${Math.cos(t * 0.17) * 160 - 380}px)`;
+  $('glowB').style.transform = `translate(${Math.cos(t * 0.15) * 160 + 220}px, ${Math.sin(t * 0.19) * 180 + 420}px)`;
+  $('dots').style.transform = `translate(${(t * 6) % 34}px, ${(t * 3) % 34}px)`;
+  $('inner').contentWindow.render(t);
+  caption(t);
+};
+
+window.ready = (async () => {
+  const f = $('inner');
+  if (!f.contentWindow || !f.contentWindow.ready) await new Promise((r) => f.addEventListener('load', r, { once: true }));
+  await f.contentWindow.ready;
+  await Promise.all(['600 20px Inter', '800 20px Inter', '400 20px "JetBrains Mono"'].map((x) => document.fonts.load(x)));
+  await document.fonts.ready;
+  window.render(0);
+})();
+</script>
+</body>
+</html>
