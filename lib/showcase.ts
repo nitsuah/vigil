@@ -70,21 +70,23 @@ export function pagesUploadPaths(yaml: string): string[] {
 
 /** Repo name from a git remote URL (https or scp-style, with or without .git); null if none. */
 export function repoNameFromRemote(url: string): string | null {
-    const m = url.trim().match(/[/:]([^/:]+?)(?:\.git)?\/?$/);
+    // Backslash too: a local remote can be a Windows path (C:\Users\me\code\vigil).
+    const m = url.trim().match(/[/:\\]([^/:\\]+?)(?:\.git)?[/\\]?$/);
     return m ? m[1] : null;
 }
 
 /**
  * Pages HTML: the fixed folders (site/, pages/, showcase/, docs/...), plus
  * `<dir>/index.html` for each directory a workflow uploads to Pages. `deep`
- * also takes nested `<dir>/**\/index.html` (apply injects the kit into every page).
+ * also takes nested `<dir>/**\/index.html` (apply injects the kit into every page),
+ * except for a repo-root upload. An uploaded folder qualifies even if it's out/ (the file walk skips dist/ and build/ entirely).
  */
 export function findPagesHtml(fileList: string[], uploadDirs: string[] = [], deep = false): string[] {
     return fileList.filter(f => {
         const uploaded = uploadDirs.some(d => {
             const prefix = d ? `${d}/` : '';
             if (!f.startsWith(prefix)) return false;
-            // The upload step names the folder, so it qualifies even when it's out/ or dist/; build output inside it doesn't.
+            // The upload step names the folder, so it qualifies even when it's out/; build output inside it doesn't.
             const rest = f.slice(prefix.length);
             if (IGNORED.test(rest)) return false;
             if (rest === 'index.html') return true;
@@ -99,7 +101,8 @@ export function detectShowcaseFiles(fileList: string[], opts: { pagesDirs?: stri
     const files = fileList.filter(f => !IGNORED.test(f));
     return {
         videos: files.filter(f => VIDEO.test(f)).slice(0, 30),
-        pagesHtml: findPagesHtml(files, opts.pagesDirs),
+        // Unfiltered: findPagesHtml applies the ignore list itself, after letting an uploaded out/ through.
+        pagesHtml: findPagesHtml(fileList, opts.pagesDirs),
         pagesWorkflows: fileList.filter(f => PAGES_WORKFLOW.test(f)),
         spotsManifest: fileList.includes(SPOTS_MANIFEST) ? SPOTS_MANIFEST : null,
         strayBragOutput: fileList.some(f => /^brag-output(-[^/]*)?\//.test(f)),
@@ -112,16 +115,22 @@ export const PAGES_DEPLOY_STEP = /actions\/deploy-pages|peaceiris\/actions-gh-pa
 
 const stripYamlComments = (yaml: string) => yaml.replace(/^\s*#.*$/gm, '');
 
-/** A step that drives a browser capture: Playwright or a capture-screenshots script. */
-const SCREENSHOT_RUNNER = /playwright\s+test|capture[-_]?screenshots?/i;
+/** A step that drives a browser capture: Playwright, a capture-screenshots script, or an npm script named after screenshots. */
+const NPM_SCREENSHOT_SCRIPT = /npm\s+run\s+[\w:-]*screenshots?\b/i;
+const SCREENSHOT_RUNNER = new RegExp(`playwright\\s+test|capture[-_:]?screenshots?|${NPM_SCREENSHOT_SCRIPT.source}`, 'i');
 /**
  * What it captures: a spec or script named after screenshots
  * (tests/e2e/screenshots.spec.mjs, scripts/publish-screenshot-gallery.sh), or a
  * screenshots/ folder the job creates or mounts, or a Playwright visual-docs
- * config (vigil's `playwright.visual-docs.config.ts`). An artifact *named*
- * "playwright-screenshots" that uploads test-results/ on failure matches neither.
+ * config (vigil's `playwright.visual-docs.config.ts`), or an npm script named
+ * after screenshots (`npm run capture:screenshots`). An artifact *named*
+ * "playwright-screenshots" that uploads test-results/ on failure matches none of these.
  */
-const SCREENSHOT_TARGET = /[\w./-]*screenshots?[\w.-]*\.(?:m?[jt]s|cjs|sh|py)\b|mkdir\s+(?:-p\s+)?\S*screenshots\b|-v\s+\S*screenshots:|playwright[\w.-]*visual[\w.-]*\.config\.[cm]?[jt]s\b/i;
+const SCREENSHOT_TARGET = new RegExp(
+    String.raw`[\w./-]*screenshots?[\w.-]*\.(?:m?[jt]s|cjs|sh|py)\b|mkdir\s+(?:-p\s+)?\S*screenshots\b|-v\s+\S*screenshots:|playwright[\w.-]*visual[\w.-]*\.config\.[cm]?[jt]s\b|` +
+        NPM_SCREENSHOT_SCRIPT.source,
+    'i',
+);
 
 /**
  * Content check: the workflow regenerates product screenshots, whatever its
@@ -192,12 +201,18 @@ function cleanHeading(h: string): string {
 }
 
 /**
- * Parses the FEATURES.md convention: `##`/`###` category headings with
- * `- **Name**: description` bullets. Bullets without a bold name are skipped
- * (prose lists), and so are headings before the first bullet-bearing one.
+ * Not shipped yet, so there's nothing to screenshot: a `[planned]`-style tag or a
+ * Planned/Roadmap/Future/Backlog/Ideas/WIP/In-progress heading ("Future-proofing" isn't one).
  */
-/** Not shipped yet, so there's nothing to screenshot: a `[planned]` tag or a Planned/Roadmap/Future section. */
-const UNSHIPPED = /^(planned|roadmap|future|backlog|ideas?|wip|in[- ]progress)\b/i;
+const UNSHIPPED = /^(planned|roadmap|future|backlog|ideas?|wip|in[- ]progress)(?![\w-])/i;
+
+/**
+ * Parses the FEATURES.md convention: `##`/`###` category headings with
+ * `- **Name**: description` bullets, optionally prefixed by a `` `[tag]` `` or
+ * `[x]`/`[ ]` status. Unchecked boxes, unshipped tags and bullets under an
+ * unshipped heading (and its subsections) are skipped, as are bullets without
+ * a bold name (prose lists).
+ */
 
 export function parseFeatures(md: string): Feature[] {
     const out: Feature[] = [];

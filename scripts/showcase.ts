@@ -74,12 +74,16 @@ function repoName(root: string): string {
     const config = read(root, '.git/config') ?? '';
     const origin = config.match(/\[remote "origin"\][^[]*?^\s*url\s*=\s*(\S+)/m);
     const name = origin ? repoNameFromRemote(origin[1]) : null;
-    return name ?? path.basename(path.resolve(root));
+    if (name) return name;
+    const dir = path.basename(path.resolve(root));
+    // Mounted at /app or /target this is wrong, and a new manifest would keep it, so say so.
+    console.warn(`warning: no origin remote found; using directory name "${dir}" as the product (pass --product NAME to override)`);
+    return dir;
 }
 
 function gitDate(root: string, rel: string): string | null {
     try {
-        return execFileSync('git', ['-C', root, 'log', '-1', '--format=%cI', '--', rel], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
+        return execFileSync('git', ['-c', 'safe.directory=*', '-C', root, 'log', '-1', '--format=%cI', '--', rel], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
     } catch { return null; }
 }
 
@@ -193,7 +197,8 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
         const features = parseFeatures(read(root, s.featuresPath) ?? '');
         // Prefer the folder a workflow actually uploads (its root, not a nested page's folder) over fixed locations like site/.
         const upload = s.pagesDirs
-            .filter(d => pagesHtml.some(p => p.startsWith(d ? `${d}/` : '')))
+            // A root upload only owns the top-level index.html (findPagesHtml never sweeps the repo for it).
+            .filter(d => pagesHtml.some(p => (d ? p.startsWith(`${d}/`) : p === 'index.html')))
             .sort((a, b) => b.length - a.length)[0];
         const top = [...pagesHtml].sort((a, b) => a.split('/').length - b.split('/').length)[0];
         const pagesDir = upload !== undefined ? upload || '.' : top ? path.posix.dirname(top) : null;
@@ -230,6 +235,8 @@ function main(argv: string[]) {
     const [cmd, ...rest] = argv;
     const flags = new Set(rest.filter(a => a.startsWith('--') && !a.includes('=')));
     const opt = (name: string) => {
+        const eq = rest.find(a => a.startsWith(`${name}=`));
+        if (eq) return eq.slice(name.length + 1);
         const i = rest.indexOf(name);
         return i >= 0 ? rest[i + 1] : undefined;
     };
@@ -239,7 +246,8 @@ function main(argv: string[]) {
     if (cmd === 'apply') {
         if (dirs.length !== 1) throw new Error('apply takes exactly one repo directory');
         const product = opt('--product');
-        if (rest.includes('--product') && (!product || product.startsWith('-'))) throw new Error('--product needs a name');
+        const given = rest.some(a => a === '--product' || a.startsWith('--product='));
+        if (given && (!product || product.startsWith('-'))) throw new Error('--product needs a name');
         apply(dirs[0], flags.has('--dry-run'), product);
         return;
     }

@@ -61,7 +61,8 @@ export function findVisualAssets(fileList: string[]): { diagrams: string[]; scre
 }
 
 /**
- * Per-element automation evidence from file names alone. A generic "visual"
+ * Per-element automation evidence, from file names unless workflow contents
+ * are passed (see below). A generic "visual"
  * workflow only counts for an element whose inputs it can rebuild: a
  * Playwright visual-docs config for screenshots, Mermaid sources for diagrams.
  *
@@ -69,7 +70,7 @@ export function findVisualAssets(fileList: string[]): { diagrams: string[]; scre
  * is inferred from a screenshot-named spec/script plus a Playwright config plus
  * any workflow. When workflow contents are known (the CLI), pass
  * `screenshotWorkflows` (workflows that pass isScreenshotWorkflow) and it
- * replaces that file-name guess.
+ * alone decides `screenshots`; every file-name rule is ignored for that element.
  */
 export function visualAutomation(
     fileList: string[],

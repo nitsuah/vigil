@@ -67,8 +67,10 @@ describe('parseFeatures status tags and unshipped work', () => {
             '## Fun',
             '### Extras',
             '- **Be Kind Rewind** — easter egg',
+            '## Future-proofing',
+            '- **Schema Versioning** — shipped',
         ].join('\n');
-        expect(parseFeatures(md).map(f => f.id)).toEqual(['done-thing', 'be-kind-rewind']);
+        expect(parseFeatures(md).map(f => f.id)).toEqual(['done-thing', 'be-kind-rewind', 'schema-versioning']);
     });
 });
 
@@ -292,6 +294,9 @@ describe('in-house screenshot pipelines and brand automation', () => {
 
     it('counts a Playwright run against a visual-docs config (vigil)', () => {
         expect(isScreenshotWorkflow('- name: Capture screenshots\n  run: npx playwright test -c playwright.visual-docs.config.ts\n')).toBe(true);
+        expect(isScreenshotWorkflow('- run: npm run capture:screenshots\n')).toBe(true);
+        expect(isScreenshotWorkflow('- run: npm run screenshots\n')).toBe(true);
+        expect(isScreenshotWorkflow('- run: npm run test\n')).toBe(false);
     });
 
     it('does not count a job that only uploads Playwright failure screenshots', () => {
@@ -384,12 +389,16 @@ describe('Pages folder from the upload-pages-artifact step', () => {
         expect(findPagesHtml(['index.html', 'other/index.html'], [''], true)).toEqual(['index.html']);
         // an explicitly uploaded build folder qualifies; build output nested inside it doesn't
         expect(findPagesHtml(['out/index.html', 'out/node_modules/x/index.html', 'dist/index.html'], ['out'], true)).toEqual(['out/index.html']);
+        // the audit agrees with apply
+        expect(detectShowcaseFiles(['out/index.html', 'out/node_modules/x/index.html'], { pagesDirs: ['out'] }).pagesHtml).toEqual(['out/index.html']);
     });
 
     it('names the repo from its git remote', () => {
         expect(repoNameFromRemote('https://github.com/nitsuah/vigil.git\n')).toBe('vigil');
         expect(repoNameFromRemote('git@github.com:nitsuah/nitsuah-io.git')).toBe('nitsuah-io');
         expect(repoNameFromRemote('https://github.com/nitsuah/ats-fill')).toBe('ats-fill');
+        expect(repoNameFromRemote('ssh://git@github.com/nitsuah/stash.git/')).toBe('stash');
+        expect(repoNameFromRemote('C:\\Users\\me\\code\\vigil')).toBe('vigil');
         expect(repoNameFromRemote('')).toBeNull();
     });
 });
