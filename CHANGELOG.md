@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Visual showcase
 
 - **Added:** `npm run showcase -- audit|apply` checks screenshots, diagrams, videos and Pages against FEATURES.md and `promo/spots.json`. The dashboard shows per-element state, and the landing page uses the shared expand kit with larger screenshots.
+- **Fixed:** screenshots made by an in-house pipeline inside a generically named workflow (ats-fill's `ci.yml` screenshot-gallery job) are now `ci`, not `static`. The CLI checks workflow contents for a Playwright/capture step aimed at a screenshots spec, script, folder, visual-docs config or `npm run …screenshots` script; the dashboard infers it from a screenshot-named spec/script plus a Playwright config plus a workflow. In the CLI, jobs that only upload Playwright failure screenshots don't count, and a screenshot- or visual-named workflow file no longer counts on its name alone.
+- **Fixed:** FEATURES.md parsing accepts a status tag before the name (``- `[shipped]` **Name** — …``, `- [x] **Name**`), which vhs uses on 42 of its 51 bullets. `[planned]`-tagged items, unchecked `[ ]` boxes and bullets under Planned/Roadmap/Future/In-progress sections (including their subsections) are skipped: there's nothing to show yet.
+- **Added:** the audit reports `brand automation: <workflow>` (info, not scored) when a workflow generates store/brand assets such as `store-assets/`, promo tiles or icons.
+- **Fixed:** the CLI finds a Pages site in any folder a workflow uploads with `actions/upload-pages-artifact` (nitsuah-io's `github-pages-blog/`, or a build folder such as `out/`), and `apply` uses the same detection, including nested pages, instead of its own folder list.
+- **Fixed:** `apply` names the product after the git remote instead of the directory (which was `app`/`target` in Docker), with a `--product <name>` override that also fixes a Pages URL derived from the old name. `apply` sets `pagesDir` to the uploaded Pages folder itself when there is one.
 
 ### Repo tiers and Claude Code skill
 

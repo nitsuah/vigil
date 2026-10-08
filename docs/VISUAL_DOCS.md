@@ -21,7 +21,9 @@ The check detects:
   - `*.excalidraw.svg/png` and `*.drawio.svg/png` renders.
   - Any image under a `diagrams/` or `architecture/` folder.
 - **Screenshots:** images under a `screenshots/`, `screenshot/` or `screens/` folder. Playwright `-snapshots/` baselines, `__snapshots__/`, `node_modules/` and build output are ignored.
-- **Automation (detail only):** a workflow whose file name contains `screenshot`, `diagram` or `visual`.
+- **Automation (detail only):** a workflow whose file name contains `screenshot`, `diagram` or `visual`. An existing in-house screenshot pipeline in a generically named workflow also counts (ats-fill's `ci.yml` `screenshot-gallery` job, for example): the dashboard infers it from a screenshot-named spec or script (`tests/e2e/screenshots.spec.mjs`, `scripts/capture-screenshots.mjs`) plus a Playwright config plus any workflow, and `npm run showcase -- audit` reads the workflows for a Playwright or capture step that targets a screenshots spec, script or folder. A job that only uploads Playwright failure screenshots as an artifact doesn't count.
+- **Brand automation (CLI, info only):** the audit lists workflows that generate store or brand assets (`store-assets`, promo tiles, icon/favicon/logo generation) as `brand automation: <workflow>`. It isn't scored and isn't a gap.
+- **Pages folder (CLI):** besides `site/`, `pages/`, `showcase/` and `docs/`, the audit and `apply` treat `<path>/index.html` as the Pages site when a workflow uploads `<path>` with `actions/upload-pages-artifact`; `apply` adds the expand kit to nested pages under it too. `apply` names the product after the git remote (override with `--product <name>`).
 
 **Not scored yet.** The check shows in the Best Practices panel with a "(not scored)" tag and is excluded from the health score (`INFORMATIONAL_PRACTICES` in `lib/visual-docs.ts`). Promote it once the recipe has rolled out across the portfolio. Until then, adding it would drop every repo's best-practices ratio at once.
 

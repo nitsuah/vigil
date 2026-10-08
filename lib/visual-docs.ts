@@ -47,6 +47,10 @@ const SCREENSHOT = /(^|\/)(screenshots?|screens)\/[^/]+\.(png|jpe?g|webp|gif)$/i
 const VISUAL_WORKFLOW = /^\.github\/workflows\/[^/]*(screenshot|diagram|visual)[^/]*\.ya?ml$/i;
 
 const VISUAL_DOCS_PLAYWRIGHT = /(^|\/)playwright[^/]*visual[^/]*\.config\.[cm]?[jt]s$/i;
+const PLAYWRIGHT_CONFIG = /(^|\/)playwright[^/]*\.config\.[cm]?[jt]s$/i;
+// A spec or script named after screenshots: tests/e2e/screenshots.spec.mjs, scripts/capture-screenshots.mjs.
+const SCREENSHOT_CAPTURE_CODE = /(^|\/)[^/]*screenshot[^/]*\.(m?[jt]s|cjs|sh|py)$/i;
+const ANY_WORKFLOW = /^\.github\/workflows\/[^/]+\.ya?ml$/i;
 
 /** Every detected diagram and screenshot, untruncated (details lists are capped for display). */
 export function findVisualAssets(fileList: string[]): { diagrams: string[]; screenshots: string[] } {
@@ -57,15 +61,34 @@ export function findVisualAssets(fileList: string[]): { diagrams: string[]; scre
 }
 
 /**
- * Per-element automation evidence from file names alone. A generic "visual"
+ * Per-element automation evidence, from file names unless workflow contents
+ * are passed (see below). A generic "visual"
  * workflow only counts for an element whose inputs it can rebuild: a
  * Playwright visual-docs config for screenshots, Mermaid sources for diagrams.
+ *
+ * An in-house pipeline inside a generically named workflow (ats-fill's ci.yml)
+ * is inferred from a screenshot-named spec/script plus a Playwright config plus
+ * any workflow. When workflow contents are known (the CLI), pass
+ * `screenshotWorkflows` (workflows that pass isScreenshotWorkflow) and it
+ * alone decides `screenshots`; every file-name rule is ignored for that element.
  */
-export function visualAutomation(fileList: string[], workflows: string[], diagrams: string[]): { screenshots: boolean; diagrams: boolean } {
+export function visualAutomation(
+    fileList: string[],
+    workflows: string[],
+    diagrams: string[],
+    opts: { screenshotWorkflows?: string[] } = {},
+): { screenshots: boolean; diagrams: boolean } {
     const named = (re: RegExp) => workflows.some(w => re.test(w.split('/').pop()!));
     const visual = named(/visual/i);
+    const files = fileList.filter(f => !IGNORED_DIRS.test(f));
+    const inHouse = opts.screenshotWorkflows
+        ? opts.screenshotWorkflows.length > 0
+        : files.some(f => SCREENSHOT_CAPTURE_CODE.test(f)) && files.some(f => PLAYWRIGHT_CONFIG.test(f)) && fileList.some(f => ANY_WORKFLOW.test(f));
     return {
-        screenshots: named(/screenshot/i) || (visual && fileList.some(f => VISUAL_DOCS_PLAYWRIGHT.test(f))),
+        // With workflow contents known (the CLI), only the content check counts; file names are the dashboard's guess.
+        screenshots: opts.screenshotWorkflows
+            ? inHouse
+            : named(/screenshot/i) || (visual && fileList.some(f => VISUAL_DOCS_PLAYWRIGHT.test(f))) || inHouse,
         diagrams: named(/diagram/i) || (visual && diagrams.some(f => /\.(mmd|mermaid)$/i.test(f))),
     };
 }

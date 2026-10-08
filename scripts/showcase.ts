@@ -5,7 +5,7 @@
  *
  *   npm run showcase -- audit [dir...] [--json]
  *   npm run showcase -- audit --root ~/code --scope ~/code/stash/agent/projects/scope.md
- *   npm run showcase -- apply <dir> [--dry-run]
+ *   npm run showcase -- apply <dir> [--dry-run] [--product NAME]
  *
  * apply is idempotent: it creates or updates promo/spots.json from FEATURES.md
  * and adds the expand kit to Pages HTML. Review the diff and open a PR.
@@ -18,9 +18,15 @@ import { detectVisualDocs, findVisualAssets, visualAutomation } from '../lib/vis
 import {
     auditShowcase,
     classifyElements,
+    detectShowcaseFiles,
+    findPagesHtml,
     injectExpandKit,
+    isBrandWorkflow,
+    isScreenshotWorkflow,
     PAGES_DEPLOY_STEP,
+    pagesUploadPaths,
     parseFeatures,
+    repoNameFromRemote,
     scaffoldSpots,
     SPOTS_MANIFEST,
     type ShowcaseAudit,
@@ -54,9 +60,30 @@ const read = (root: string, rel: string): string | null => {
     try { return fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return null; }
 };
 
+/**
+ * The repo's name from its origin remote, so a clone mounted at /app or /target
+ * still reports its real name. Falls back to the directory name.
+ */
+function repoName(root: string): string {
+    try {
+        const url = execFileSync('git', ['-c', 'safe.directory=*', '-C', root, 'remote', 'get-url', 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+        const name = repoNameFromRemote(url);
+        if (name) return name;
+    } catch { /* no git binary (the test image has none), not a checkout, or no origin */ }
+    // Without git, read the clone's config directly. A worktree's .git is a file, so this misses those.
+    const config = read(root, '.git/config') ?? '';
+    const origin = config.match(/\[remote "origin"\][^[]*?^\s*url\s*=\s*(\S+)/m);
+    const name = origin ? repoNameFromRemote(origin[1]) : null;
+    if (name) return name;
+    const dir = path.basename(path.resolve(root));
+    // Mounted at /app or /target this is wrong, and a new manifest would keep it, so say so.
+    console.warn(`warning: no origin remote found; using directory name "${dir}" as the product (pass --product NAME to override)`);
+    return dir;
+}
+
 function gitDate(root: string, rel: string): string | null {
     try {
-        return execFileSync('git', ['-C', root, 'log', '-1', '--format=%cI', '--', rel], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
+        return execFileSync('git', ['-c', 'safe.directory=*', '-C', root, 'log', '-1', '--format=%cI', '--', rel], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
     } catch { return null; }
 }
 
@@ -68,6 +95,8 @@ interface RepoScan {
     audit: ShowcaseAudit;
     manifest: SpotsManifest | null;
     screenshots: string[];
+    /** Directories a workflow uploads to Pages (actions/upload-pages-artifact `path:`). */
+    pagesDirs: string[];
 }
 
 function scan(root: string): RepoScan {
@@ -81,17 +110,25 @@ function scan(root: string): RepoScan {
     if (raw) {
         try { manifest = JSON.parse(raw); } catch (e) { throw new Error(`${root}/${SPOTS_MANIFEST} is not valid JSON: ${(e as Error).message}`); }
     }
-    const pagesHtml: Record<string, string> = {};
-    for (const p of vd.details.showcase.pagesHtml) pagesHtml[p] = read(root, p) ?? '';
     // With contents available, any workflow that runs a Pages deploy step counts,
     // whatever its file name, and videos count as tracked only when a spot publishes one.
-    const deploying = fileList.filter(f => /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(f) && PAGES_DEPLOY_STEP.test(read(root, f) ?? ''));
-    const files = { ...vd.details.showcase, pagesWorkflows: [...new Set([...vd.details.showcase.pagesWorkflows, ...deploying])] };
+    // Screenshot automation and the Pages folder likewise come from what a workflow runs.
+    const workflowYaml = fileList
+        .filter(f => /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(f))
+        .map(f => [f, read(root, f) ?? ''] as const);
+    const deploying = workflowYaml.filter(([, y]) => PAGES_DEPLOY_STEP.test(y)).map(([f]) => f);
+    const screenshotWorkflows = workflowYaml.filter(([, y]) => isScreenshotWorkflow(y)).map(([f]) => f);
+    const brandWorkflows = workflowYaml.filter(([, y]) => isBrandWorkflow(y)).map(([f]) => f);
+    const pagesDirs = [...new Set(workflowYaml.flatMap(([, y]) => pagesUploadPaths(y)))];
+    const showcase = detectShowcaseFiles(fileList, { pagesDirs });
+    const files = { ...showcase, pagesWorkflows: [...new Set([...showcase.pagesWorkflows, ...deploying])] };
+    const pagesHtml: Record<string, string> = {};
+    for (const p of files.pagesHtml) pagesHtml[p] = read(root, p) ?? '';
     const { diagrams, screenshots } = findVisualAssets(fileList);
     const elements = classifyElements({
         diagrams,
         screenshots,
-        automated: visualAutomation(fileList, vd.details.workflows, diagrams),
+        automated: visualAutomation(fileList, vd.details.workflows, diagrams, { screenshotWorkflows }),
         files,
         manifest,
     });
@@ -104,8 +141,9 @@ function scan(root: string): RepoScan {
         manifest,
         pagesHtml,
         featuresChanged: featuresPath ? gitDate(root, featuresPath) : null,
+        brandWorkflows,
     });
-    return { name: path.basename(path.resolve(root)), root, fileList, featuresPath, audit, manifest, screenshots };
+    return { name: path.basename(path.resolve(root)), root, fileList, featuresPath, audit, manifest, screenshots, pagesDirs };
 }
 
 /** Repo names from the "Tracked" table in stash's scope.md (first column). */
@@ -140,10 +178,13 @@ function printGaps(s: RepoScan) {
     for (const g of s.audit.gaps) console.log(`  ${g.severity.padEnd(5)} ${g.code.padEnd(24)} ${g.message}`);
 }
 
-function apply(root: string, dryRun: boolean) {
+function apply(root: string, dryRun: boolean, productFlag?: string) {
     const s = scan(root);
+    // The table keeps the directory name; a local remote can lag a GitHub rename (ats-fill's still says auto-apply-plugin).
+    const product = productFlag ?? repoName(root);
     const changes: string[] = [];
-    const pagesHtml = s.fileList.filter(f => /^(site|pages|showcase|docs|docs\/[^/]+)\/index\.html$/i.test(f));
+    // Same detection as the audit, plus nested pages under an uploaded Pages folder.
+    const pagesHtml = findPagesHtml(s.fileList, s.pagesDirs, true);
     for (const p of pagesHtml) {
         const html = read(root, p)!;
         const next = injectExpandKit(html);
@@ -154,16 +195,27 @@ function apply(root: string, dryRun: boolean) {
     }
     if (s.featuresPath) {
         const features = parseFeatures(read(root, s.featuresPath) ?? '');
-        const pagesDir = pagesHtml[0] ? path.posix.dirname(pagesHtml[0]) : null;
+        // Prefer the folder a workflow actually uploads (its root, not a nested page's folder) over fixed locations like site/.
+        const upload = s.pagesDirs
+            // A root upload only owns the top-level index.html (findPagesHtml never sweeps the repo for it).
+            .filter(d => pagesHtml.some(p => (d ? p.startsWith(`${d}/`) : p === 'index.html')))
+            .sort((a, b) => b.length - a.length)[0];
+        const top = [...pagesHtml].sort((a, b) => a.split('/').length - b.split('/').length)[0];
+        const pagesDir = upload !== undefined ? upload || '.' : top ? path.posix.dirname(top) : null;
         const before = s.manifest ? JSON.stringify(s.manifest) : null;
         const next = scaffoldSpots({
-            product: s.name,
+            product,
             features,
             existing: s.manifest ? structuredClone(s.manifest) : null,
             screenshots: s.screenshots,
             pagesDir,
-            page: pagesDir ? `https://nitsuah.github.io/${s.name}/` : null,
+            page: pagesDir ? `https://nitsuah.github.io/${product}/` : null,
         });
+        if (productFlag && next.product !== productFlag) {
+            // Also corrects a manifest scaffolded under the wrong name, including the Pages URL derived from it (a custom URL is kept).
+            if (next.page === `https://nitsuah.github.io/${next.product}/`) next.page = `https://nitsuah.github.io/${productFlag}/`;
+            next.product = productFlag;
+        }
         const after = JSON.stringify(next);
         if (after !== before) {
             changes.push(`${SPOTS_MANIFEST}: ${before ? 'updated' : 'created'} (${next.features.length} features)`);
@@ -175,7 +227,7 @@ function apply(root: string, dryRun: boolean) {
     } else {
         changes.push('skipped promo/spots.json: no FEATURES.md');
     }
-    console.log(`${dryRun ? '[dry run] ' : ''}${s.name}`);
+    console.log(`${dryRun ? '[dry run] ' : ''}${product}`);
     console.log(changes.length ? changes.map(c => `  ${c}`).join('\n') : '  nothing to change');
 }
 
@@ -183,19 +235,24 @@ function main(argv: string[]) {
     const [cmd, ...rest] = argv;
     const flags = new Set(rest.filter(a => a.startsWith('--') && !a.includes('=')));
     const opt = (name: string) => {
+        const eq = rest.find(a => a.startsWith(`${name}=`));
+        if (eq) return eq.slice(name.length + 1);
         const i = rest.indexOf(name);
         return i >= 0 ? rest[i + 1] : undefined;
     };
-    const valueIdx = new Set(['--root', '--scope'].map(n => rest.indexOf(n) + 1).filter(i => i > 0));
+    const valueIdx = new Set(['--root', '--scope', '--product'].map(n => rest.indexOf(n) + 1).filter(i => i > 0));
     let dirs = rest.filter((a, i) => !a.startsWith('--') && !valueIdx.has(i));
 
     if (cmd === 'apply') {
         if (dirs.length !== 1) throw new Error('apply takes exactly one repo directory');
-        apply(dirs[0], flags.has('--dry-run'));
+        const product = opt('--product');
+        const given = rest.some(a => a === '--product' || a.startsWith('--product='));
+        if (given && (!product || product.startsWith('-'))) throw new Error('--product needs a name');
+        apply(dirs[0], flags.has('--dry-run'), product);
         return;
     }
     if (cmd !== 'audit') {
-        console.log('usage: showcase audit [dir...] [--root DIR --scope scope.md] [--json]\n       showcase apply <dir> [--dry-run]');
+        console.log('usage: showcase audit [dir...] [--root DIR --scope scope.md] [--json]\n       showcase apply <dir> [--dry-run] [--product NAME]');
         process.exitCode = cmd ? 1 : 0;
         return;
     }
