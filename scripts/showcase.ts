@@ -25,6 +25,7 @@ import {
     isScreenshotWorkflow,
     PAGES_DEPLOY_STEP,
     pagesUploadPaths,
+    unresolvedPagesUploads,
     parseFeatures,
     repoNameFromRemote,
     scaffoldSpots,
@@ -113,11 +114,19 @@ function scan(root: string): RepoScan {
     // With contents available, any workflow that runs a Pages deploy step counts,
     // whatever its file name, and videos count as tracked only when a spot publishes one.
     // Screenshot automation and the Pages folder likewise come from what a workflow runs.
-    const workflowYaml = fileList
+    const workflowFiles = fileList
         .filter(f => /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(f))
-        .map(f => [f, read(root, f) ?? ''] as const);
+        .map(f => [f, read(root, f)] as const);
+    const notes: { code: string; message: string }[] = [];
+    for (const [f, y] of workflowFiles) if (y === null) notes.push({ code: 'workflow-unreadable', message: `Couldn't read ${f}, so its steps weren't checked.` });
+    const workflowYaml = workflowFiles.map(([f, y]) => [f, y ?? ''] as const);
+    for (const [f, y] of workflowYaml) {
+        for (const p of unresolvedPagesUploads(y)) notes.push({ code: 'pages-path-unresolved', message: `${f} uploads Pages from ${p}, which can't be resolved statically.` });
+    }
     const deploying = workflowYaml.filter(([, y]) => PAGES_DEPLOY_STEP.test(y)).map(([f]) => f);
-    const screenshotWorkflows = workflowYaml.filter(([, y]) => isScreenshotWorkflow(y)).map(([f]) => f);
+    // An unreadable workflow keeps its file-name signal rather than silently counting as no capture.
+    const unreadableNamed = workflowFiles.filter(([f, y]) => y === null && /screenshot|visual/i.test(path.basename(f))).map(([f]) => f);
+    const screenshotWorkflows = [...workflowYaml.filter(([, y]) => isScreenshotWorkflow(y)).map(([f]) => f), ...unreadableNamed];
     const brandWorkflows = workflowYaml.filter(([, y]) => isBrandWorkflow(y)).map(([f]) => f);
     const pagesDirs = [...new Set(workflowYaml.flatMap(([, y]) => pagesUploadPaths(y)))];
     const showcase = detectShowcaseFiles(fileList, { pagesDirs });
@@ -132,6 +141,10 @@ function scan(root: string): RepoScan {
         files,
         manifest,
     });
+    const featuresChanged = featuresPath ? gitDate(root, featuresPath) : null;
+    if (featuresPath && !featuresChanged && manifest?.spots.some(s => s.rendered)) {
+        notes.push({ code: 'spot-stale-unchecked', message: "No git history available, so spots weren't checked against the last FEATURES.md change." });
+    }
     const audit = auditShowcase({
         fileList,
         elements,
@@ -140,8 +153,9 @@ function scan(root: string): RepoScan {
         features,
         manifest,
         pagesHtml,
-        featuresChanged: featuresPath ? gitDate(root, featuresPath) : null,
+        featuresChanged,
         brandWorkflows,
+        notes,
     });
     return { name: path.basename(path.resolve(root)), root, fileList, featuresPath, audit, manifest, screenshots, pagesDirs };
 }
