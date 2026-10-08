@@ -122,8 +122,21 @@ export function detectShowcaseFiles(fileList: string[], opts: { pagesDirs?: stri
 // upload-pages-artifact alone only stages the site; deploy-pages publishes it.
 export const PAGES_DEPLOY_STEP = /actions\/deploy-pages|peaceiris\/actions-gh-pages|JamesIves\/github-pages-deploy-action/;
 
-/** Whole-line comments, and trailing ` # ...` comments (a `#` after whitespace). */
-const stripYamlComments = (yaml: string) => yaml.replace(/^\s*#.*$/gm, '').replace(/\s+#.*$/gm, '');
+/** Drops a line's ` # ...` comment: a `#` at the start or after whitespace, outside single/double quotes. */
+function stripLineComment(line: string): string {
+    let quote: '"' | "'" | null = null;
+    for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (quote) {
+            if (c === '\\' && quote === '"') i++; // escaped char inside "..."
+            else if (c === quote) quote = null;
+        } else if (c === '"' || c === "'") quote = c;
+        else if (c === '#' && (i === 0 || /\s/.test(line[i - 1]))) return line.slice(0, i).trimEnd();
+    }
+    return line;
+}
+
+const stripYamlComments = (yaml: string) => yaml.split(/\r?\n/).map(stripLineComment).join('\n');
 
 /**
  * Each job's block under `jobs:`, so a check can require its signals in the same

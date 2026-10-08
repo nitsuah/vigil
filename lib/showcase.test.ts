@@ -307,6 +307,8 @@ describe('in-house screenshot pipelines and brand automation', () => {
         expect(isScreenshotWorkflow('- run: npx playwright test\n# - run: node scripts/capture-screenshots.mjs\n')).toBe(false);
         // nor a trailing comment
         expect(isScreenshotWorkflow('- run: npx playwright test # then capture-screenshots.mjs\n')).toBe(false);
+        // but a # inside a quoted command is not a comment
+        expect(isScreenshotWorkflow('- run: mkdir -p screenshots && sh -c "echo #1; npx playwright test"\n')).toBe(true);
     });
 
     it('needs the runner and the target in the same job', () => {
