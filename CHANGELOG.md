@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Netlify host move
+
+- **Changed:** the live site moved from `ghoverseer.netlify.app` to `gh-vigil.netlify.app` (the old host now 404s). The README link, MCP endpoint docs, post-deploy smoke workflow and `playwright.smoke.config.ts` default point at the new host.
+
 ### Visual showcase
 
 - **Added:** three 21s feature spots (`health-21s` grade and fix, `work-21s` prioritize and connect, `agents-21s` MCP), a narrated 9:16 short (`health-21s-vert`, Kokoro TTS via Hyperframes in Docker, burned-in captions) and a hero reel joined from the spots (`promo/reel.sh hero`). Spots reuse brag-30s's scenes with `"base"` in `spot.json`; each scene's choreography and sound cues are time-mapped into its slot, so a new cut is a scene list, not a new composition.

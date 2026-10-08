@@ -147,7 +147,7 @@ npm run dev
 ## Quick Links
 
 - [Project page](https://nitsuah.github.io/vigil/) (30s launch video, built from [`promo/`](./promo/README.md))
-- [Live Dashboard](https://ghoverseer.netlify.app)
+- [Live Dashboard](https://gh-vigil.netlify.app)
 - [Docs](./docs/)
 - [GitHub](https://github.com/nitsuah/vigil)
 

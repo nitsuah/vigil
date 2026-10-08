@@ -5,7 +5,7 @@
 Connect Claude Code (or any MCP client) to vigil so an agent session can ask
 "what's open across my repos?" instead of reading 17 TASKS.md files.
 
-- **Endpoint:** `POST https://ghoverseer.netlify.app/api/mcp` (local dev: `http://localhost:3000/api/mcp`)
+- **Endpoint:** `POST https://gh-vigil.netlify.app/api/mcp` (local dev: `http://localhost:3000/api/mcp`)
 - **Transport:** MCP Streamable HTTP, JSON responses only (no SSE stream). Protocol versions 2024-11-05, 2025-03-26, 2025-06-18.
 - **Auth:** `Authorization: Bearer <MCP_API_KEY>`, one shared portfolio-admin key.
 - **Rate limit:** 60 requests/minute per IP.
@@ -27,13 +27,13 @@ Set it as `MCP_API_KEY` in Netlify (Site configuration → Environment variables
 User scope makes it available in every repo:
 
 ```bash
-claude mcp add --transport http --scope user vigil https://ghoverseer.netlify.app/api/mcp --header "Authorization: Bearer $VIGIL_MCP_KEY"
+claude mcp add --transport http --scope user vigil https://gh-vigil.netlify.app/api/mcp --header "Authorization: Bearer $VIGIL_MCP_KEY"
 ```
 
 In PowerShell, `$VIGIL_MCP_KEY` is an unset PowerShell variable, which silently registers an empty `Bearer` header. Use `$env:`:
 
 ```powershell
-claude mcp add --transport http --scope user vigil https://ghoverseer.netlify.app/api/mcp --header "Authorization: Bearer $env:VIGIL_MCP_KEY"
+claude mcp add --transport http --scope user vigil https://gh-vigil.netlify.app/api/mcp --header "Authorization: Bearer $env:VIGIL_MCP_KEY"
 ```
 
 Check it:
@@ -51,7 +51,7 @@ The shell expands `$VIGIL_MCP_KEY` when you run `claude mcp add`, so the literal
   "mcpServers": {
     "vigil": {
       "type": "http",
-      "url": "https://ghoverseer.netlify.app/api/mcp",
+      "url": "https://gh-vigil.netlify.app/api/mcp",
       "headers": { "Authorization": "Bearer ${VIGIL_MCP_KEY}" }
     }
   }

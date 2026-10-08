@@ -78,10 +78,10 @@ _None open. The rate-limiter identity item is under Done._
 
 _Condensed, one line per item. Full detail lives in FEATURES.md and CHANGELOG.md. The section must stay, because vigil's own TASKS parser expects Done / In Progress / Todo._
 
-- [x] Chat-driven doc editing (TASKS/ROADMAP/FEATURES), stages 1–4: `parseTaskOperationProposal` in `lib/repo-chat.ts`, `POST /api/repos/[name]/tasks`. Stage 3 shipped in #253. See FEATURES.
-- [x] Cross-repo relationship map foundation: `repo_relationships`, `/api/relationships`, `get_relationships` / `propose_relationship` MCP tools, and the PMO map (#248, #249, #252). See FEATURES.
-- [x] Trend endpoint keyed on `full_name` instead of the short `name`: `app/api/repo-details/[name]/trend/route.ts` takes `fullName` (#253).
-- [x] Stable rate-limiter identity: `session.userId` is the GitHub numeric id (`lib/auth-session.ts`, #243/#253), so a session with no email still hits the shared-key budget.
+- [x] Done 2026-09-28: Chat-driven doc editing (TASKS/ROADMAP/FEATURES), stages 1–4: `parseTaskOperationProposal` in `lib/repo-chat.ts`, `POST /api/repos/[name]/tasks`. Stage 3 shipped in #253. See FEATURES.
+- [x] Done 2026-09-27: Cross-repo relationship map foundation: `repo_relationships`, `/api/relationships`, `get_relationships` / `propose_relationship` MCP tools, and the PMO map (#248, #249, #252). See FEATURES.
+- [x] Done 2026-09-28: Trend endpoint keyed on `full_name` instead of the short `name`: `app/api/repo-details/[name]/trend/route.ts` takes `fullName` (#253).
+- [x] Done 2026-09-28: Stable rate-limiter identity: `session.userId` is the GitHub numeric id (`lib/auth-session.ts`, #243/#253), so a session with no email still hits the shared-key budget.
 
 <!--
 AGENT INSTRUCTIONS:

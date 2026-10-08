@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  SITE_URL: https://ghoverseer.netlify.app
+  SITE_URL: https://gh-vigil.netlify.app
 
 jobs:
   smoke:
