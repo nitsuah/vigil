@@ -24,9 +24,9 @@ const eslintConfig = defineConfig([
     files: ["site/**/*.js"],
     languageOptions: { globals: { window: "readonly", document: "readonly", navigator: "readonly", Image: "readonly", setTimeout: "readonly" } },
   },
-  // Promo frame renderer: CommonJS, run by Node inside the promo image.
+  // Promo frame renderer and spot loader: CommonJS, run by Node inside the promo image.
   {
-    files: ["promo/render.js"],
+    files: ["promo/render.js", "promo/spot-config.js"],
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },
 ]);

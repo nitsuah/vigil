@@ -18,6 +18,22 @@ N = int(SR * DUR)
 rng = np.random.default_rng(7)
 BEAT = 0.5
 
+# SFX cue times below are written in this spot's own (brag-30s) timeline. A
+# spot that reuses it ("base" in its spot.json; pipeline.sh passes the merged
+# config with srcScenes) maps each cue into wherever its scene now sits, and
+# drops cues for scenes it leaves out. Music runs on the spot's own clock.
+SRC = {s[0]: (s[1], s[2]) for s in SPOT.get('srcScenes', SPOT['scenes'])}
+SCN = {s[0]: (s[1], s[2]) for s in SPOT['scenes']}
+def src_at(t):
+    for sid, (a, b) in SRC.items():
+        if a <= t <= b:
+            if sid not in SCN: return None
+            A, B = SCN[sid]
+            return A + (t - a) * (B - A) / (b - a)
+    return None
+GROOVE = SPOT['scenes'][1][1]   # groove enters on the first cut…
+FULL = SPOT['scenes'][2][1]     # …hats and arp on the second
+
 def hz(midi): return 440.0 * 2 ** ((midi - 69) / 12)
 def db(x): return 10 ** (x / 20)
 def lp(x, f, o=2): return sosfilt(butter(o, f, 'low', fs=SR, output='sos'), x)
@@ -29,6 +45,11 @@ def place(buf, sig, t, gain=1.0):
     if i >= len(buf): return
     s = sig[: len(buf) - i]
     buf[i:i + len(s)] += s * gain
+
+def cue(buf, sig, t, gain=1.0):
+    """place() at a source-timeline time (see src_at())."""
+    t = src_at(t)
+    if t is not None: place(buf, sig, t, gain)
 
 def saw(f, n, harm=10, detune=0.0):
     t = np.arange(n) / SR
@@ -84,23 +105,24 @@ pad = pad_hook * (1 - x) + pad_open * x
 pad *= 0.5 + 0.5 * np.clip((np.arange(N) / SR - 1.25) / 0.3, 0, 1)
 music += pad * db(-27)
 
-# --- Kick: four on the floor 3.0–18.5, half time in outro ---
+# --- Kick: four on the floor from the first cut (GROOVE), half time in outro ---
 def kick():
     n = int(0.35 * SR)
     t = np.arange(n) / SR
     f = 45 + 75 * np.exp(-t * 28)
     ph = 2 * np.pi * np.cumsum(f) / SR
     return np.sin(ph) * np.exp(-t * 11) + 0.15 * lp(rng.standard_normal(n), 1800) * np.exp(-t * 60)
-OUTRO = SPOT['outroAt']
-kicks = [3.0 + i * BEAT for i in range(int((OUTRO - 3.0) / BEAT))] + [OUTRO + i * 1.0 for i in range(int(DUR - OUTRO))]
+OUTRO_SRC = SPOT['outroAt']
+OUTRO = SCN['outro'][0] if 'outro' in SCN else DUR
+kicks = [GROOVE + i * BEAT for i in range(int((OUTRO - GROOVE) / BEAT))] + [OUTRO + i * 1.0 for i in range(int(DUR - OUTRO))]
 for kt in kicks:
     place(music, kick(), kt, db(-9))
     place(kick_env, np.exp(-np.arange(int(0.3 * SR)) / SR * 9), kt, 1.0)
 duck = 1 - 0.55 * np.clip(kick_env, 0, 1)
 
-# --- Bass: 8th-note pulse on root from 3.0 ---
+# --- Bass: 8th-note pulse on root from GROOVE ---
 bass = np.zeros(N)
-t = 3.0
+t = GROOVE
 while t < OUTRO + 1.0:
     bar = int(t // 2) % 4
     f = hz(ROOTS[bar] - 12 + 12)  # A2 region
@@ -112,15 +134,15 @@ while t < OUTRO + 1.0:
 bass = lp(bass, 600)
 music += bass * db(-13)
 
-# --- Hats: offbeat 8ths 7.0–18.5 ---
-for i in range(int((OUTRO - 7.0) / BEAT)):
+# --- Hats: offbeat 8ths from the second cut (FULL) ---
+for i in range(int((OUTRO - FULL) / BEAT)):
     n = int(0.05 * SR)
     h = hp(rng.standard_normal(n), 7000) * np.exp(-np.arange(n) / SR * 90)
-    place(music, h, 7.0 + i * BEAT + BEAT / 2, db(-31))
+    place(music, h, FULL + i * BEAT + BEAT / 2, db(-31))
 
-# --- Arp: 8th-note chord tones, octave up, 7.0–18.5 ---
+# --- Arp: 8th-note chord tones, octave up, from FULL ---
 arp = np.zeros(N)
-t = 7.0; k = 0
+t = FULL; k = 0
 while t < OUTRO - 1e-6:
     bar = int(t // 2) % 4
     ch = CHORDS[bar]
@@ -141,14 +163,14 @@ def tick(level=-34):
 # low hit, the question types, and its last letter hangs on an unresolved
 # Bb/E chord that the groove at 3.0 resolves.
 for i in range(10):
-    place(sfx, pluck(hz(DM_PENT[i] + 12), 0.22, 2), HOOK['chipsStart'] + i * HOOK['chipGap'], db(-30 + i * 0.6))
+    cue(sfx, pluck(hz(DM_PENT[i] + 12), 0.22, 2), HOOK['chipsStart'] + i * HOOK['chipGap'], db(-30 + i * 0.6))
 def thud(m):
     n = int(0.5 * SR); t_ = np.arange(n) / SR
     return (np.sin(2 * np.pi * hz(m) * t_) * np.exp(-t_ * 9) + 0.25 * np.sin(2 * np.pi * hz(m + 12) * t_) * np.exp(-t_ * 12)) * np.minimum(1, t_ / 0.004)
-place(sfx, thud(38), HOOK['countAt'], db(-18))
-q = 'What do I work on next?'
+cue(sfx, thud(38), HOOK['countAt'], db(-18))
+q = SPOT.get('hookQuestion') or 'What do I work on next?'
 for i, ch in enumerate(q):
-    if ch != ' ': place(sfx, tick(-35), HOOK['typeAt'] + i / HOOK['typeCps'])
+    if ch != ' ': cue(sfx, tick(-35), HOOK['typeAt'] + i / HOOK['typeCps'])
 q_end = HOOK['typeAt'] + len(q) / HOOK['typeCps']
 
 def chord_hit(notes, bass_midi, decay=2.4):
@@ -158,9 +180,9 @@ def chord_hit(notes, bass_midi, decay=2.4):
     for m in notes:
         s += 0.3 * np.sin(2 * np.pi * hz(m) * t_) * np.exp(-t_ * decay)
     return s * np.minimum(1, t_ / 0.004)
-place(sfx, chord_hit([58, 64, 69], 46), q_end + 0.05, db(-20))
+cue(sfx, chord_hit([58, 64, 69], 46), q_end + 0.05, db(-20))
 nr = int(0.9 * SR); tr = np.linspace(0, 1, nr); noise = rng.standard_normal(nr)
-place(sfx, (bp(noise, 400, 1500) * (1 - tr) + bp(noise, 2000, 7000) * tr) * tr ** 2, 2.1, db(-29))
+cue(sfx, (bp(noise, 400, 1500) * (1 - tr) + bp(noise, 2000, 7000) * tr) * tr ** 2, 2.1, db(-29))
 
 def whoosh(length=0.6, up=True):
     n = int(length * SR)
@@ -179,9 +201,9 @@ def impact(root_midi):
     for m in (root_midi, root_midi + 7, root_midi + 12, root_midi + 15):
         s += 0.3 * np.sin(2 * np.pi * hz(m) * t_) * np.exp(-t_ * 2.2)
     return s * np.minimum(1, t_ / 0.004)
-place(sfx, impact(50), OUTRO + 0.1, db(-17))      # outro logo
-place(sfx, pluck(hz(74), 0.6, 2), OUTRO + 1.2, db(-24))   # chips land: D5 + A5
-place(sfx, pluck(hz(81), 0.8, 2), OUTRO + 1.27, db(-24))
+cue(sfx, impact(50), OUTRO_SRC + 0.1, db(-17))      # outro logo
+cue(sfx, pluck(hz(74), 0.6, 2), OUTRO_SRC + 1.2, db(-24))   # chips land: D5 + A5
+cue(sfx, pluck(hz(81), 0.8, 2), OUTRO_SRC + 1.27, db(-24))
 
 # Clicks: soft click + tonal blip; P2 reveals more cards (rising pair),
 # confirming the agent's edge gets a warm major-third "yes".
@@ -191,28 +213,28 @@ def click(m):
     s = pluck(hz(m), 0.3, 2)
     s[:n] += c
     return s
-place(sfx, click(69), CLICKS['p2'], db(-21))
-place(sfx, pluck(hz(74), 0.35, 2), CLICKS['p2'] + 0.14, db(-24))
+cue(sfx, click(69), CLICKS['p2'], db(-21))
+cue(sfx, pluck(hz(74), 0.35, 2), CLICKS['p2'] + 0.14, db(-24))
 # Inspect: the three checklist cards land on a rising D minor triad.
 for i, at in enumerate(SPOT['cards']):
-    place(sfx, pluck(hz([62, 65, 69][i]), 0.45, 3), at + 0.08, db(-22))
-    place(sfx, whoosh(0.3), at - 0.12, db(-33))
+    cue(sfx, pluck(hz([62, 65, 69][i]), 0.45, 3), at + 0.08, db(-22))
+    cue(sfx, whoosh(0.3), at - 0.12, db(-33))
 # Fix All, then Create PR, then the PR-opened chime (F5 A5 D6, bright and short).
-place(sfx, click(67), CLICKS['fixAll'], db(-21))
-place(sfx, click(72), CLICKS['createPr'], db(-20))
+cue(sfx, click(67), CLICKS['fixAll'], db(-21))
+cue(sfx, click(72), CLICKS['createPr'], db(-20))
 for i, mm in enumerate([77, 81, 86]):
-    place(sfx, pluck(hz(mm), 0.6, 2), SPOT['prOpenedAt'] + i * 0.07, db(-22))
-place(sfx, click(65), CLICKS['confirm'], db(-21))
-place(sfx, pluck(hz(69), 0.4, 2), CLICKS['confirm'] + 0.12, db(-23))
-place(sfx, pluck(hz(74), 0.5, 2), CLICKS['confirm'] + 0.22, db(-23))
+    cue(sfx, pluck(hz(mm), 0.6, 2), SPOT['prOpenedAt'] + i * 0.07, db(-22))
+cue(sfx, click(65), CLICKS['confirm'], db(-21))
+cue(sfx, pluck(hz(69), 0.4, 2), CLICKS['confirm'] + 0.12, db(-23))
+cue(sfx, pluck(hz(74), 0.5, 2), CLICKS['confirm'] + 0.22, db(-23))
 
 # Terminal: typing, tool call, result lines
 for i, ch in enumerate(SPOT['question']):
-    if ch != ' ': place(sfx, tick(-37), SPOT['questionAt'] + 0.1 + i / 34)
-place(sfx, pluck(hz(81), 0.35, 2), SPOT['toolAt'], db(-23))
-place(sfx, pluck(hz(77), 0.25, 1), SPOT['resultAt'], db(-30))
+    if ch != ' ': cue(sfx, tick(-37), SPOT['questionAt'] + 0.1 + i / 34)
+cue(sfx, pluck(hz(81), 0.35, 2), SPOT['toolAt'], db(-23))
+cue(sfx, pluck(hz(77), 0.25, 1), SPOT['resultAt'], db(-30))
 for i in range(4):
-    place(sfx, pluck(hz([69, 72, 74, 77][i]), 0.18, 1), SPOT['resultAt'] + 0.3 + i * 0.28, db(-31))
+    cue(sfx, pluck(hz([69, 72, 74, 77][i]), 0.18, 1), SPOT['resultAt'] + 0.3 + i * 0.28, db(-31))
 
 # --- Shared room ---
 def reverb(x, secs=1.8, seed=1):

@@ -1,0 +1,12 @@
+{
+  "title": "Vigil — agents spot (MCP)",
+  "base": "brag-30s",
+  "duration": 21,
+  "fps": 30,
+  "poster": 12.3,
+  "scenes": [["hook", 0, 3], ["reveal", 3, 7], ["ask", 7, 13], ["connect", 13, 18], ["outro", 18, 21]],
+  "hookQuestion": "Can Claude see all of this?",
+  "revealLine": "<span class=\"grad\">Your whole portfolio.</span><br />One MCP server.",
+  "outroFeats": "MCP server · 10 tools · LLM context endpoint · Claude Code skill",
+  "outroChips": ["nitsuah.github.io/vigil", "MCP for Claude Code"]
+}

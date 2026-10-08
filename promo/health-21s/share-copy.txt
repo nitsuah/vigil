@@ -1,0 +1,1 @@
+Which of my repos need fixing? Vigil grades every GitHub repo on docs, best practices and community standards, then opens one pull request that adds what's missing. Dependabot config, pre-commit hook, SECURITY.md: one click each. nitsuah.github.io/vigil

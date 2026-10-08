@@ -1,0 +1,25 @@
+{
+  "title": "Vigil — vertical short (grade and fix, narrated)",
+  "base": "brag-30s",
+  "format": "vertical",
+  "width": 1080,
+  "height": 1920,
+  "duration": 24.5,
+  "fps": 30,
+  "poster": 11.5,
+  "scenes": [["hook", 0, 3.5], ["reveal", 3.5, 8], ["inspect", 8, 14], ["fix", 14, 20.5], ["outro", 20.5, 24.5]],
+  "hookQuestion": "Which repos need fixing?",
+  "outroFeats": "Health · Docs · Best practices · Community standards · Fix PRs",
+  "outroChips": ["nitsuah.github.io/vigil", "MCP for Claude Code"],
+  "narration": {
+    "voice": "af_heart",
+    "speed": 1.0,
+    "lines": [
+      { "id": "01", "at": 0.4, "dur": 1.75, "text": "Too many repos to keep track of?" },
+      { "id": "02", "at": 3.8, "dur": 3.52, "text": "Vigil grades every GitHub repo you own, on one dashboard." },
+      { "id": "03", "at": 8.4, "dur": 4.12, "text": "It checks the docs, best practices and community standards in each one." },
+      { "id": "04", "at": 14.4, "dur": 3.86, "text": "Then it opens the pull request that fixes what's missing. One click." },
+      { "id": "05", "at": 20.9, "dur": 2.35, "text": "Vigil. Keep watch over every repo." }
+    ]
+  }
+}

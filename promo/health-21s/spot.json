@@ -1,0 +1,11 @@
+{
+  "title": "Vigil — health spot (grade and fix)",
+  "base": "brag-30s",
+  "duration": 21,
+  "fps": 30,
+  "poster": 10.6,
+  "scenes": [["hook", 0, 3], ["reveal", 3, 7], ["inspect", 7, 12], ["fix", 12, 18], ["outro", 18, 21]],
+  "hookQuestion": "Which repos need fixing?",
+  "outroFeats": "Health grades · Docs · Best practices · Community standards · One-click fix PRs",
+  "outroChips": ["nitsuah.github.io/vigil", "MCP for Claude Code"]
+}

@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/nitsuah/vigil/actions/workflows/ci.yml/badge.svg)](https://github.com/nitsuah/vigil/actions)
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/ebf5c761-34fb-495b-bd86-ea57932296b3/deploy-status)](https://app.netlify.com/projects/ghoverseer/deploys)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/ebf5c761-34fb-495b-bd86-ea57932296b3/deploy-status)](https://app.netlify.com/projects/gh-vigil/deploys)
 
 > **Meta-Repository Intelligence Layer**
 > A dashboard that gives you and your AI agents a unified view across all your GitHub repositories.

@@ -30,16 +30,31 @@ jobs:
         run: |
           expected="${{ github.sha }}"
           echo "Waiting for $SITE_URL/api/version to report $expected"
+          body=$(mktemp); gone=0
           for attempt in $(seq 1 60); do
-            live=$(curl -fsS --max-time 15 "$SITE_URL/api/version" 2>/dev/null | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p' || true)
-            echo "attempt $attempt: live commit = ${live:-<unreachable>}"
+            status=$(curl -sS --max-time 15 -o "$body" -w '%{http_code}' "$SITE_URL/api/version" 2>/dev/null || echo 000)
+            live=$(sed -n 's/.*"commit":"\([^"]*\)".*/\1/p' "$body")
+            echo "attempt $attempt: HTTP $status, live commit = ${live:-<none>}"
             if [ "$live" = "$expected" ]; then
               echo "Deploy is live."
               exit 0
             fi
+            # Netlify answers a site name it doesn't know with a plain-text 404
+            # ("Not Found - Request ID: ..."). A renamed or deleted site never
+            # recovers, so fail now instead of waiting out the timeout: from
+            # 2026-09-30 to 10-08 the rename to gh-vigil read as "deploy timed out".
+            if [ "$status" = 404 ] && grep -q '^Not Found - Request ID' "$body"; then
+              gone=$((gone + 1))
+              if [ "$gone" -ge 3 ]; then
+                echo "::error::No Netlify site at $SITE_URL (404 site-not-found, 3 times in a row). If the site was renamed, update SITE_URL here and SMOKE_URL in playwright.smoke.config.ts."
+                exit 1
+              fi
+            else
+              gone=0
+            fi
             sleep 20
           done
-          echo "::error::Timed out waiting for $expected to be deployed (last seen: ${live:-none})"
+          echo "::error::Timed out waiting for $expected to be deployed (last seen: ${live:-none}, HTTP $status)"
           exit 1
 
       - name: Setup Node.js
