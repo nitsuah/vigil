@@ -2,7 +2,7 @@
 
 > 🧭 [vigil](../README.md) · [Features](../FEATURES.md) · [Roadmap](../ROADMAP.md) · [Tasks](../TASKS.md) · [Changelog](../CHANGELOG.md) · [Metrics](../METRICS.md) <!-- nav -->
 
-This folder holds reproducible launch videos for Vigil: 21-second feature spots, a vertical short, and a hero reel joined from the spots. Each spot is rendered from the **real app**. `capture.spec.ts` runs `next dev`, answers every `/api` call from a fictional demo portfolio (`demo-seed.ts`, owner `acme`), and screenshots the real dashboard, PMO grid and relationship map. Those captures are then animated frame by frame in a browser, scored with synthesized music, and encoded with ffmpeg.
+This folder holds reproducible launch videos for Vigil: short feature spots (14–17 s, one idea each), a narrated vertical short, and `hero-37s`, one continuous cut through every scene for the page hero and YouTube. Each spot is rendered from the **real app**. `capture.spec.ts` runs `next dev`, answers every `/api` call from a fictional demo portfolio (`demo-seed.ts`, owner `acme`), and screenshots the real dashboard, repo checklists, fix preview, PMO grid, relationship map and per-repo chat. Those captures are then animated frame by frame in a browser, scored with synthesized music, and encoded with ffmpeg.
 
 Everything runs in Docker. It needs no database, secrets or GitHub access.
 

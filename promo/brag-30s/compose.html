@@ -383,7 +383,7 @@ window.render = (t) => {
   $('applyPill').style.transform = `translate(${960 - 250}px, ${930}px) scale(${lerp(0.8, 1, eBack(ap))})`;
 
   }
-  $('cornerBug').style.opacity = showCorner ? eOut(prog(now, 0, 0.3)) * (1 - prog(now, 2.6, 3.0)) : 0;
+  $('cornerBug').style.opacity = showCorner ? 1 - prog(now, 2.6, 3.0) : 0; // on from frame 0, fades as the scene settles
   { const t = T('outro');
   // outro
   const O = S.outroAt;
