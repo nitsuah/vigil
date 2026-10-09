@@ -62,6 +62,13 @@
   .tl { white-space: pre; line-height: 1.55; opacity: 0; }
   .p0 { color: #f87171; font-weight: 600; } .p1 { color: #fbbf24; font-weight: 600; }
   .dim { color: #64748b; } .tool { color: #a5b4fc; } .you { color: #e2e8f0; } .ok { color: #6ee7b7; }
+  /* chat (extra scene: cuts can play it, brag-30s doesn't) */
+  #chatShot { top: 230px; }
+  #chatShot img { position: absolute; max-width: none; }
+  /* wordmark for cuts that open on a feature scene instead of hook/reveal */
+  #cornerBug { position: absolute; left: 72px; top: 54px; gap: 16px; opacity: 0; }
+  #cornerBug span { font-size: 34px; }
+  #cornerBug em { font-style: normal; font-size: 24px; font-weight: 600; color: #94a3b8; margin-left: 4px; }
   /* outro */
   #outro { display: flex; flex-direction: column; align-items: center; justify-content: center; }
   #outro .brand span { font-size: 150px; }
@@ -134,6 +141,18 @@
   <div id="term"><div class="bar"><i></i><i></i><i></i><span>claude — vigil MCP</span></div><div id="tlines"></div></div>
 </div>
 
+<div id="chat" class="layer">
+  <div class="kicker"><b>06</b> · Chat</div>
+  <div class="head" data-words>Ask a repo. <span class="grad">Get a PR.</span></div>
+  <div class="shot" id="chatShot"><img id="chatImg" src="crops/chat.png" /></div>
+  <div class="pulse" id="pulseApply"></div>
+  <div class="ring" id="ringApply"></div>
+  <svg class="cursor" id="curApply" viewBox="0 0 24 24"><path d="M4 2l16 10-7 1.5L9.5 21z" fill="#fff" stroke="#0f172a" stroke-width="1.4" stroke-linejoin="round"/></svg>
+  <div class="pill" id="applyPill">✓ Edit opened as a PR preview</div>
+</div>
+
+<div class="brand" id="cornerBug"></div>
+
 <div id="outro" class="layer">
   <div class="brand" id="outBrand"></div>
   <div class="tag">Keep watch over <span class="grad">every repo.</span></div>
@@ -150,6 +169,16 @@ $('outBrand').innerHTML = ICON(170) + '<span class="grad">Vigil</span>';
 $('hookBug').innerHTML = ICON(46) + '<span class="grad">Vigil</span><em>GitHub portfolio health</em>';
 // Per-spot copy (spots that reuse this composition via "base" in spot.json).
 if (S.format === 'vertical') $('hookBug').style.display = 'none'; // the vertical shell shows the brand
+// A cut that opens on a feature scene still names the product from frame 0.
+$('cornerBug').innerHTML = ICON(46) + '<span class="grad">Vigil</span><em>GitHub portfolio health</em>';
+const showCorner = S.format !== 'vertical' && !['hook', 'reveal'].includes(S.scenes[0][0]);
+// Chat scene geometry: crop chat.png (1600x900 CSS, 2x) to the slide-in panel's
+// top, scaled to 780px tall, centred.
+const CP = P.chatPanel || { x: 1152, y: 0, width: 448, height: 900 };
+const CH_CSS = Math.min(CP.height, 470), CH_SCALE = 780 / CH_CSS, CH_W = CP.width * CH_SCALE, CH_LEFT = (1920 - CH_W) / 2;
+Object.assign($('chatShot').style, { left: `${CH_LEFT}px`, width: `${CH_W}px`, height: '780px' });
+Object.assign($('chatImg').style, { width: `${1600 * CH_SCALE}px`, left: `${-CP.x * CH_SCALE}px`, top: `${-CP.y * CH_SCALE}px` });
+const applyAt = P.chatApply ? { x: CH_LEFT + (P.chatApply.x - CP.x) * CH_SCALE, y: 230 + (P.chatApply.y - CP.y) * CH_SCALE } : { x: 960, y: 700 };
 if (S.revealLine)$('revLine').innerHTML = S.revealLine;
 if (S.outroFeats) $('outFeats').textContent = S.outroFeats;
 if (S.outroChips) $('outChips').innerHTML = S.outroChips.map((c) => `<div>${c}</div>`).join('');
@@ -343,6 +372,18 @@ window.render = (t) => {
   lineEls.forEach((el, i) => { const k = prog(t, lines[i].at, lines[i].at + 0.2); el.style.opacity = k; el.style.transform = `translateY(${(1 - k) * 8}px)`; });
 
   }
+  { const t = T('chat');
+  // chat: the panel rises in, Apply pulses and is clicked, the edit opens as a PR preview
+  const g6 = eOut(prog(t, 30.1, 30.7)), kb6 = prog(t, 30.7, 34);
+  $('chatShot').style.transform = `translateY(${(1 - g6) * 50}px) scale(${1 + kb6 * 0.012})`;
+  pulse($('pulseApply'), t, 32.0, 32.55, applyAt, 120, 56);
+  cursor($('curApply'), $('ringApply'), t, 31.3, { x: 1500, y: 1040 }, applyAt, S.clicks.chatApply, prog(t, 31.1, 31.4));
+  const ap = prog(t, S.chatPillAt, S.chatPillAt + 0.35);
+  $('applyPill').style.opacity = ap;
+  $('applyPill').style.transform = `translate(${960 - 250}px, ${930}px) scale(${lerp(0.8, 1, eBack(ap))})`;
+
+  }
+  $('cornerBug').style.opacity = showCorner ? 1 - prog(now, 2.6, 3.0) : 0; // on from frame 0, fades as the scene settles
   { const t = T('outro');
   // outro
   const O = S.outroAt;

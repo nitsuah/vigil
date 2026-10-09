@@ -13,8 +13,9 @@
       ],
       "spots": [
         "brag-30s",
-        "health-21s",
-        "health-21s-vert"
+        "health-17s",
+        "hero-37s",
+        "health-17s-vert"
       ]
     },
     {
@@ -24,8 +25,9 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s",
-        "health-21s-vert"
+        "health-17s",
+        "hero-37s",
+        "health-17s-vert"
       ]
     },
     {
@@ -168,8 +170,9 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s",
-        "health-21s-vert"
+        "health-17s",
+        "hero-37s",
+        "health-17s-vert"
       ]
     },
     {
@@ -179,7 +182,8 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s"
+        "health-17s",
+        "hero-37s"
       ]
     },
     {
@@ -189,8 +193,9 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s",
-        "health-21s-vert"
+        "health-17s",
+        "hero-37s",
+        "health-17s-vert"
       ]
     },
     {
@@ -241,7 +246,8 @@
       ],
       "spots": [
         "brag-30s",
-        "agents-21s"
+        "ai-14s",
+        "hero-37s"
       ]
     },
     {
@@ -251,8 +257,9 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "work-21s",
-        "agents-21s"
+        "work-16s",
+        "ai-14s",
+        "hero-37s"
       ]
     },
     {
@@ -262,8 +269,8 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "work-21s",
-        "agents-21s"
+        "work-16s",
+        "hero-37s"
       ]
     },
     {
@@ -282,7 +289,8 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "agents-21s"
+        "ai-14s",
+        "hero-37s"
       ]
     },
     {
@@ -371,7 +379,8 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s"
+        "health-17s",
+        "hero-37s"
       ]
     },
     {
@@ -468,7 +477,10 @@
       "screenshots": [
         "docs/screenshots/per-repo-conversational-interface.png"
       ],
-      "spots": []
+      "spots": [
+        "ai-14s",
+        "hero-37s"
+      ]
     },
     {
       "id": "chat-driven-doc-edit-proposals",
@@ -477,7 +489,10 @@
       "screenshots": [
         "docs/screenshots/per-repo-conversational-interface.png"
       ],
-      "spots": []
+      "spots": [
+        "ai-14s",
+        "hero-37s"
+      ]
     },
     {
       "id": "chat-driven-task-operations",
@@ -495,8 +510,9 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s",
-        "health-21s-vert"
+        "health-17s",
+        "hero-37s",
+        "health-17s-vert"
       ]
     },
     {
@@ -521,7 +537,8 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s"
+        "health-17s",
+        "hero-37s"
       ]
     },
     {
@@ -531,8 +548,9 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s",
-        "health-21s-vert"
+        "health-17s",
+        "hero-37s",
+        "health-17s-vert"
       ]
     },
     {
@@ -542,8 +560,9 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s",
-        "health-21s-vert"
+        "health-17s",
+        "hero-37s",
+        "health-17s-vert"
       ]
     },
     {
@@ -553,8 +572,9 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s",
-        "health-21s-vert"
+        "health-17s",
+        "hero-37s",
+        "health-17s-vert"
       ]
     },
     {
@@ -564,7 +584,8 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s"
+        "health-17s",
+        "hero-37s"
       ]
     },
     {
@@ -590,7 +611,8 @@
       "screenshots": [],
       "spots": [
         "brag-30s",
-        "health-21s"
+        "health-17s",
+        "hero-37s"
       ]
     },
     {
@@ -706,7 +728,8 @@
       ],
       "spots": [
         "brag-30s",
-        "work-21s"
+        "work-16s",
+        "hero-37s"
       ]
     },
     {
@@ -746,7 +769,8 @@
       ],
       "spots": [
         "brag-30s",
-        "work-21s"
+        "work-16s",
+        "hero-37s"
       ]
     },
     {
@@ -843,10 +867,9 @@
       ],
       "spots": [
         "brag-30s",
-        "health-21s",
-        "work-21s",
-        "agents-21s",
-        "health-21s-vert"
+        "health-17s",
+        "hero-37s",
+        "health-17s-vert"
       ]
     },
     {
@@ -1713,8 +1736,8 @@
       "rendered": "2026-09-27"
     },
     {
-      "id": "health-21s",
-      "seconds": 21,
+      "id": "health-17s",
+      "seconds": 17,
       "format": "landscape",
       "tool": "promo/build.sh",
       "features": [
@@ -1733,41 +1756,72 @@
         "ai-template-enrichment",
         "inline-edit-generate-toggle"
       ],
-      "published": "site/assets/health-21s.mp4",
+      "published": "site/assets/health-17s.mp4",
       "rendered": "2026-10-08"
     },
     {
-      "id": "work-21s",
-      "seconds": 21,
+      "id": "work-16s",
+      "seconds": 16,
       "format": "landscape",
       "tool": "promo/build.sh",
       "features": [
-        "modern-dashboard",
         "cross-repo-task-rollup",
         "pmo-mode-dashboard",
         "task-management",
         "cross-repo-relationship-map"
       ],
-      "published": "site/assets/work-21s.mp4",
+      "published": "site/assets/work-16s.mp4",
       "rendered": "2026-10-08"
     },
     {
-      "id": "agents-21s",
-      "seconds": 21,
+      "id": "ai-14s",
+      "seconds": 14,
       "format": "landscape",
       "tool": "promo/build.sh",
       "features": [
-        "modern-dashboard",
         "mcp-server",
         "claude-code-skill",
         "cross-repo-task-rollup",
-        "cross-repo-relationship-map"
+        "per-repo-conversational-interface",
+        "chat-driven-doc-edit-proposals"
       ],
-      "published": "site/assets/agents-21s.mp4",
+      "published": "site/assets/ai-14s.mp4",
       "rendered": "2026-10-08"
     },
     {
-      "id": "health-21s-vert",
+      "id": "hero-37s",
+      "seconds": 37,
+      "format": "landscape",
+      "tool": "promo/build.sh",
+      "features": [
+        "health-scoring",
+        "modern-dashboard",
+        "documentation-tracking",
+        "doc-health-scoring",
+        "best-practices-detection",
+        "visual-docs-signal",
+        "community-standards",
+        "auto-fix-missing-docs",
+        "auto-fix-best-practices",
+        "auto-fix-community-standards",
+        "batch-operations",
+        "pr-preview-modal",
+        "ai-template-enrichment",
+        "inline-edit-generate-toggle",
+        "cross-repo-task-rollup",
+        "pmo-mode-dashboard",
+        "task-management",
+        "cross-repo-relationship-map",
+        "mcp-server",
+        "claude-code-skill",
+        "per-repo-conversational-interface",
+        "chat-driven-doc-edit-proposals"
+      ],
+      "published": "site/assets/vigil.mp4",
+      "rendered": "2026-10-08"
+    },
+    {
+      "id": "health-17s-vert",
       "seconds": 24.5,
       "format": "vertical",
       "tool": "promo/build.sh",
@@ -1782,7 +1836,7 @@
         "auto-fix-community-standards",
         "pr-preview-modal"
       ],
-      "published": "site/assets/health-21s-vert.mp4",
+      "published": "site/assets/health-17s-vert.mp4",
       "rendered": "2026-10-08"
     }
   ],
@@ -1790,9 +1844,7 @@
     {
       "id": "hero",
       "spots": [
-        "health-21s",
-        "work-21s",
-        "agents-21s"
+        "hero-37s"
       ],
       "published": "site/assets/vigil.mp4"
     }
@@ -1804,7 +1856,7 @@
       "components/icons/VigilIcon.tsx",
       "site/index.html (inline favicon + header mark)",
       "promo/brag-30s/compose.html (ICON)",
-      "promo/health-21s-vert/compose.html (ICON)",
+      "promo/health-17s-vert/compose.html (ICON)",
       "site/assets/poster.jpg (og:image, reel poster)"
     ],
     "manual": [
@@ -1817,11 +1869,11 @@
         "url": "https://studio.youtube.com/"
       },
       {
-        "what": "YouTube Shorts: upload promo/out/health-21s-vert/health-21s-vert.mp4 with promo/health-21s-vert/share-copy.txt",
+        "what": "YouTube Shorts: upload promo/out/health-17s-vert/health-17s-vert.mp4 with promo/health-17s-vert/share-copy.txt",
         "url": "https://studio.youtube.com/"
       },
       {
-        "what": "LinkedIn: post a 21s spot (promo/out/<spot>/<spot>.mp4) with its share-copy.txt",
+        "what": "LinkedIn: post a feature spot (promo/out/<spot>/<spot>.mp4) with its share-copy.txt",
         "url": "https://www.linkedin.com/feed/"
       }
     ]

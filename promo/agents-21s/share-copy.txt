@@ -1,1 +1,0 @@
-My agents can see my whole GitHub portfolio now. Vigil's MCP server gives Claude ten tools: health, open tasks across every repo, security posture, and a relationship map agents can propose edges to (you confirm them). nitsuah.github.io/vigil

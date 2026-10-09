@@ -6,7 +6,7 @@
 #   promo/build.sh brag-30s --stills 1.8,4.5,9.2    # quick look at a few frames
 #   promo/build.sh brag-30s --audio                 # re-synth audio + remux only
 #   promo/build.sh brag-30s --recapture             # re-shoot the app (after UI/seed changes)
-#   promo/build.sh health-21s --publish             # also copy it to site/assets/<spot>.mp4/.jpg
+#   promo/build.sh health-17s --publish             # also copy it to site/assets/<spot>.mp4/.jpg
 #   promo/reel.sh hero --publish                    # join the spots into the hero reel (site/assets/vigil.mp4)
 set -euo pipefail
 cd "$(dirname "$0")/.."

@@ -1,11 +1,10 @@
 {
   "title": "Vigil — work spot (prioritize and connect)",
   "base": "brag-30s",
-  "duration": 21,
+  "duration": 16,
   "fps": 30,
-  "poster": 10.8,
-  "scenes": [["hook", 0, 3], ["reveal", 3, 7], ["prioritize", 7, 12.5], ["connect", 12.5, 18], ["outro", 18, 21]],
-  "revealLine": "<span class=\"grad\">Every repo's open work.</span><br />One list.",
+  "poster": 6.7,
+  "scenes": [["hook", 0, 3], ["prioritize", 3, 8.5], ["connect", 8.5, 13.5], ["outro", 13.5, 16]],
   "outroFeats": "Cross-repo open work · Most urgent first · PMO pipeline · Relationship map",
   "outroChips": ["nitsuah.github.io/vigil", "MCP for Claude Code"]
 }

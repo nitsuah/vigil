@@ -470,7 +470,10 @@ export function auditShowcase(input: ShowcaseAuditInput): ShowcaseAudit {
             if (s.rendered && input.featuresChanged && input.featuresChanged.slice(0, 10) > s.rendered) {
                 add('info', 'spot-stale', `Spot "${s.id}" (rendered ${s.rendered}) predates the last FEATURES.md change (${input.featuresChanged.slice(0, 10)}).`);
             }
-            if (s.seconds && s.seconds > 35 && s.format !== 'vertical') add('info', 'spot-long', `Spot "${s.id}" is ${s.seconds}s. Split it into ~${DEFAULT_SPOT_SECONDS}s spots and a reel.`);
+            // A long spot is fine as a reel's single continuous hero cut (one intro, one outro);
+            // splitting it into spots that each carry an intro is what makes a reel repeat itself.
+            const soloReel = (manifest.reels ?? []).some(r => r.spots.length === 1 && r.spots[0] === s.id);
+            if (s.seconds && s.seconds > 35 && s.format !== 'vertical' && !soloReel) add('info', 'spot-long', `Spot "${s.id}" is ${s.seconds}s. Split it into ~${DEFAULT_SPOT_SECONDS}s feature spots, or list it as a reel's single hero cut.`);
         }
     } else if (input.features && total > 0) {
         add('warn', 'no-manifest', `No ${SPOTS_MANIFEST}. Run apply to scaffold it from FEATURES.md.`);

@@ -26,9 +26,15 @@ for i in "${!SPOTS[@]}"; do
   offset=$(node -p "$offset + $dur - $XF")
 done
 run() { MSYS_NO_PATHCONV=1 docker run --rm -v "$REPO:/w" -w /w "$FFMPEG" -hide_banner -loglevel error -y "$@"; }
-run "${inputs[@]}" -filter_complex "${vf}${af%;}" -map "[$prev_v]" -map "[$prev_a]" \
-  -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p -profile:v high -movflags +faststart -c:a aac -b:a 192k "/w/$OUT/reel-$REEL.mp4"
-run -i "/w/$OUT/reel-$REEL.mp4" -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 128k "/w/$OUT/reel-$REEL-web.mp4"
+if [ "${#SPOTS[@]}" -eq 1 ]; then
+  # A one-spot reel (vigil's hero is a single cut, hero-37s): no joins, reuse its encodes.
+  cp "promo/out/${SPOTS[0]}/${SPOTS[0]}.mp4" "$OUT/reel-$REEL.mp4"
+  cp "promo/out/${SPOTS[0]}/${SPOTS[0]}-web.mp4" "$OUT/reel-$REEL-web.mp4"
+else
+  run "${inputs[@]}" -filter_complex "${vf}${af%;}" -map "[$prev_v]" -map "[$prev_a]" \
+    -c:v libx264 -preset slow -crf 17 -pix_fmt yuv420p -profile:v high -movflags +faststart -c:a aac -b:a 192k "/w/$OUT/reel-$REEL.mp4"
+  run -i "/w/$OUT/reel-$REEL.mp4" -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p -movflags +faststart -c:a aac -b:a 128k "/w/$OUT/reel-$REEL-web.mp4"
+fi
 # Every spot's frame 0 is its poster, so the reel's frame 0 is the first spot's poster.
 cp "promo/out/${SPOTS[0]}/${SPOTS[0]}.jpg" "$OUT/reel-$REEL.jpg"
 echo "reel → $OUT/reel-$REEL.mp4 ($(node -p "($offset + $XF).toFixed(1)") s)"

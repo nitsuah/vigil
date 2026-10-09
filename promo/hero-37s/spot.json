@@ -1,0 +1,10 @@
+{
+  "title": "Vigil — hero cut (every feature, one intro, one outro)",
+  "base": "brag-30s",
+  "duration": 37,
+  "fps": 30,
+  "poster": 10.3,
+  "scenes": [["hook", 0, 3], ["reveal", 3, 7], ["inspect", 7, 11.5], ["fix", 11.5, 16], ["prioritize", 16, 20.5], ["connect", 20.5, 25], ["ask", 25, 29.5], ["chat", 29.5, 34], ["outro", 34, 37]],
+  "outroFeats": "Health · Docs · Best practices · Fix PRs · Open work · Relationships · MCP · Chat",
+  "outroChips": ["nitsuah.github.io/vigil", "MCP for Claude Code"]
+}

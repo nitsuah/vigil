@@ -31,8 +31,10 @@ def src_at(t):
             A, B = SCN[sid]
             return A + (t - a) * (B - A) / (b - a)
     return None
-GROOVE = SPOT['scenes'][1][1]   # groove enters on the first cut…
-FULL = SPOT['scenes'][2][1]     # …hats and arp on the second
+# The groove enters after the hook, hats and arp after the reveal; a cut that
+# opens on a feature scene starts with both.
+GROOVE = SCN['hook'][1] if 'hook' in SCN else 0.0
+FULL = SCN['reveal'][1] if 'reveal' in SCN else GROOVE
 
 def hz(midi): return 440.0 * 2 ** ((midi - 69) / 12)
 def db(x): return 10 ** (x / 20)
@@ -100,7 +102,7 @@ for bar in range(BARS):
     place(pad, v, t0 - 0.2 if bar else 0, 1.0)
 pad_hook = lp(pad, 700)
 pad_open = lp(pad, 2200)
-x = np.clip((np.arange(N) / SR - 1.1) / 1.9, 0, 1)  # opens up from the answer to the reveal
+x = np.clip((np.arange(N) / SR - 1.1) / 1.9, 0, 1) if 'hook' in SCN else np.ones(N)  # opens up from the answer to the reveal
 pad = pad_hook * (1 - x) + pad_open * x
 pad *= 0.5 + 0.5 * np.clip((np.arange(N) / SR - 1.25) / 0.3, 0, 1)
 music += pad * db(-27)
@@ -227,6 +229,11 @@ for i, mm in enumerate([77, 81, 86]):
 cue(sfx, click(65), CLICKS['confirm'], db(-21))
 cue(sfx, pluck(hz(69), 0.4, 2), CLICKS['confirm'] + 0.12, db(-23))
 cue(sfx, pluck(hz(74), 0.5, 2), CLICKS['confirm'] + 0.22, db(-23))
+# Chat (extra scene): Apply on the proposal, then a bright two-note "done".
+if 'chatApply' in CLICKS:
+    cue(sfx, click(70), CLICKS['chatApply'], db(-21))
+    cue(sfx, pluck(hz(74), 0.45, 2), SPOT['chatPillAt'], db(-23))
+    cue(sfx, pluck(hz(81), 0.6, 2), SPOT['chatPillAt'] + 0.1, db(-23))
 
 # Terminal: typing, tool call, result lines
 for i, ch in enumerate(SPOT['question']):

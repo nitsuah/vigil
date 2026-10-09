@@ -1,0 +1,1 @@
+Two ways to ask about my repos now. Claude reads the whole portfolio over Vigil's MCP server ("what should I work on next?"), and every repo has its own chat that answers from its synced docs and tasks, then hands back the doc edit as a PR to review. nitsuah.github.io/vigil

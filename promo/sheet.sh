@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Contact sheet of a spot's stills (promo/out/<spot>/stills/*.png → sheet.jpg), for review.
-#   promo/sheet.sh health-21s [cols]
+#   promo/sheet.sh health-17s [cols]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO="$(pwd -W 2>/dev/null || pwd)"

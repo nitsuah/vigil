@@ -130,6 +130,18 @@ test.beforeEach(async ({ page }) => {
 test('capture', async ({ page }) => {
     fs.mkdirSync(`${OUT}/crops`, { recursive: true });
 
+    // A seeded chat thread (no AI call): the assistant answers and proposes a doc edit.
+    await page.addInitScript((t) => window.localStorage.setItem('vigil.repo-chat.v1.demo%40example.com', t), JSON.stringify({
+        'docs-site': [
+            { id: 'u1', role: 'user', content: 'What should I fix first?', createdAt: NOW.toISOString() },
+            {
+                id: 'a1', role: 'assistant', createdAt: NOW.toISOString(),
+                content: 'Start with the docs: **README.md** still describes the v1 CLI flags, and **ROADMAP.md** has no 2027 quarter. The README is what people read first, so I drafted an update below.',
+                proposal: { docType: 'readme', summary: 'Update README.md for the v2 CLI flags and install steps', content: '# docs-site\n' },
+            },
+        ],
+    }));
+
     await page.goto('/');
     await expect(page.locator('table tbody')).toContainText('storefront', { timeout: 60_000 });
     await page.waitForTimeout(1500);
@@ -215,6 +227,19 @@ test('capture', async ({ page }) => {
     const createPr = { x: prBox.x + prBox.width / 2, y: prBox.y + prBox.height / 2 };
     await page.keyboard.press('Escape');
 
+    // Per-repo chat: the slide-in panel with the seeded thread and its proposal card.
+    await page.goto('/');
+    await expect(page.locator('table tbody')).toContainText('docs-site', { timeout: 60_000 });
+    await page.locator('table tbody').getByRole('button', { name: 'Chat about docs-site' }).click();
+    const chat = page.getByRole('dialog');
+    await expect(chat).toContainText('Update README.md');
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${OUT}/crops/chat.png` });
+    const applyBox = (await chat.getByRole('button', { name: /Apply/ }).first().boundingBox())!;
+    const chatApply = { x: applyBox.x + applyBox.width / 2, y: applyBox.y + applyBox.height / 2 };
+    const panelBox = (await chat.boundingBox())!;
+    const chatPanel = { x: panelBox.x, y: panelBox.y, width: panelBox.width, height: panelBox.height };
+
     const p01 = rollup(new URLSearchParams({ priority: 'P0,P1' }));
     const all = rollup(new URLSearchParams());
     fs.writeFileSync(`${OUT}/capture.json`, JSON.stringify({
@@ -224,6 +249,8 @@ test('capture', async ({ page }) => {
         details: detailsMeta,
         fixAll, // CSS px inside card-practices.png
         createPr, // CSS px inside fix-modal.png (1600x900 viewport)
+        chatApply, // CSS px inside chat.png (1600x900 viewport)
+        chatPanel, // the slide-in panel inside chat.png, CSS px
         p2Chip: p2 && gridBox ? { x: p2.x - gridBox.x + p2.width / 2, y: p2.y - gridBox.y + p2.height / 2 } : null,
         mcp: {
             tasks: p01.tasks.slice(0, 4).map((t) => ({ repo: t.repo, title: t.title, status: t.status, priority: t.priority })),
