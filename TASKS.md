@@ -16,7 +16,17 @@ _None open — P0 hardening shipped in #225/#226 (see CHANGELOG)._
 
 _None open — see CHANGELOG for the #221–#233 work._
 
+- [ ] Tasks card shows the lowest-priority group first and hides the rest (#275).
+  - Priority: P1
+  - Context: found by the journeys review pass, 2026-10-09. `TasksSection.tsx` sorts subsections and then calls `.reverse()`.
+
 ### P2 - Medium
+
+- [ ] Journeys review findings, 2026-10-09: confirmed relationships listed under "Needs review" (#276), relationship graph edges cross node labels (#277), Pages site never links the live dashboard (#279).
+  - Priority: P2
+
+- [ ] Fold the visual-docs screenshots into the journeys (`{ docs: '<feature id>' }` steps + a `capture:screenshots` script), so one suite produces both. fire's `visual-docs.yml` is the reference.
+  - Priority: P2
 
 - [ ] Grow the cross-repo relationship map from real evidence.
   - Priority: P2

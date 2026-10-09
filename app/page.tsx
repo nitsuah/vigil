@@ -270,10 +270,11 @@ export default function Dashboard() {
 
   // Pre-fetch details for all repos in the background after initial load so
   // health breakdown popups and doc icons are immediately available.
-  const prefetchedRef = useRef(false);
+  // Re-runs whenever `repos` changes: the cleanup cancels pending timers, so a
+  // one-shot guard would leave those repos unloaded (#281). fetchRepoDetails
+  // skips repos already loaded or loading, so rescheduling is idempotent.
   useEffect(() => {
-    if (loading || repos.length === 0 || prefetchedRef.current) return;
-    prefetchedRef.current = true;
+    if (loading || repos.length === 0) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     repos.forEach((repo: Repo, i: number): void => {
       // Stagger by 80ms per repo to avoid hammering the API

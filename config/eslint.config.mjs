@@ -16,9 +16,15 @@ const eslintConfig = defineConfig([
     // minified third-party code that isn't ours to lint.
     "playwright-report/**",
     "test-results/**",
+    "journeys-report/**",
     // Promo render output (gitignored).
     "promo/out/**",
   ]),
+  // Vendored as-is from nitsuah/.github journeys/templates/journey.js (CommonJS).
+  {
+    files: ["e2e/journeys/journey.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
   // GitHub Pages landing page (site/): plain browser scripts.
   {
     files: ["site/**/*.js"],
