@@ -109,6 +109,7 @@ Click the tier badge next to a repo's type icon (dashed `T–` when unset) to se
 - **Auth:** NextAuth v5 with GitHub OAuth
 - **APIs:** GitHub REST API via Octokit, Google Gemini, OpenAI, Anthropic
 - **Testing:** Vitest + Playwright E2E
+- **Nightly journeys:** `npm run test:journeys` (Docker, `mcr.microsoft.com/playwright:v1.63.0-jammy`). Open bot issues: [BUGS.md](https://github.com/nitsuah/vigil/blob/bot/journeys/BUGS.md)
 
 ## Getting Started
 

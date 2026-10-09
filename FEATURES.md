@@ -174,6 +174,7 @@ Status guide: features listed here are shipped unless explicitly marked as plann
 - **Authenticated Repo Chat**: Per-repo chat requires sign-in; shared-key usage is rate-limited in a shared Neon store with quota reserved before any personal-key fallback call
 - **Row Error Boundary**: A render error in one expanded repo row degrades only that row (with Retry); NUMERIC fields are normalized to numbers at the API boundary
 - **Production Smoke Tests**: CI runs a DB-free mocked Playwright suite, and a post-merge workflow smoke-tests the deployed app once it reports the merged commit
+- **Nightly Journeys**: six DB-free Playwright journeys (`e2e/journeys/`, the visual-docs demo portfolio, frozen clock, 12 visual baselines) run every night; failures become deduplicated `bot:journey` issues that close themselves after 3 green nights. `BUGS.md` on the `bot/journeys` branch lists open bot issues ([standard](https://github.com/nitsuah/.github/blob/main/journeys/STANDARD.md))
 
 ### 🔄 Synchronization
 

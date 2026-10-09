@@ -14,7 +14,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   // DB-free specs run via playwright.ci.config.ts
-  testIgnore: ['**/mocked/**', '**/smoke/**'],
+  testIgnore: ['**/mocked/**', '**/smoke/**', '**/journeys/**', '**/visual-docs/**'],
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
