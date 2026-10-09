@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Visual best practices
+
+- **Changed:** `visual_docs` is now scored. Healthy means CI regenerates the screenshots and diagrams and the README embeds them. Each row (screenshots, diagrams, videos, Pages) shows its own grade. A row offers the recipe PR (which now includes `docs/VISUAL_DOCS_HOWTO.md`) when CI alone can fix it; otherwise it shows a `/promo` handoff with the repo path and inputs.
+- **Added:** an `actions_pr_permission` check ("Allow GitHub Actions to create and approve pull requests"), scored only when a visual-docs or journeys workflow needs it, with the `gh api` command as its handoff; an informational `journeys` practice; and `visual_setup` per repo in `/api/context`.
+
 ### Nightly journeys
 
 - **Added:** six DB-free Playwright journeys in `e2e/journeys/` (dashboard sort, repo details, chat proposal, PMO open work, relationship map, phone card) with 12 Linux baselines, `npm run test:journeys`, and `.github/workflows/journeys.yml`, which runs them nightly through nitsuah/.github's reusable workflow and files deduplicated `bot:journey` issues.

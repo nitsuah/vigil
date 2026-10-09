@@ -2,7 +2,7 @@
 
 > 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · **Tasks** · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
 
-updated: 2026-10-01
+updated: 2026-10-09
 
 ## In Progress
 
@@ -14,7 +14,50 @@ _None open — P0 hardening shipped in #225/#226 (see CHANGELOG)._
 
 ### P1 - High
 
-_None open — see CHANGELOG for the #221–#233 work._
+#### Epic: Visual best practices (from stash SOTU 2026-W41)
+
+Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and Playwright screenshots, committed and embedded in each README, as a scored check plus a reusable CI recipe; (2) a portfolio showcase, with a Pages site and a short `/brag` spot per product (vigil, vhs, skyview and nitsuah-io first; ats-fill held until its UI scrub). The building blocks are `/promo` (spots, reels, Pages), `/journeys` (low-inference nightly QA), and `npm run showcase -- audit|apply`. Vigil scores what it can verify, opens a PR where CI alone is enough, and hands off the rest with the exact skill command.
+
+- [x] Score `visual_docs` and add per-row fix PRs and handoffs.
+  - Priority: P1
+  - Done 2026-10-09:
+    - Healthy needs CI-generated screenshots _and_ diagrams embedded in the README; anything less is dormant.
+    - Videos and Pages are graded per row (pass, partial or fail) but not scored.
+    - The screenshots and diagrams rows open the recipe PR, which now includes `docs/VISUAL_DOCS_HOWTO.md`, when the repo has no visual-docs workflow; otherwise they hand off to `/promo`. Videos and Pages always hand off.
+- [x] Add the `actions_pr_permission` check.
+  - Priority: P1
+  - Done 2026-10-09: reads `can_approve_pull_request_reviews` and is scored only when a visual-docs or journeys workflow exists. When the setting is off, the handoff shows the exact `gh api -X PUT …` command.
+- [x] Add an informational `journeys` practice.
+  - Priority: P1
+  - Done 2026-10-09: healthy is a journeys workflow plus `tests/journeys/` or `e2e/journeys/`; dormant is journeys with no nightly.
+- [x] Add `visual_setup` to `/api/context`.
+  - Priority: P1
+  - Done 2026-10-09: per repo for the portfolio and single-repo contexts, so stash's SOTU can render its Visual setup table without doing it by hand.
+- [ ] Journeys in vigil, beyond detection (see the 2026-10-09 journeys brief).
+  - Priority: P1
+  - Context:
+    - Read `bot/journeys` `metrics/<month>.jsonl` (last run, flaky count, `@feature` coverage) and the open `bot:journey` / `bot:review` counts. Show them on repo details, with a PMO rollup that flags red nightlies.
+    - An owner-only "Run journeys now" (`workflow_dispatch`).
+    - An "Enable nightly journeys" scaffold PR: caller workflow, config, `journey.js`, `test:journeys`, `.gitignore`. Vigil creates the labels through the API.
+    - Agent-queued `review`, `adopt|add`, `fix` runs with the SKILL.md mode as the prompt.
+  - Acceptance Criteria: a repo with no journeys can be scaffolded from vigil. Then promote `journeys` out of `INFORMATIONAL_PRACTICES`.
+- [ ] Showcase audit: features no journey covers, plus "features linked" on the dashboard.
+  - Priority: P1
+  - Context:
+    - `npm run showcase -- audit` lists user-visible spots.json features (not `visual: none`) that no journey's `@feature:` tag covers.
+    - The dashboard can't read spots.json from the file list, so "features linked" (with visual ÷ visual features) is CLI-only today.
+  - Acceptance Criteria: sync reads `promo/spots.json` + FEATURES.md and stores the ratio on the `visual_docs` row; it's graded but not scored.
+- [ ] Diagrams-only recipe job for repos with no UI.
+  - Priority: P1
+  - Context: the recipe already renders `.mmd` without a Playwright config. Add an Excalidraw export step, and a diagrams-only fix PR that doesn't add screenshot plumbing to a CLI/MCP repo.
+- [ ] Showcase rollout: Pages + one `/brag` spot each for vhs, skyview and nitsuah-io (vigil is done; ats-fill held).
+  - Priority: P1
+  - Context: user-run via the handoffs on each repo's Visual Docs rows (`/promo <repo> audit`, then `spot`, then `publish`). Turn Actions PRs on for vigil, fire and motor-pool first.
+- [ ] Follow-ups outside vigil.
+  - Priority: P1
+  - Context:
+    - stash: `agent/scripts/sotu.py` reads `visual_setup` from `/api/context` for the Visual setup table (filed as a stash task, not edited from here).
+    - nitsuah/.github: add the Actions PR setting to `/promo`'s first-run checklist (`skills/promo/SKILL.md`).
 
 - [ ] Tasks card shows the lowest-priority group first and hides the rest (#275).
   - Priority: P1
@@ -41,11 +84,6 @@ _None open — see CHANGELOG for the #221–#233 work._
 _None open. The rate-limiter identity item is under Done._
 
 ### P3 - Exploratory
-
-- [ ] Roll the visual-docs recipe out to tracked web-app repos, then score it.
-  - Priority: P3
-  - Context: `visual_docs` shipped informational-only (excluded via `INFORMATIONAL_PRACTICES` in `lib/visual-docs.ts`) so adding it didn't drop every repo's best-practices ratio at once. See docs/VISUAL_DOCS.md.
-  - Acceptance Criteria: recipe adopted (workflow + script + README markers) in nitsuah-io, darkmoon, skyview, farm-3j, games; then remove `visual_docs` from `INFORMATIONAL_PRACTICES`, update the Health Score table in FEATURES.md, and add a Fix-PR template so the Best Practices panel can open the adoption PR in one click.
 
 - [ ] Visuals for the 21 user-visible features with no screenshot or spot.
   - Priority: P3
@@ -88,6 +126,7 @@ _None open. The rate-limiter identity item is under Done._
 
 _Condensed, one line per item. Full detail lives in FEATURES.md and CHANGELOG.md. The section must stay, because vigil's own TASKS parser expects Done / In Progress / Todo._
 
+- [x] Done 2026-10-09: `visual_docs` scored (recipe-adoption P3 closed by the visual best-practices epic above).
 - [x] Done 2026-09-28: Chat-driven doc editing (TASKS/ROADMAP/FEATURES), stages 1–4: `parseTaskOperationProposal` in `lib/repo-chat.ts`, `POST /api/repos/[name]/tasks`. Stage 3 shipped in #253. See FEATURES.
 - [x] Done 2026-09-27: Cross-repo relationship map foundation: `repo_relationships`, `/api/relationships`, `get_relationships` / `propose_relationship` MCP tools, and the PMO map (#248, #249, #252). See FEATURES.
 - [x] Done 2026-09-28: Trend endpoint keyed on `full_name` instead of the short `name`: `app/api/repo-details/[name]/trend/route.ts` takes `fullName` (#253).

@@ -15,6 +15,7 @@
  *   3. No auth                              →  default repos only
  */
 
+import { visualSetup, VISUAL_SETUP_PRACTICES, type VisualSetupRow } from '@/lib/visual-docs';
 import { NextRequest, NextResponse } from 'next/server';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import { auth } from '@/auth';
@@ -89,13 +90,14 @@ export async function GET(req: NextRequest) {
 
       const repo = repoRows[0];
 
-      const [tasks, roadmapItems, docStatuses, bestPractices, communityStandards] =
+      const [tasks, roadmapItems, docStatuses, bestPractices, communityStandards, visualRows] =
         await db.transaction([
           db`SELECT title, status, priority, owner, section FROM tasks WHERE repo_id = ${repo.id} ORDER BY created_at DESC LIMIT 50`,
           db`SELECT title, quarter, status FROM roadmap_items WHERE repo_id = ${repo.id} ORDER BY created_at DESC LIMIT 30`,
           db`SELECT doc_type, "exists", health_state FROM doc_status WHERE repo_id = ${repo.id}`,
           db`SELECT practice_type, status FROM best_practices WHERE repo_id = ${repo.id}`,
           db`SELECT standard_type, status FROM community_standards WHERE repo_id = ${repo.id}`,
+          db`SELECT practice_type, status, details FROM best_practices WHERE repo_id = ${repo.id} AND practice_type = ANY(${VISUAL_SETUP_PRACTICES})`,
         ]);
 
       const relationships = await listRelationships(db, { repos: [String(repo.full_name)] });
@@ -169,6 +171,7 @@ export async function GET(req: NextRequest) {
           summary: `${cs.filter(s => s.status === 'healthy').length}/${cs.length} healthy`,
           items:   cs,
         },
+        visual_setup: visualSetup(visualRows as VisualSetupRow[]),
       });
     }
 
@@ -203,6 +206,13 @@ export async function GET(req: NextRequest) {
     const relationships = await listRelationships(db, {
       repos: repos.map(r => String((r as unknown as { full_name: string }).full_name)),
     });
+
+    const visualSetupRows = (await db`
+      SELECT r.name, bp.practice_type, bp.status, bp.details
+      FROM best_practices bp JOIN repos r ON r.id = bp.repo_id
+      WHERE r.is_hidden = false AND bp.practice_type = ANY(${VISUAL_SETUP_PRACTICES})
+    `) as (VisualSetupRow & { name: string })[];
+    const visibleNames = new Set(repos.map(r => r.name));
 
     const avgHealth = repos.length
       ? Math.round(repos.reduce((s, r) => s + (r.health_score ?? 0), 0) / repos.length)
@@ -275,6 +285,11 @@ export async function GET(req: NextRequest) {
         p0_p1_truncated: urgent.truncated,
         more:         'Call the get_open_tasks MCP tool for P2/P3 and repo/owner/status filters.',
       },
+      visual_setup: repos.filter(r => visibleNames.has(r.name)).map(r => ({
+        name: r.name,
+        tier: (r as unknown as { tier?: string | null }).tier ?? null,
+        ...visualSetup(visualSetupRows.filter(v => v.name === r.name)),
+      })),
       relationships: {
         summary: `${relationships.filter(r => r.status === 'confirmed').length} confirmed · ${relationships.filter(r => r.status === 'proposed').length} proposed`,
         edges:   relationships.map(describeRelationship),

@@ -23,6 +23,8 @@ Next Review: 2026-10-24
 - [ ] **Technical-debt trending + zombie-branch detection** — velocity trending shipped (`repo_snapshots`); debt signals and a stale-branch cleanup view remain.
 - [ ] **3D / click-to-detail relationship map** — after the 2D relationship map (`RelationshipMap`) holds real, confirmed edges.
 
+- [ ] **Visual best practices epic** — `visual_docs` is scored and has fix PRs and handoffs, plus the Actions PR setting check, journeys detection and `/api/context` `visual_setup` (2026-10-09). Still to do: journeys status, run and scaffold; features-linked on the dashboard; the showcase rollout to vhs, skyview and nitsuah-io. See TASKS P1.
+
 ### Exploratory _(carried from 2026 Q4)_
 
 - [ ] Autonomous plan execution: agents read ROADMAP.md and TASKS.md, open PRs, and close items end to end
@@ -31,7 +33,6 @@ Next Review: 2026-10-24
 - [ ] Add mobile-responsive adjustments and lightweight PWA packaging
 - [ ] **Repo "mood" signal** — lightweight sentiment from recent PR descriptions, commit messages, and TASKS.md tone (grind / cleanup / blocked).
 - [ ] **AI PR pairing suggestions** — when promoting a ROADMAP/TASKS item to a PR, surface related items in other repos that should co-land.
-- [ ] **Visual-docs rollout** — adopt the CI diagram/screenshot recipe across web-app repos, then promote `visual_docs` from informational to scored (see TASKS P3).
 - [ ] **Agent session receipts** — per-repo log (chat panel + PMO view) of what an AI session actually did: commits, PRs, files touched, findings fixed vs. skipped-with-reason.
 
 ## Notes
