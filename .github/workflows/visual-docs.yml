@@ -15,7 +15,9 @@ on:
     paths:
       - 'app/**'
       - 'components/**'
-      - 'docs/diagrams/**'
+      # Sources only: the rendered .svg comes back in the bot PR, and matching it re-ran this on every merge.
+      - 'docs/diagrams/**/*.mmd'
+      - 'docs/diagrams/mermaid.config.json'
       - 'e2e/visual-docs/**'
       - 'playwright.visual-docs.config.ts'
       - 'scripts/visual-docs-readme.mjs'
