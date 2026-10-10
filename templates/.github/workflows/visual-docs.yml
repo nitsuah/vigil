@@ -16,6 +16,13 @@ name: Visual docs
 on:
   push:
     branches: [main]
+    # Skip pushes that only carry this workflow's own output (its merged bot PR)
+    # or docs, so a merge doesn't trigger another run.
+    paths-ignore:
+      - 'docs/screenshots/**'
+      - 'docs/diagrams/**/*.svg'
+      - 'docs/diagrams/**/*.png'
+      - '**/*.md'
   workflow_dispatch:
 
 permissions:
