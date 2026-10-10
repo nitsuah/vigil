@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import { detectVisualDocs, VISUAL_DOCS_PRACTICE } from '@/lib/visual-docs';
+import { ACTIONS_PR_PRACTICE, actionsPrHandoff, detectJourneys, detectVisualDocs, JOURNEYS_PRACTICE, needsActionsPrPermission, VISUAL_DOCS_PRACTICE } from '@/lib/visual-docs';
 
 /**
  * Represents the health state of a best practice check.
@@ -574,9 +574,34 @@ export async function checkBestPractices(
         }
     });
 
-    // 11. Visual docs (diagrams + screenshots embedded in README) — informational, not scored
-    const visualDocs = detectVisualDocs(fileList, readmeContent);
+    // 11. Visual docs (CI-generated diagrams + screenshots embedded in README)
+    const visualDocs = detectVisualDocs(fileList, readmeContent, repo);
     practices.push({ type: VISUAL_DOCS_PRACTICE, ...visualDocs });
 
+    // 12. Nightly journeys — informational until rolled out
+    practices.push({ type: JOURNEYS_PRACTICE, ...detectJourneys(fileList) });
+
+    // 13. "Allow GitHub Actions to create and approve pull requests": only checked
+    // (and scored) when a visual-docs workflow that opens PRs needs it. Skipped when
+    // the token can't read the setting, so a missing scope never costs a point.
+    if (needsActionsPrPermission(fileList)) {
+        const p = await checkActionsPrPermission(owner, repo, octokit);
+        if (p) practices.push(p);
+    }
+
     return { practices };
+}
+
+export async function checkActionsPrPermission(owner: string, repo: string, octokit: Octokit): Promise<BestPractice | null> {
+    try {
+        const { data } = await octokit.request('GET /repos/{owner}/{repo}/actions/permissions/workflow', { owner, repo });
+        const on = (data as { can_approve_pull_request_reviews?: boolean }).can_approve_pull_request_reviews === true;
+        return {
+            type: ACTIONS_PR_PRACTICE,
+            status: on ? 'healthy' : 'missing',
+            details: { exists: on, canApprovePullRequestReviews: on, fix: on ? null : actionsPrHandoff(`${owner}/${repo}`) },
+        };
+    } catch {
+        return null;
+    }
 }

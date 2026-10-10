@@ -6,17 +6,100 @@
  * diagrams and screenshots and rewrite a marked README block, so "embedded in
  * the README" is the signal that they are wired up rather than left to rot.
  *
- * Informational for now: excluded from the health score (see
- * INFORMATIONAL_PRACTICES) until the recipe has been rolled out across repos.
+ * Scored since 2026-10-09 (one best practice, same weight as the others):
+ * healthy needs CI-generated screenshots and diagrams embedded in the README.
+ * Videos and Pages are graded per row but not scored, because the file list
+ * alone can't verify them. Rows that need a skill run (video, Pages) get a
+ * handoff, not a fix PR: see visualRows().
  */
 
 import type { HealthState } from '@/lib/best-practices';
-import { classifyElements, detectShowcaseFiles, type ShowcaseElements, type ShowcaseFiles } from '@/lib/showcase';
+import { classifyElements, detectShowcaseFiles, type AssetState, type ShowcaseElements, type ShowcaseFiles } from '@/lib/showcase';
 
 export const VISUAL_DOCS_PRACTICE = 'visual_docs';
+export const JOURNEYS_PRACTICE = 'journeys';
+export const ACTIONS_PR_PRACTICE = 'actions_pr_permission';
 
 /** Practice types shown in the UI but not counted in the health score. */
-export const INFORMATIONAL_PRACTICES: readonly string[] = [VISUAL_DOCS_PRACTICE];
+export const INFORMATIONAL_PRACTICES: readonly string[] = [JOURNEYS_PRACTICE];
+
+export type RowGrade = 'pass' | 'partial' | 'fail';
+/** How a row gets fixed: a PR vigil opens itself, or a handoff the user (or an agent) runs. */
+export type RowFix =
+    | { kind: 'pr'; practice: string; label: string }
+    | { kind: 'handoff'; skill?: string; command: string; inputs: string[] };
+export interface VisualRow {
+    row: 'screenshots' | 'diagrams' | 'videos' | 'pages';
+    state: string;
+    grade: RowGrade;
+    scored: boolean;
+    fix: RowFix | null;
+}
+
+const repoPath = (repo: string) => `~/code/${repo}`;
+
+/**
+ * Per-row grade and fix. Screenshots and diagrams are CI's job: a repo without
+ * a visual-docs workflow gets the recipe PR; one that has the workflow but no
+ * output gets a /promo handoff (a spec or .mmd needs writing). Videos and
+ * Pages always need a skill run, so they only ever get a handoff.
+ */
+export function visualRows(repo: string, elements: ShowcaseElements, hasVisualWorkflow: boolean): VisualRow[] {
+    const asset = (s: AssetState): RowGrade => (s === 'ci' ? 'pass' : s === 'static' ? 'partial' : 'fail');
+    const ciFix = (what: string): RowFix =>
+        hasVisualWorkflow
+            ? { kind: 'handoff', skill: '/promo', command: `/promo ${repo} refresh`, inputs: [`repo: ${repoPath(repo)}`, `add ${what} (docs/VISUAL_DOCS.md)`] }
+            : { kind: 'pr', practice: VISUAL_DOCS_PRACTICE, label: 'Open visual-docs CI recipe PR' };
+    const rows: VisualRow[] = [
+        { row: 'screenshots', state: elements.screenshots, grade: asset(elements.screenshots), scored: true, fix: null },
+        { row: 'diagrams', state: elements.diagrams, grade: asset(elements.diagrams), scored: true, fix: null },
+        { row: 'videos', state: elements.videos, scored: false, grade: elements.videos === 'tracked' ? 'pass' : elements.videos === 'untracked' ? 'partial' : 'fail', fix: null },
+        { row: 'pages', state: elements.pages, scored: false, grade: elements.pages === 'deployed' ? 'pass' : elements.pages === 'orphaned' ? 'partial' : 'fail', fix: null },
+    ];
+    for (const r of rows) {
+        if (r.grade === 'pass') continue;
+        if (r.row === 'screenshots') r.fix = ciFix('Playwright specs that write docs/screenshots/<feature-id>.png');
+        else if (r.row === 'diagrams') r.fix = ciFix('docs/diagrams/<name>.mmd sources');
+        else if (r.row === 'videos') {
+            r.fix = elements.videos === 'untracked'
+                ? { kind: 'handoff', skill: '/promo', command: `/promo ${repo} audit`, inputs: [`repo: ${repoPath(repo)}`, 'no promo/spots.json yet: the first run scaffolds it from FEATURES.md'] }
+                : { kind: 'handoff', skill: '/promo', command: `/promo ${repo} spot <category>`, inputs: [`repo: ${repoPath(repo)}`, 'FEATURES.md (one spot per category)', 'deployed or Pages URL for the outro', 'a fictional demo seed, never real accounts'] };
+        } else {
+            r.fix = { kind: 'handoff', skill: '/promo', command: `/promo ${repo} publish`, inputs: [`repo: ${repoPath(repo)}`, elements.pages === 'orphaned' ? 'a .github/workflows/pages.yml that deploys the site folder' : 'site/ from nitsuah/.github showcase/templates/page-skeleton.html'] };
+        }
+    }
+    return rows;
+}
+
+/** Handoff for "Allow GitHub Actions to create and approve pull requests" (needs repo admin). */
+export function actionsPrHandoff(fullName: string): RowFix {
+    return {
+        kind: 'handoff',
+        // Only the PR flag: omitting default_workflow_permissions leaves the repo's current default as it is.
+        command: `gh api -X PUT repos/${fullName}/actions/permissions/workflow -F can_approve_pull_request_reviews=true`,
+        inputs: ['or Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests"'],
+    };
+}
+
+/**
+ * A workflow whose bot opens PRs (the visual-docs recipe), so it needs the Actions PR setting.
+ * Journeys only files issues, which the setting doesn't govern.
+ */
+export function needsActionsPrPermission(fileList: string[]): boolean {
+    return fileList.some(f => /^\.github\/workflows\/[^/]*(visual|screenshot|diagram)[^/]*\.ya?ml$/i.test(f));
+}
+
+/**
+ * Nightly journeys (nitsuah/.github journeys/STANDARD.md), from the file list:
+ * healthy = a journeys workflow plus tests/journeys/ or e2e/journeys/,
+ * dormant = journeys without the nightly, missing = neither. Informational.
+ */
+export function detectJourneys(fileList: string[]): { status: HealthState; details: { exists: boolean; dirs: string[]; workflow: string | null; informational: true } } {
+    const dirs = [...new Set(fileList.map(f => f.match(/^((?:tests|e2e)\/journeys)\//)?.[1]).filter((d): d is string => !!d))];
+    const workflow = fileList.find(f => /^\.github\/workflows\/[^/]*journeys[^/]*\.ya?ml$/i.test(f)) ?? null;
+    const status: HealthState = dirs.length && workflow ? 'healthy' : dirs.length ? 'dormant' : 'missing';
+    return { status, details: { exists: dirs.length > 0, dirs, workflow, informational: true } };
+}
 
 export interface VisualDocsDetails {
     exists: boolean;
@@ -31,8 +114,9 @@ export interface VisualDocsDetails {
     workflows: string[];
     /** Per-element state (screenshots/diagrams: ci|static|missing), videos and Pages. */
     elements: ShowcaseElements;
+    /** Per-row grade and fix PR or handoff. */
+    rows: VisualRow[];
     showcase: ShowcaseFiles;
-    informational: true;
     [key: string]: unknown;
 }
 
@@ -93,7 +177,7 @@ export function visualAutomation(
     };
 }
 
-export function detectVisualDocs(fileList: string[], readmeContent?: string | null): { status: HealthState; details: VisualDocsDetails } {
+export function detectVisualDocs(fileList: string[], readmeContent?: string | null, repo = '<repo>'): { status: HealthState; details: VisualDocsDetails } {
     const { diagrams, screenshots } = findVisualAssets(fileList);
     const workflows = fileList.filter(f => VISUAL_WORKFLOW.test(f));
     const showcase = detectShowcaseFiles(fileList);
@@ -109,8 +193,12 @@ export function detectVisualDocs(fileList: string[], readmeContent?: string | nu
     });
 
     const hasAssets = diagrams.length > 0 || screenshots.length > 0 || inlineMermaid;
+    // Healthy = CI regenerates both and the README shows them; anything less is partial (dormant).
+    // Each scored type has to be visible: a screenshot embed doesn't cover the diagram.
+    const shotShown = embedded.some(f => screenshots.includes(f));
+    const diagramShown = inlineMermaid || embedded.some(f => diagrams.includes(f));
     const status: HealthState = !hasAssets ? 'missing'
-        : embedded.length > 0 || inlineMermaid ? 'healthy'
+        : shotShown && diagramShown && elements.screenshots === 'ci' && elements.diagrams === 'ci' ? 'healthy'
         : 'dormant';
 
     return {
@@ -124,8 +212,34 @@ export function detectVisualDocs(fileList: string[], readmeContent?: string | nu
             automated: workflows.length > 0,
             workflows,
             elements,
+            rows: visualRows(repo, elements, workflows.length > 0),
             showcase,
-            informational: true,
         },
     };
 }
+
+export interface VisualSetupRow { practice_type: string; status: string; details?: unknown }
+
+/**
+ * Per-repo visual setup for /api/context (stash's SOTU "Visual setup" table):
+ * the visual_docs status, each row's state/grade/fix, the Actions PR setting
+ * (null = not needed or unreadable) and journeys.
+ */
+export function visualSetup(rows: VisualSetupRow[]) {
+    const get = (t: string) => rows.find(r => r.practice_type === t);
+    const vd = get(VISUAL_DOCS_PRACTICE);
+    const d = (vd?.details ?? {}) as Partial<VisualDocsDetails>;
+    const actions = get(ACTIONS_PR_PRACTICE);
+    const journeys = get(JOURNEYS_PRACTICE);
+    return {
+        status: vd?.status ?? 'unknown',
+        scored: true,
+        rows: d.rows ?? [],
+        elements: d.elements ?? null,
+        embedded_in_readme: (d.embedded?.length ?? 0) > 0 || !!d.inlineMermaid,
+        actions_pr_permission: actions ? { status: actions.status, fix: (actions.details as { fix?: RowFix | null } | undefined)?.fix ?? null } : null,
+        journeys: journeys ? { status: journeys.status, informational: true } : null,
+    };
+}
+
+export const VISUAL_SETUP_PRACTICES = [VISUAL_DOCS_PRACTICE, ACTIONS_PR_PRACTICE, JOURNEYS_PRACTICE];

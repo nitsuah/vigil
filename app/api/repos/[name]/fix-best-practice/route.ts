@@ -119,6 +119,10 @@ export async function POST(
                     content: workflowContent
                 });
 
+                // HOWTO for whoever (person or agent) finishes the adoption
+                const howtoContent = await fs.readFile(path.join(process.cwd(), 'templates', 'visual-docs', 'HOWTO.md'), 'utf-8');
+                filesToAdd.push({ path: 'docs/VISUAL_DOCS_HOWTO.md', content: howtoContent });
+
                 // Add the visual-docs-readme.mjs script
                 const readmeScriptPath = path.join(process.cwd(), 'scripts', 'visual-docs-readme.mjs');
                 const readmeScriptContent = await fs.readFile(readmeScriptPath, 'utf-8');

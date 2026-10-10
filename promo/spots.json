@@ -176,6 +176,15 @@
       ]
     },
     {
+      "id": "visual-best-practices",
+      "title": "Visual Best Practices",
+      "category": "Repository Intelligence",
+      "screenshots": [],
+      "spots": [
+        "visual-17s"
+      ]
+    },
+    {
       "id": "visual-docs-signal",
       "title": "Visual Docs Signal",
       "category": "Repository Intelligence",
@@ -1838,6 +1847,18 @@
       ],
       "published": "site/assets/health-17s-vert.mp4",
       "rendered": "2026-10-08"
+    },
+    {
+      "id": "visual-17s",
+      "seconds": 17,
+      "format": "landscape",
+      "tool": "promo/build.sh",
+      "features": [
+        "visual-best-practices",
+        "visual-docs-signal"
+      ],
+      "published": null,
+      "rendered": null
     }
   ],
   "reels": [

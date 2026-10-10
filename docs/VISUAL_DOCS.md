@@ -8,11 +8,11 @@ Vigil checks for it with the **Visual Docs** best practice, and runs the recipe 
 
 ## What vigil checks (`visual_docs`)
 
-| State       | Meaning                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Healthy** | The README embeds at least one detected diagram or screenshot (by path or file name), or has an inline ` ```mermaid ` block. |
-| **Dormant** | Diagrams or screenshots exist, but the README shows none of them.                                                            |
-| **Missing** | None found.                                                                                                                  |
+| State       | Meaning                                                                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Healthy** | CI regenerates both screenshots and diagrams, and the README embeds at least one of each (by path or file name; an inline ` ```mermaid ` block counts for diagrams). |
+| **Dormant** | Partial: assets exist but are static, only one of the two is in CI, or the README shows none of them.                                                                |
+| **Missing** | None found.                                                                                                                                                          |
 
 The check detects:
 
@@ -25,7 +25,21 @@ The check detects:
 - **Brand automation (CLI, info only):** the audit lists workflows that generate store or brand assets (`store-assets`, promo tiles, icon/favicon/logo generation) as `brand automation: <workflow>`. It isn't scored and isn't a gap.
 - **Pages folder (CLI):** besides `site/`, `pages/`, `showcase/` and `docs/`, the audit and `apply` treat `<path>/index.html` as the Pages site when a workflow uploads `<path>` with `actions/upload-pages-artifact`; `apply` adds the expand kit to nested pages under it too. `apply` names the product after the git remote (override with `--product <name>`).
 
-**Not scored yet.** The check shows in the Best Practices panel with a "(not scored)" tag and is excluded from the health score (`INFORMATIONAL_PRACTICES` in `lib/visual-docs.ts`). Promote it once the recipe has rolled out across the portfolio. Until then, adding it would drop every repo's best-practices ratio at once.
+**Scored** (since 2026-10-09) as one best practice, the same weight as the others. The panel grades each row:
+
+| Row         | Pass                            | Partial     | Fail      | Scored | Fix                                                                                    |
+| ----------- | ------------------------------- | ----------- | --------- | ------ | -------------------------------------------------------------------------------------- |
+| Screenshots | `ci`                            | `static`    | `missing` | yes    | Recipe PR when the repo has no visual-docs workflow, otherwise `/promo <repo> refresh` |
+| Diagrams    | `ci`                            | `static`    | `missing` | yes    | Same as screenshots                                                                    |
+| Videos      | `tracked` in `promo/spots.json` | `untracked` | `missing` | no     | Handoff: `/promo <repo> audit`, then `spot <category>`                                 |
+| Pages       | `deployed`                      | `orphaned`  | `missing` | no     | Handoff: `/promo <repo> publish`                                                       |
+
+Two related checks:
+
+- **`actions_pr_permission`**: scored only when a visual-docs workflow exists. When it's off, the handoff is `gh api -X PUT repos/<o>/<r>/actions/permissions/workflow -F can_approve_pull_request_reviews=true`.
+- **`journeys`**: informational.
+
+All three appear per repo as `visual_setup` in `/api/context`.
 
 ## Adopt it in a repo
 

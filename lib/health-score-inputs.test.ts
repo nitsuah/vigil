@@ -25,10 +25,10 @@ describe('buildHealthScoreInputs', () => {
         expect(inputs.communityStandardsHealthy).toBe(1);
     });
 
-    it('leaves informational practices (visual_docs) out of the best-practices ratio', () => {
+    it('leaves informational practices (journeys) out of the best-practices ratio', () => {
         const withVisual = (status: string) => buildHealthScoreInputs({}, {
             ...rows,
-            bestPractices: [...rows.bestPractices, { practice_type: 'visual_docs', status }],
+            bestPractices: [...rows.bestPractices, { practice_type: 'journeys', status }],
         }, NOW);
         for (const status of ['missing', 'healthy']) {
             const inputs = withVisual(status);

@@ -4,6 +4,54 @@ import { CheckCircle2, XCircle, Circle } from 'lucide-react';
 import { BestPractice } from '@/types/repo';
 import { getStatusColor } from '@/lib/expandable-row-utils';
 import { useState } from 'react';
+import type { RowFix, VisualRow } from '@/lib/visual-docs';
+
+function HandoffCommand({ fix }: { fix: RowFix }) {
+  if (fix.kind !== 'handoff') return null;
+  return (
+    <div className="mt-1">
+      <code className="block select-all break-all rounded bg-slate-900/70 px-2 py-1 text-[10px] text-slate-200">{fix.command}</code>
+      {fix.inputs.length > 0 && (
+        <ul className="mt-1 list-disc pl-4 text-[10px] text-slate-500">
+          {fix.inputs.map((i) => <li key={i}>{i}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** visual_docs is PR-fixable only when a row offers the recipe PR; with a workflow already in place the remedy is the /promo handoff. */
+function hasPrFix(p: BestPractice): boolean {
+  if (p.practice_type !== 'visual_docs' || !Array.isArray(p.details?.rows)) return true;
+  return (p.details.rows as VisualRow[]).some((r) => r.fix?.kind === 'pr');
+}
+
+/** Per-row grade plus its fix: a PR vigil opens (CI recipe) or a handoff (skill run, setting). */
+function VisualRowsList({ rows, canFix, onFix }: { rows: VisualRow[]; canFix: boolean; onFix: () => void }) {
+  const tone = { pass: 'border-green-700 text-green-400', partial: 'border-yellow-700 text-yellow-400', fail: 'border-slate-700 text-slate-500' } as const;
+  return (
+    <div className="mt-2 ml-6 space-y-1.5 text-[10px]" aria-label="Visual showcase elements">
+      {rows.map((r) => (
+        <div key={r.row}>
+          <span title={r.scored ? 'Scored' : 'Graded, not scored'} className={`px-1.5 py-0.5 rounded border ${tone[r.grade]}`}>
+            {r.row} · {r.state}{r.scored ? '' : ' (not scored)'}
+          </span>
+          {r.fix?.kind === 'pr' && canFix && (
+            <button onClick={onFix} className="ml-2 px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium">
+              {r.fix.label}
+            </button>
+          )}
+          {r.fix?.kind === 'handoff' && (
+            <details className="ml-2 inline-block align-top text-slate-400">
+              <summary className="cursor-pointer">Handoff{r.fix.skill ? `: ${r.fix.skill}` : ''}</summary>
+              <HandoffCommand fix={r.fix} />
+            </details>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface BestPracticesSectionProps {
   bestPractices: BestPractice[];
@@ -70,7 +118,7 @@ export function BestPracticesSection({
   // Each practice uses: template + README + language + (CONTRIBUTING/existing files)
   const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting', 'visual_docs'];
   const missingFixable = bestPractices.filter(
-    (p) => p.status === 'missing' && fixablePractices.includes(p.practice_type)
+    (p) => p.status === 'missing' && fixablePractices.includes(p.practice_type) && hasPrFix(p)
   );
 
   return (
@@ -151,7 +199,7 @@ export function BestPracticesSection({
             .map((practice, i) => {
               // Determine if this practice can be auto-fixed
               const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting', 'visual_docs'];
-              const canFix = fixablePractices.includes(practice.practice_type);
+              const canFix = fixablePractices.includes(practice.practice_type) && hasPrFix(practice);
               const isMissing = practice.status === 'missing';
 
               return (
@@ -182,23 +230,18 @@ export function BestPracticesSection({
                     </div>
                   </div>
 
-                  {practice.practice_type === 'visual_docs' && !!practice.details?.elements && (
-                    <div className="mt-2 ml-6 flex flex-wrap gap-1.5 text-[10px]" aria-label="Visual showcase elements">
-                      {(['screenshots', 'diagrams', 'videos', 'pages'] as const).map(el => {
-                        const elements = practice.details?.elements as Record<string, string> | undefined;
-                        const state = elements?.[el] ?? 'missing';
-                        const good = state === 'ci' || state === 'tracked' || state === 'deployed';
-                        const bad = state === 'missing' || state === 'orphaned';
-                        return (
-                          <span
-                            key={el}
-                            title={`${el}: ${state}`}
-                            className={`px-1.5 py-0.5 rounded border ${good ? 'border-green-700 text-green-400' : bad ? 'border-slate-700 text-slate-500' : 'border-yellow-700 text-yellow-400'}`}
-                          >
-                            {el} · {state}
-                          </span>
-                        );
-                      })}
+                  {practice.practice_type === 'visual_docs' && Array.isArray(practice.details?.rows) && (
+                    <VisualRowsList
+                      rows={practice.details.rows as VisualRow[]}
+                      canFix={isAuthenticated && !!onFixPractice && !!repoName}
+                      onFix={() => repoName && onFixPractice?.(repoName, 'visual_docs')}
+                    />
+                  )}
+
+                  {practice.practice_type === 'actions_pr_permission' && practice.status !== 'healthy' && !!practice.details?.fix && (
+                    <div className="mt-2 ml-6 text-xs text-slate-400">
+                      The visual-docs bot can&apos;t open its PR until this is on. Run (repo admin):
+                      <HandoffCommand fix={practice.details.fix as RowFix} />
                     </div>
                   )}
 

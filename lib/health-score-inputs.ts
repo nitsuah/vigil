@@ -61,7 +61,7 @@ export function buildHealthScoreInputs(
     // that carry open_issues_count's legacy DEFAULT 0, so NULL here means "no
     // scan": fall back to open_issues rather than scoring zero issues.
     const issuesScanned = repo.stale_issues_count != null;
-    // Informational practices (e.g. visual_docs) are shown but not scored.
+    // Informational practices (e.g. journeys) are shown but not scored.
     const scoredPractices = rows.bestPractices.filter((bp) => !INFORMATIONAL_PRACTICES.includes(bp.practice_type));
 
     return {
