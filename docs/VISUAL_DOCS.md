@@ -52,6 +52,7 @@ All three appear per repo as `visual_setup` in `/api/context`.
    - Freeze the clock (`page.clock.setFixedTime`).
    - Fix the viewport and color scheme.
    - Hide dev overlays.
+   - Wait for loading states to clear before each shot (vigil's `shoot()` waits for the doc-status placeholders). A shot taken mid-load differs run to run and opens a bot PR for nothing.
 4. **Mark the README** where the gallery should go:
 
    ```markdown

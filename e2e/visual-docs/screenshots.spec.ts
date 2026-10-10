@@ -7,7 +7,7 @@
  * demo data and a frozen clock, so output only changes when the UI does and the
  * bot PR doesn't churn on "3 days ago" labels. Writes docs/screenshots/*.png.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { NOW, prepare, signedInContext } from '../fixtures/demo-portfolio';
 
 const OUT = 'docs/screenshots';
@@ -18,11 +18,21 @@ test.beforeEach(async ({ page }) => {
   await prepare(page);
 });
 
+/**
+ * Rows fetch their doc status after the table renders. Capturing while some
+ * still show the loading dots made the same UI produce different PNGs run to
+ * run (and a bot PR on every push), so every shot waits for them to clear.
+ */
+async function shoot(page: Page, name: string) {
+  await expect(page.locator('[aria-label="Loading doc status"], [aria-label="Loading docs"]')).toHaveCount(0, { timeout: 30_000 });
+  await page.screenshot({ path: `${OUT}/${name}.png` });
+}
+
 test('dashboard', async ({ page }) => {
   await page.goto('/');
   // Scoped to the desktop table: the hidden mobile cards render the same names.
   await expect(page.locator('table tbody')).toContainText('agent-board', { timeout: 30_000 });
-  await page.screenshot({ path: `${OUT}/dashboard.png` });
+  await shoot(page, 'dashboard');
 });
 
 test('repo details', async ({ page }) => {
@@ -33,7 +43,7 @@ test('repo details', async ({ page }) => {
   await row.locator('td').nth(1).click();
   await expect(page.getByRole('heading', { name: 'Repository Stats' })).toBeVisible({ timeout: 15_000 });
   await page.getByRole('heading', { name: 'Repository Stats' }).scrollIntoViewIfNeeded();
-  await page.screenshot({ path: `${OUT}/repo-details.png` });
+  await shoot(page, 'repo-details');
 });
 
 test('pmo', async ({ page }) => {
@@ -41,7 +51,7 @@ test('pmo', async ({ page }) => {
   await page.goto('/pmo');
   await expect(page.getByText('Portfolio Pipeline')).toBeVisible();
   await expect(page.getByRole('article', { name: 'nitsuah/skyview' })).toBeVisible();
-  await page.screenshot({ path: `${OUT}/pmo.png` });
+  await shoot(page, 'pmo');
 });
 
 // Screenshots named after a feature id in promo/spots.json are linked to that
@@ -68,12 +78,12 @@ test('per-repo chat', async ({ page }) => {
   await expect(page.locator('table tbody')).toContainText('agent-board', { timeout: 30_000 });
   await page.locator('table tbody').getByRole('button', { name: 'Chat about vigil' }).click();
   await expect(page.getByRole('dialog')).toContainText('Refresh METRICS.md');
-  await page.screenshot({ path: `${OUT}/per-repo-conversational-interface.png` });
+  await shoot(page, 'per-repo-conversational-interface');
 });
 
 test('mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await expect(page.getByText('Drone services marketplace').first()).toBeVisible({ timeout: 30_000 });
-  await page.screenshot({ path: `${OUT}/responsive-design.png` });
+  await shoot(page, 'responsive-design');
 });
