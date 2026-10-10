@@ -55,7 +55,9 @@ describe('visual_docs scoring and fixes', () => {
     const ci = ['.github/workflows/visual-docs.yml', 'playwright.visual-docs.config.ts', 'docs/diagrams/arch.mmd', 'docs/diagrams/arch.svg', 'docs/screenshots/dash.png'];
 
     it('is healthy only when screenshots and diagrams are CI-generated and embedded', () => {
-        expect(detectVisualDocs(ci, '![d](docs/screenshots/dash.png)', 'x').status).toBe('healthy');
+        expect(detectVisualDocs(ci, '![d](docs/screenshots/dash.png) ![a](docs/diagrams/arch.svg)', 'x').status).toBe('healthy');
+        // a screenshot embed alone doesn't show the diagram
+        expect(detectVisualDocs(ci, '![d](docs/screenshots/dash.png)', 'x').status).toBe('dormant');
         expect(detectVisualDocs(ci, '# no embeds', 'x').status).toBe('dormant');
         // static screenshots, no workflow: partial credit
         expect(detectVisualDocs(['docs/screenshots/dash.png'], '![d](docs/screenshots/dash.png)', 'x').status).toBe('dormant');
@@ -87,16 +89,16 @@ describe('journeys and the Actions PR setting', () => {
         expect(detectJourneys(['src/a.ts']).status).toBe('missing');
     });
 
-    it('needs the setting only for workflows whose bot opens PRs or issues', () => {
+    it('needs the setting only for workflows whose bot opens PRs', () => {
         expect(needsActionsPrPermission(['.github/workflows/visual-docs.yml'])).toBe(true);
-        expect(needsActionsPrPermission(['.github/workflows/journeys.yml'])).toBe(true);
+        expect(needsActionsPrPermission(['.github/workflows/journeys.yml'])).toBe(false);
         expect(needsActionsPrPermission(['.github/workflows/ci.yml'])).toBe(false);
     });
 
     it('builds the exact gh api handoff', () => {
         expect(actionsPrHandoff('nitsuah/fire')).toMatchObject({
             kind: 'handoff',
-            command: 'gh api -X PUT repos/nitsuah/fire/actions/permissions/workflow -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true',
+            command: 'gh api -X PUT repos/nitsuah/fire/actions/permissions/workflow -F can_approve_pull_request_reviews=true',
         });
     });
 

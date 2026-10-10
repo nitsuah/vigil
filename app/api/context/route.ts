@@ -208,11 +208,10 @@ export async function GET(req: NextRequest) {
     });
 
     const visualSetupRows = (await db`
-      SELECT r.name, bp.practice_type, bp.status, bp.details
+      SELECT bp.repo_id, bp.practice_type, bp.status, bp.details
       FROM best_practices bp JOIN repos r ON r.id = bp.repo_id
       WHERE r.is_hidden = false AND bp.practice_type = ANY(${VISUAL_SETUP_PRACTICES})
-    `) as (VisualSetupRow & { name: string })[];
-    const visibleNames = new Set(repos.map(r => r.name));
+    `) as (VisualSetupRow & { repo_id: number })[];
 
     const avgHealth = repos.length
       ? Math.round(repos.reduce((s, r) => s + (r.health_score ?? 0), 0) / repos.length)
@@ -285,10 +284,10 @@ export async function GET(req: NextRequest) {
         p0_p1_truncated: urgent.truncated,
         more:         'Call the get_open_tasks MCP tool for P2/P3 and repo/owner/status filters.',
       },
-      visual_setup: repos.filter(r => visibleNames.has(r.name)).map(r => ({
+      visual_setup: repos.map(r => ({
         name: r.name,
         tier: (r as unknown as { tier?: string | null }).tier ?? null,
-        ...visualSetup(visualSetupRows.filter(v => v.name === r.name)),
+        ...visualSetup(visualSetupRows.filter(v => v.repo_id === (r as unknown as { id: number }).id)),
       })),
       relationships: {
         summary: `${relationships.filter(r => r.status === 'confirmed').length} confirmed · ${relationships.filter(r => r.status === 'proposed').length} proposed`,

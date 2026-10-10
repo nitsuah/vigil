@@ -20,6 +20,12 @@ function HandoffCommand({ fix }: { fix: RowFix }) {
   );
 }
 
+/** visual_docs is PR-fixable only when a row offers the recipe PR; with a workflow already in place the remedy is the /promo handoff. */
+function hasPrFix(p: BestPractice): boolean {
+  if (p.practice_type !== 'visual_docs' || !Array.isArray(p.details?.rows)) return true;
+  return (p.details.rows as VisualRow[]).some((r) => r.fix?.kind === 'pr');
+}
+
 /** Per-row grade plus its fix: a PR vigil opens (CI recipe) or a handoff (skill run, setting). */
 function VisualRowsList({ rows, canFix, onFix }: { rows: VisualRow[]; canFix: boolean; onFix: () => void }) {
   const tone = { pass: 'border-green-700 text-green-400', partial: 'border-yellow-700 text-yellow-400', fail: 'border-slate-700 text-slate-500' } as const;
@@ -112,7 +118,7 @@ export function BestPracticesSection({
   // Each practice uses: template + README + language + (CONTRIBUTING/existing files)
   const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting', 'visual_docs'];
   const missingFixable = bestPractices.filter(
-    (p) => p.status === 'missing' && fixablePractices.includes(p.practice_type)
+    (p) => p.status === 'missing' && fixablePractices.includes(p.practice_type) && hasPrFix(p)
   );
 
   return (
@@ -193,7 +199,7 @@ export function BestPracticesSection({
             .map((practice, i) => {
               // Determine if this practice can be auto-fixed
               const fixablePractices = ['dependabot', 'env_template', 'docker', 'deploy_badge', 'ci_cd', 'gitignore', 'pre_commit_hooks', 'testing_framework', 'linting', 'visual_docs'];
-              const canFix = fixablePractices.includes(practice.practice_type);
+              const canFix = fixablePractices.includes(practice.practice_type) && hasPrFix(practice);
               const isMissing = practice.status === 'missing';
 
               return (
@@ -234,7 +240,7 @@ export function BestPracticesSection({
 
                   {practice.practice_type === 'actions_pr_permission' && practice.status !== 'healthy' && !!practice.details?.fix && (
                     <div className="mt-2 ml-6 text-xs text-slate-400">
-                      Visual-docs and journeys bots can&apos;t open PRs until this is on. Run (repo admin):
+                      The visual-docs bot can&apos;t open its PR until this is on. Run (repo admin):
                       <HandoffCommand fix={practice.details.fix as RowFix} />
                     </div>
                   )}

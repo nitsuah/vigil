@@ -8,11 +8,11 @@ Vigil checks for it with the **Visual Docs** best practice, and runs the recipe 
 
 ## What vigil checks (`visual_docs`)
 
-| State       | Meaning                                                                                                                             |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **Healthy** | CI regenerates both screenshots and diagrams, and the README embeds them (by path or file name, or an inline ` ```mermaid ` block). |
-| **Dormant** | Partial: assets exist but are static, only one of the two is in CI, or the README shows none of them.                               |
-| **Missing** | None found.                                                                                                                         |
+| State       | Meaning                                                                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Healthy** | CI regenerates both screenshots and diagrams, and the README embeds at least one of each (by path or file name; an inline ` ```mermaid ` block counts for diagrams). |
+| **Dormant** | Partial: assets exist but are static, only one of the two is in CI, or the README shows none of them.                                                                |
+| **Missing** | None found.                                                                                                                                                          |
 
 The check detects:
 
@@ -36,7 +36,7 @@ The check detects:
 
 Two related checks:
 
-- **`actions_pr_permission`**: scored only when a visual-docs or journeys workflow exists. When it's off, the handoff is `gh api -X PUT repos/<o>/<r>/actions/permissions/workflow -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true`.
+- **`actions_pr_permission`**: scored only when a visual-docs workflow exists. When it's off, the handoff is `gh api -X PUT repos/<o>/<r>/actions/permissions/workflow -F can_approve_pull_request_reviews=true`.
 - **`journeys`**: informational.
 
 All three appear per repo as `visual_setup` in `/api/context`.

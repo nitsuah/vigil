@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Visual best practices
 
 - **Changed:** `visual_docs` is now scored. Healthy means CI regenerates the screenshots and diagrams and the README embeds them. Each row (screenshots, diagrams, videos, Pages) shows its own grade. A row offers the recipe PR (which now includes `docs/VISUAL_DOCS_HOWTO.md`) when CI alone can fix it; otherwise it shows a `/promo` handoff with the repo path and inputs.
-- **Added:** an `actions_pr_permission` check ("Allow GitHub Actions to create and approve pull requests"), scored only when a visual-docs or journeys workflow needs it, with the `gh api` command as its handoff; an informational `journeys` practice; and `visual_setup` per repo in `/api/context`.
+- **Added:** an `actions_pr_permission` check ("Allow GitHub Actions to create and approve pull requests"), scored only when a visual-docs workflow needs it, with the `gh api` command as its handoff; an informational `journeys` practice; and `visual_setup` per repo in `/api/context`.
 
 ### Nightly journeys
 

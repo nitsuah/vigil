@@ -75,14 +75,18 @@ export function visualRows(repo: string, elements: ShowcaseElements, hasVisualWo
 export function actionsPrHandoff(fullName: string): RowFix {
     return {
         kind: 'handoff',
-        command: `gh api -X PUT repos/${fullName}/actions/permissions/workflow -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true`,
+        // Only the PR flag: omitting default_workflow_permissions leaves the repo's current default as it is.
+        command: `gh api -X PUT repos/${fullName}/actions/permissions/workflow -F can_approve_pull_request_reviews=true`,
         inputs: ['or Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests"'],
     };
 }
 
-/** A workflow whose bot opens PRs (visual docs) or files issues (journeys), so it needs the Actions PR setting. */
+/**
+ * A workflow whose bot opens PRs (the visual-docs recipe), so it needs the Actions PR setting.
+ * Journeys only files issues, which the setting doesn't govern.
+ */
 export function needsActionsPrPermission(fileList: string[]): boolean {
-    return fileList.some(f => /^\.github\/workflows\/[^/]*(visual|screenshot|diagram|journeys)[^/]*\.ya?ml$/i.test(f));
+    return fileList.some(f => /^\.github\/workflows\/[^/]*(visual|screenshot|diagram)[^/]*\.ya?ml$/i.test(f));
 }
 
 /**
@@ -190,9 +194,11 @@ export function detectVisualDocs(fileList: string[], readmeContent?: string | nu
 
     const hasAssets = diagrams.length > 0 || screenshots.length > 0 || inlineMermaid;
     // Healthy = CI regenerates both and the README shows them; anything less is partial (dormant).
-    const shown = embedded.length > 0 || inlineMermaid;
+    // Each scored type has to be visible: a screenshot embed doesn't cover the diagram.
+    const shotShown = embedded.some(f => screenshots.includes(f));
+    const diagramShown = inlineMermaid || embedded.some(f => diagrams.includes(f));
     const status: HealthState = !hasAssets ? 'missing'
-        : shown && elements.screenshots === 'ci' && elements.diagrams === 'ci' ? 'healthy'
+        : shotShown && diagramShown && elements.screenshots === 'ci' && elements.diagrams === 'ci' ? 'healthy'
         : 'dormant';
 
     return {

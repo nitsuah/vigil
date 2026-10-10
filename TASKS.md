@@ -26,7 +26,7 @@ Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and P
     - The screenshots and diagrams rows open the recipe PR, which now includes `docs/VISUAL_DOCS_HOWTO.md`, when the repo has no visual-docs workflow; otherwise they hand off to `/promo`. Videos and Pages always hand off.
 - [x] Add the `actions_pr_permission` check.
   - Priority: P1
-  - Done 2026-10-09: reads `can_approve_pull_request_reviews` and is scored only when a visual-docs or journeys workflow exists. When the setting is off, the handoff shows the exact `gh api -X PUT …` command.
+  - Done 2026-10-09: reads `can_approve_pull_request_reviews` and is scored only when a visual-docs workflow exists. When the setting is off, the handoff shows the exact `gh api -X PUT …` command.
 - [x] Add an informational `journeys` practice.
   - Priority: P1
   - Done 2026-10-09: healthy is a journeys workflow plus `tests/journeys/` or `e2e/journeys/`; dormant is journeys with no nightly.

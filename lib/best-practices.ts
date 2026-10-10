@@ -582,7 +582,7 @@ export async function checkBestPractices(
     practices.push({ type: JOURNEYS_PRACTICE, ...detectJourneys(fileList) });
 
     // 13. "Allow GitHub Actions to create and approve pull requests": only checked
-    // (and scored) when a visual-docs or journeys workflow needs it. Skipped when
+    // (and scored) when a visual-docs workflow that opens PRs needs it. Skipped when
     // the token can't read the setting, so a missing scope never costs a point.
     if (needsActionsPrPermission(fileList)) {
         const p = await checkActionsPrPermission(owner, repo, octokit);
