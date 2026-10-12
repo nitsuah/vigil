@@ -1,6 +1,6 @@
 # Bugs
 
-> Generated from open `bot:journey` / `bot:review` issues in [nitsuah/vigil](https://github.com/nitsuah/vigil/issues). Don’t edit this file by hand: fix or close the issue. Updated 2026-10-11 by [the nightly journey run](https://github.com/nitsuah/vigil/actions/runs/38122604745).
+> Generated from open `bot:journey` / `bot:review` issues in [nitsuah/vigil](https://github.com/nitsuah/vigil/issues). Don’t edit this file by hand: fix or close the issue. Updated 2026-10-12 by [the nightly journey run](https://github.com/nitsuah/vigil/actions/runs/38221780486).
 
 ## app
 
