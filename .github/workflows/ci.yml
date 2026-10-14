@@ -33,8 +33,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_ID: ${{ secrets.GITHUB_ID || 'dummy_id' }}
-          GITHUB_SECRET: ${{ secrets.GITHUB_SECRET || 'dummy_secret' }}
+          GITHUB_ID: ${{ secrets.GITHUB_ID || 'ci-dummy-github-id' }}
+          GITHUB_SECRET: ${{ secrets.GITHUB_SECRET || 'ci-dummy-github-secret' }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'dummy_nextauth_secret' }}
           CI: true
 
@@ -43,7 +43,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_ID: ${{ secrets.GITHUB_ID || 'dummy_id' }}
-          GITHUB_SECRET: ${{ secrets.GITHUB_SECRET || 'dummy_secret' }}
+          GITHUB_ID: ${{ secrets.GITHUB_ID || 'ci-dummy-github-id' }}
+          GITHUB_SECRET: ${{ secrets.GITHUB_SECRET || 'ci-dummy-github-secret' }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'dummy_nextauth_secret' }}
           NEXT_PUBLIC_APP_URL: http://localhost:3000

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `.env.example` now uses the variable names the app reads (`GITHUB_ID` / `GITHUB_SECRET`, not `GITHUB_CLIENT_*`), drops unused Supabase and `GITHUB_APP_ID` entries, and documents `BYOK_ENCRYPTION_KEY`, `MCP_API_KEY`, `NETLIFY_DATABASE_URL` precedence, and the OAuth callback URL. CI falls back to named dummy OAuth values when the repo secrets are unset.
 - The visual-docs workflow re-ran on its own merged bot PR (the rendered `.svg` matched its `docs/diagrams/**` trigger), and screenshots captured mid-load differed run to run, so a new "regenerate diagrams and screenshots" PR opened after every merge (#285). The trigger now matches diagram sources only, the template ignores output-only pushes, and every shot waits for loading placeholders to clear.
 - The trend mock in the visual-docs and mocked UI suites now matches `?fullName=` (#253 added it), so those runs no longer hit the real route and log 500s (Fixes #278).
 - The dashboard's background details prefetch is rescheduled whenever the repo list changes. Before, a repo-list refresh within ~240 ms of load (always in `next dev`, where StrictMode fetches twice) cancelled the pending fetches for good, and those rows kept "synced 12h ago" instead of their docs icon (Fixes #281).
