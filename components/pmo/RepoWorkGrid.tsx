@@ -259,7 +259,9 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
     const [priorities, setPriorities] = useState<Set<PriorityKey>>(new Set(['P0', 'P1']));
     const loadSeq = useRef(0);
 
-    const load = useCallback(async () => {
+    // Core fetch; does not reset loading/error synchronously so it is safe to
+    // call from an effect. Callers that need a visible reset do it themselves.
+    const fetchTasks = useCallback(async () => {
         const seq = ++loadSeq.current;
         const current = () => seq === loadSeq.current;
         const fetchRollup = async (params: Record<string, string>) => {
@@ -267,8 +269,6 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
             if (!res.ok) throw new Error('Failed to load open tasks');
             return res.json() as Promise<OpenTaskRollup>;
         };
-        setLoading(true);
-        setError(null);
         try {
             const [nextSummary, nextView] = await Promise.all([
                 fetchRollup({ limit: '1' }),
@@ -288,7 +288,25 @@ export function RepoWorkGrid({ repos, refreshKey, onHandoff }: {
         }
     }, [priorities]);
 
-    useEffect(() => { void load(); }, [load, refreshKey]);
+    // Manual retry: show the loading state and clear the error first.
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        await fetchTasks();
+    }, [fetchTasks]);
+
+    // When the filter or refresh trigger changes, flag loading/clear error
+    // during render (derived-state pattern) instead of inside the effect.
+    const fetchKey = `${refreshKey}|${[...priorities].sort().join(',')}`;
+    const [prevFetchKey, setPrevFetchKey] = useState(fetchKey);
+    if (prevFetchKey !== fetchKey) {
+        setPrevFetchKey(fetchKey);
+        setLoading(true);
+        setError(null);
+    }
+
+    // State is only set after the awaited fetch resolves, never synchronously.
+    useEffect(() => { void (async () => { await fetchTasks(); })(); }, [fetchTasks, refreshKey]);
 
     const { active, idle } = useMemo(() => {
         const grouped = groupWorkByRepo(repos, view?.tasks ?? [], priorities);

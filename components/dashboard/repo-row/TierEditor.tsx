@@ -1,6 +1,6 @@
 // Tier editor component for inline editing of a repository's importance tier
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { REPO_TIERS, getRepoTierInfo, isRepoTier, type RepoTier } from '@/lib/repo-tier';
 
 interface TierEditorProps {
@@ -22,10 +22,13 @@ export function TierEditor({ tier: initialTier, repoName, isAuthenticated, onTie
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Follow server-side changes (e.g. a dashboard refetch after sync).
-  useEffect(() => {
+  // Follow server-side changes (e.g. a dashboard refetch after sync) by
+  // adjusting state during render when the prop changes.
+  const [prevInitialTier, setPrevInitialTier] = useState(initialTier);
+  if (prevInitialTier !== initialTier) {
+    setPrevInitialTier(initialTier);
     setTier(isRepoTier(initialTier) ? initialTier : null);
-  }, [initialTier]);
+  }
 
   const info = getRepoTierInfo(tier);
   const badgeClass = `inline-flex items-center justify-center min-w-[2rem] px-1.5 py-0.5 rounded border text-[11px] font-semibold leading-none ${info ? info.badgeClass : UNTIERED_CLASS}`;

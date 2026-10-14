@@ -31,9 +31,16 @@ const PROVIDER_LABELS: Record<Provider, string> = {
  * how the key is encrypted at rest, and app/api/settings/ai-key/route.ts for
  * the backing API — the raw key is never sent back to the client once saved.
  */
-export function SettingsModal({ isOpen, onClose, userIdentity }: SettingsModalProps) {
+export function SettingsModal(props: SettingsModalProps) {
+  // Mount the stateful body only while open: each open starts from fresh
+  // state (no stale key/error/saved flag) without resetting it in an effect.
+  if (!props.isOpen) return null;
+  return <SettingsModalBody {...props} />;
+}
+
+function SettingsModalBody({ isOpen, onClose, userIdentity }: SettingsModalProps) {
   const [status, setStatus] = useState<KeyStatus | null>(null);
-  const [loadingStatus, setLoadingStatus] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState(true);
   const [provider, setProvider] = useState<Provider>('gemini');
   const [apiKey, setApiKey] = useState('');
   const [saving, setSaving] = useState(false);
@@ -42,12 +49,6 @@ export function SettingsModal({ isOpen, onClose, userIdentity }: SettingsModalPr
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) return;
-    setError(null);
-    setSaved(false);
-    setApiKey('');
-    setLoadingStatus(true);
-
     // SettingsModal stays mounted (Modal just returns null when closed), so a
     // rapid close-reopen can leave two fetches in flight; without this guard
     // a late response from the first can overwrite state set by the second.
@@ -80,7 +81,7 @@ export function SettingsModal({ isOpen, onClose, userIdentity }: SettingsModalPr
     }
 
     return () => controller.abort();
-  }, [isOpen, userIdentity]);
+  }, [userIdentity]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

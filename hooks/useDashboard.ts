@@ -7,9 +7,16 @@ export function useRepos(showHidden = false) {
   const [repos, setRepos] = useState<Repo[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Show the loading state when the query changes, adjusted during render
+  // rather than synchronously inside the fetch effect.
+  const [prevShowHidden, setPrevShowHidden] = useState(showHidden);
+  if (prevShowHidden !== showHidden) {
+    setPrevShowHidden(showHidden);
+    setLoading(true);
+  }
+
   const fetchRepos = useCallback(async (silent: boolean = false): Promise<void> => {
     try {
-      if (!silent) setLoading(true);
       const res = await fetch(`/api/repos?showHidden=${showHidden}`);
       if (!res.ok) {
         console.error(`Failed to fetch repos: ${res.status} ${res.statusText}`);
@@ -32,7 +39,8 @@ export function useRepos(showHidden = false) {
   }, [showHidden]);
 
   useEffect(() => {
-    fetchRepos();
+    // State is only set after the awaited fetch resolves, never synchronously.
+    void (async () => { await fetchRepos(); })();
   }, [fetchRepos]);
 
   // Silent refetch: updates data without flashing a loading spinner
@@ -159,6 +167,10 @@ export function useRepoPolling(
   useEffect(() => { expandedReposRef.current = expandedRepos; }, [expandedRepos]);
   useEffect(() => { intervalMsRef.current = intervalMs; }, [intervalMs]);
 
+  // Self-reference for the rescheduling timer (a callback can't safely close
+  // over its own const binding before it is declared).
+  const scheduleOneRef = useRef<(repoName: string) => void>(() => {});
+
   const scheduleOne = useCallback((repoName: string): void => {
     const timers = timersRef.current;
     if (timers.has(repoName)) return;
@@ -184,11 +196,12 @@ export function useRepoPolling(
         console.error(`[useRepoPolling] refresh failed for "${repoName}":`, err);
       }
       if (expandedReposRef.current.has(repoName)) {
-        scheduleOne(repoName);
+        scheduleOneRef.current(repoName);
       }
     }, intervalMsRef.current);
     timers.set(repoName, timer);
   }, []);
+  useEffect(() => { scheduleOneRef.current = scheduleOne; }, [scheduleOne]);
 
   useEffect(() => {
     const timers = timersRef.current;
