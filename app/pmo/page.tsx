@@ -45,9 +45,9 @@ export default function PmoDashboard(): React.JSX.Element | null {
         if (status === 'unauthenticated') router.replace('/');
     }, [status, router]);
 
-    const fetchOverview = useCallback(async (): Promise<void> => {
-        setLoading(true);
-        setError(null);
+    // Loading starts true and error starts null, so the initial effect-driven
+    // load needs no synchronous resets; only manual refreshes reset them.
+    const loadOverview = useCallback(async (): Promise<void> => {
         try {
             const res = await fetch('/api/pmo/overview');
             if (res.status === 401) { router.replace('/'); return; }
@@ -63,9 +63,17 @@ export default function PmoDashboard(): React.JSX.Element | null {
         }
     }, [router]);
 
+    const fetchOverview = useCallback(async (): Promise<void> => {
+        setLoading(true);
+        setError(null);
+        await loadOverview();
+    }, [loadOverview]);
+
     useEffect(() => {
-        if (status === 'authenticated') void fetchOverview();
-    }, [status, fetchOverview]);
+        if (status !== 'authenticated') return;
+        // State is only set after the awaited fetch resolves, never synchronously.
+        void (async () => { await loadOverview(); })();
+    }, [status, loadOverview]);
 
     const handleHandoff = useCallback((repoName: string, item: PmoInProgressItem, taskId: string): void => {
         setRepos(prev => prev.map(r => {

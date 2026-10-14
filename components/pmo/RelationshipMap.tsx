@@ -251,8 +251,9 @@ export function RelationshipMap({ repos }: { repos: PmoRepoSummary[] }): React.J
     const [adding, setAdding] = useState(false);
     const [focus, setFocus] = useState<string | null>(null);
 
-    const load = useCallback(async () => {
-        setError(null);
+    // The initial load needs no synchronous error reset (error starts null);
+    // `load` (used by retry and mutation callbacks) clears it first.
+    const fetchRelationships = useCallback(async () => {
         try {
             const res = await fetch('/api/relationships');
             if (!res.ok) throw new Error('Failed to load relationships');
@@ -264,7 +265,13 @@ export function RelationshipMap({ repos }: { repos: PmoRepoSummary[] }): React.J
         }
     }, []);
 
-    useEffect(() => { void load(); }, [load]);
+    const load = useCallback(async () => {
+        setError(null);
+        await fetchRelationships();
+    }, [fetchRelationships]);
+
+    // State is only set after the awaited fetch resolves, never synchronously.
+    useEffect(() => { void (async () => { await fetchRelationships(); })(); }, [fetchRelationships]);
 
     const tracked = useMemo(() => new Set(repos.map((r) => r.full_name.toLowerCase())), [repos]);
     const all = edges ?? [];

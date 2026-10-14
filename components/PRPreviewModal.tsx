@@ -2,7 +2,7 @@
 
 import { Modal } from './Modal';
 import { FileText, Check } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { MarkdownPreview } from './MarkdownPreview';
 import { YAMLPreview } from './YAMLPreview';
 import { DiffView } from './DiffView';
@@ -43,9 +43,13 @@ export function PRPreviewModal({
   const [renderKey, setRenderKey] = useState(0);
   const [diffView, setDiffView] = useState(false);
 
-  // Reset selection and active file whenever modal opens or files change
-  useEffect(() => {
-    if (!isOpen) return;
+  // Reset selection and active file whenever modal opens or files change.
+  // Done during render (tracking the previous inputs) rather than in an effect
+  // so the reset doesn't cause a cascading extra render.
+  const [prevInputs, setPrevInputs] = useState({ isOpen, files, mode });
+  if (prevInputs.isOpen !== isOpen || prevInputs.files !== files || prevInputs.mode !== mode) {
+    setPrevInputs({ isOpen, files, mode });
+    if (isOpen) {
     // Default selection: all files in batch mode, first file in single
     const initialSelected = new Set<string>();
     if (mode === 'batch') {
@@ -62,7 +66,8 @@ export function PRPreviewModal({
     const contentMap = new Map<string, string>();
     files.forEach((f) => contentMap.set(f.path, f.content));
     setEditedContent(contentMap);
-  }, [isOpen, files, mode]);
+    }
+  }
 
   const toggleFile = (path: string) => {
     const newSelected = new Set(selectedFiles);
