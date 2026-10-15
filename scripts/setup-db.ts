@@ -9,9 +9,10 @@ import logger from '../lib/log';
 config({ path: join(process.cwd(), '.env.local') });
 
 async function setupDatabase() {
-    const databaseUrl = process.env.DATABASE_URL;
+    // Same precedence as lib/db.ts: NETLIFY_DATABASE_URL wins over DATABASE_URL
+    const databaseUrl = process.env.NETLIFY_DATABASE_URL || process.env.DATABASE_URL;
     if (!databaseUrl) {
-        logger.warn('❌ DATABASE_URL not configured in environment variables');
+        logger.warn('❌ DATABASE_URL or NETLIFY_DATABASE_URL not configured in environment variables');
         logger.info('Please add DATABASE_URL to your .env.local file');
         process.exit(1);
     }
