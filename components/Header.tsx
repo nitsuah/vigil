@@ -69,7 +69,7 @@ export default function Header(props: HeaderProps = {}) {
         sortField = 'name',
         sortDirection = 'asc',
         onSortChange,
-        languages,
+        languages = [],
         onAddRepoUrlChange,
         onAddRepoTypeChange,
         onAddRepoSubmit,

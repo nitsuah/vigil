@@ -18,23 +18,20 @@ const makeRepo = (overrides: Partial<Repo> = {}): Repo => ({
   topics: [],
   is_fork: false,
   is_hidden: false,
-  is_archived: false,
   repo_type: 'web-app',
   health_score: 91,
   total_loc: 12345,
   loc_language_breakdown: { TypeScript: 12345 },
   contributor_count: 2,
   bus_factor: 1,
-  commit_frequency: '12.5',
-  avg_pr_merge_time_hours: '21.7',
-  token_density: '8.25',
-  comment_to_code_ratio: '0.18',
-  coverage_score: '83.34',
+  commit_frequency: 12.5,
+  avg_pr_merge_time_hours: 21.7,
+  token_density: 8.25,
+  comment_to_code_ratio: 0.18,
+  coverage_score: 83.34,
   ci_status: 'passing',
   last_commit_date: '2026-09-01T00:00:00Z',
   last_synced: '2026-09-01T00:00:00Z',
-  updated_at: '2026-09-01T00:00:00Z',
-  created_at: '2026-01-01T00:00:00Z',
   ...overrides,
 });
 
@@ -51,14 +48,12 @@ describe('compareRepos', () => {
   describe('tier sorting', () => {
     it('sorts by tier ascending: T1 → T2 → T3 → T4 → untiered', () => {
       const sorted = [...tieredRepos].sort((a, b) => compareRepos(a, b, 'tier', 'asc'));
-      // $FlowFixMe - tier is string | null, ?? 'untiered' gives string
       expect(sorted.map((r) => r.tier ?? 'untiered')).toEqual(['T1', 'T2', 'T2', 'T3', 'T4', 'untiered'] as const);
     });
 
-    it('sorts by tier descending: untiered → T4 → T3 → T2 → T1', () => {
+    it('sorts by tier descending: T4 → T3 → T2 → T1, untiered still last', () => {
       const sorted = [...tieredRepos].sort((a, b) => compareRepos(a, b, 'tier', 'desc'));
-      // $FlowFixMe - tier is string | null, ?? 'untiered' gives string
-      expect(sorted.map((r) => r.tier ?? 'untiered')).toEqual(['untiered', 'T4', 'T3', 'T2', 'T2', 'T1'] as const);
+      expect(sorted.map((r) => r.tier ?? 'untiered')).toEqual(['T4', 'T3', 'T2', 'T2', 'T1', 'untiered']);
     });
 
     it('untiered (null) repos always sort last in ascending order', () => {
@@ -68,7 +63,6 @@ describe('compareRepos', () => {
         makeRepo({ id: 'repo-3', name: 'c', tier: 'T1' }),
       ];
       const sorted = withUntiered.sort((a, b) => compareRepos(a, b, 'tier', 'asc'));
-      // $FlowFixMe - tier is string | null, ?? 'untiered' gives string
       expect(sorted.map((r) => r.tier ?? 'untiered')).toEqual(['T1', 'T4', 'untiered'] as const);
     });
 
@@ -79,7 +73,6 @@ describe('compareRepos', () => {
         makeRepo({ id: 'repo-3', name: 'c', tier: 'T1' }),
       ];
       const sorted = withUntiered.sort((a, b) => compareRepos(a, b, 'tier', 'desc'));
-      // $FlowFixMe - tier is string | null, ?? 'untiered' gives string
       expect(sorted.map((r) => r.tier ?? 'untiered')).toEqual(['T4', 'T1', 'untiered'] as const);
     });
 
@@ -90,7 +83,6 @@ describe('compareRepos', () => {
         makeRepo({ id: 'repo-3', name: 'beta', tier: 'T2' }),
       ];
       const sorted = sameTier.sort((a, b) => compareRepos(a, b, 'tier', 'asc'));
-      // $FlowFixMe - tier is string | null, ?? 'untiered' gives string
       expect(sorted.map((r) => r.name)).toEqual(['alpha', 'beta', 'zebra'] as const);
     });
   });
