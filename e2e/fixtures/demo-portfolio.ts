@@ -42,8 +42,8 @@ export const DETAILS = {
   bestPractices: [
     ['branch_protection', 'healthy'], ['ci_cd', 'healthy'], ['gitignore', 'healthy'], ['pre_commit_hooks', 'healthy'],
     ['testing_framework', 'healthy'], ['linting', 'healthy'], ['docker', 'healthy'], ['env_template', 'healthy'],
-    ['dependabot', 'healthy'], ['deploy_badge', 'healthy'], ['visual_docs', 'healthy'],
-  ].map(([practice_type, status]) => ({ practice_type, status, details: { exists: true, informational: practice_type === 'visual_docs' } })),
+    ['dependabot', 'healthy'], ['deploy_badge', 'healthy'], ['visual_docs', 'healthy'], ['journeys', 'healthy'],
+  ].map(([practice_type, status]) => ({ practice_type, status, details: { exists: true, informational: practice_type === 'journeys' } })),
   communityStandards: [],
   securityConfig: null,
 };
