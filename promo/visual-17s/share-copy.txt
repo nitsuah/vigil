@@ -1,1 +1,1 @@
-Does your repo show what it does? Vigil's Visual Docs check flags repos with no architecture diagram or app screenshots, links the CI recipe that generates them, and keeps it informational so it never drags a grade down. nitsuah.github.io/vigil
+Does your repo show what it does? Vigil's Visual Docs check flags repos with no architecture diagram or app screenshots, links the CI recipe that generates them, and scores it: healthy once CI keeps them current and the README shows them. nitsuah.github.io/vigil

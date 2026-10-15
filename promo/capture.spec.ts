@@ -92,7 +92,7 @@ async function mockApi(page: Page): Promise<void> {
             metrics: rich ? [{ name: 'Code Coverage', value: 71.4, unit: '%' }, { name: 'Crash-free sessions', value: 99.2, unit: '%' }] : [],
             features: [],
             docStatuses: (rich ? DOCS : DOCS.map(([d]) => [d, true, 'healthy'] as const)).map(([doc_type, exists, health_state]) => ({ doc_type, exists, health_state })),
-            bestPractices: (rich ? PRACTICES : PRACTICES.map(([p]) => [p, 'healthy'] as const)).map(([practice_type, status]) => ({ practice_type, status, details: { exists: status !== 'missing', informational: practice_type === 'visual_docs' } })),
+            bestPractices: (rich ? PRACTICES : PRACTICES.map(([p]) => [p, 'healthy'] as const)).map(([practice_type, status]) => ({ practice_type, status, details: { exists: status !== 'missing', informational: practice_type === 'journeys' } })),
             communityStandards: (rich ? STANDARDS : STANDARDS.map(([c]) => [c, 'healthy'] as const)).map(([standard_type, status]) => ({ standard_type, status, details: {} })),
             securityConfig: null,
         }));
