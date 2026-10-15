@@ -1,0 +1,10 @@
+{
+  "title": "Vigil — visual docs spot",
+  "base": "brag-30s",
+  "duration": 17,
+  "fps": 30,
+  "poster": 7.5,
+  "scenes": [["visual", 0, 11], ["fix", 11, 15], ["outro", 15, 17]],
+  "outroFeats": "Visual Docs check · Best practices · Fix PRs · CI screenshot and diagram recipe",
+  "outroChips": ["nitsuah.github.io/vigil", "MCP for Claude Code"]
+}

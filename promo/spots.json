@@ -12,7 +12,6 @@
         "docs/screenshots/dashboard.png"
       ],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "health-17s-vert"
@@ -24,7 +23,6 @@
       "category": "Repository Intelligence",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "health-17s-vert"
@@ -169,7 +167,6 @@
       "category": "Repository Intelligence",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "health-17s-vert"
@@ -190,7 +187,6 @@
       "category": "Repository Intelligence",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "visual-17s"
@@ -202,7 +198,6 @@
       "category": "Repository Intelligence",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "health-17s-vert"
@@ -255,7 +250,6 @@
         "docs/diagrams/architecture.svg"
       ],
       "spots": [
-        "brag-30s",
         "ai-14s",
         "hero-37s"
       ]
@@ -266,7 +260,6 @@
       "category": "Cross-Repo Orchestration",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "work-16s",
         "ai-14s",
         "hero-37s"
@@ -278,7 +271,6 @@
       "category": "Cross-Repo Orchestration",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "work-16s",
         "hero-37s"
       ]
@@ -298,7 +290,6 @@
       "category": "Agent Prompt Toolkit",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "ai-14s",
         "hero-37s"
       ]
@@ -388,7 +379,6 @@
       "category": "AI-Powered Features",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s"
       ]
@@ -519,7 +509,6 @@
       "category": "Documentation Management",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "health-17s-vert"
@@ -546,7 +535,6 @@
       "category": "Documentation Management",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s"
       ]
@@ -557,7 +545,6 @@
       "category": "Documentation Management",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "health-17s-vert"
@@ -569,7 +556,6 @@
       "category": "Documentation Management",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "health-17s-vert"
@@ -581,7 +567,6 @@
       "category": "Documentation Management",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "health-17s-vert"
@@ -593,7 +578,6 @@
       "category": "Documentation Management",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s"
       ]
@@ -620,7 +604,6 @@
       "category": "Documentation Management",
       "screenshots": [],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s"
       ]
@@ -737,7 +720,6 @@
         "docs/screenshots/repo-details.png"
       ],
       "spots": [
-        "brag-30s",
         "work-16s",
         "hero-37s"
       ]
@@ -778,7 +760,6 @@
         "docs/screenshots/pmo.png"
       ],
       "spots": [
-        "brag-30s",
         "work-16s",
         "hero-37s"
       ]
@@ -877,7 +858,6 @@
         "docs/screenshots/dashboard.png"
       ],
       "spots": [
-        "brag-30s",
         "health-17s",
         "hero-37s",
         "health-17s-vert"
@@ -1717,36 +1697,6 @@
   ],
   "spots": [
     {
-      "id": "brag-30s",
-      "seconds": 30,
-      "format": "landscape",
-      "tool": "promo/build.sh",
-      "features": [
-        "health-scoring",
-        "modern-dashboard",
-        "documentation-tracking",
-        "doc-health-scoring",
-        "best-practices-detection",
-        "visual-docs-signal",
-        "community-standards",
-        "auto-fix-missing-docs",
-        "auto-fix-best-practices",
-        "auto-fix-community-standards",
-        "batch-operations",
-        "pr-preview-modal",
-        "ai-template-enrichment",
-        "inline-edit-generate-toggle",
-        "cross-repo-task-rollup",
-        "pmo-mode-dashboard",
-        "task-management",
-        "cross-repo-relationship-map",
-        "mcp-server",
-        "claude-code-skill"
-      ],
-      "published": null,
-      "rendered": "2026-09-27"
-    },
-    {
       "id": "health-17s",
       "seconds": 17,
       "format": "landscape",
@@ -1859,8 +1809,8 @@
         "visual-best-practices",
         "visual-docs-signal"
       ],
-      "published": null,
-      "rendered": null
+      "published": "site/assets/visual-17s.mp4",
+      "rendered": "2026-10-14"
     }
   ],
   "reels": [

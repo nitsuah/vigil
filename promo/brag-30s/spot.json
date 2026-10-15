@@ -39,7 +39,8 @@
   "resultAt": 24.8,
   "outroAt": 27,
   "extraScenes": [
-    ["chat", 30, 34]
+    ["chat", 30, 34],
+    ["visual", 34, 45]
   ],
   "chatPillAt": 32.9
 }
