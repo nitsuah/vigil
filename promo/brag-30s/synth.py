@@ -235,6 +235,12 @@ if 'chatApply' in CLICKS:
     cue(sfx, pluck(hz(74), 0.45, 2), SPOT['chatPillAt'], db(-23))
     cue(sfx, pluck(hz(81), 0.6, 2), SPOT['chatPillAt'] + 0.1, db(-23))
 
+# Visual docs (extra scene): the row pulses on a soft pair, each explainer line lands on a tick.
+for at, m in ((35.6, 74), (35.7, 81)):
+    cue(sfx, pluck(hz(m), 0.5, 2), at, db(-24))
+for at in (35.0, 37.4, 41.0):
+    cue(sfx, whoosh(0.3), at - 0.1, db(-33))
+
 # Terminal: typing, tool call, result lines
 for i, ch in enumerate(SPOT['question']):
     if ch != ' ': cue(sfx, tick(-37), SPOT['questionAt'] + 0.1 + i / 34)
