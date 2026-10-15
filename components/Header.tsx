@@ -10,6 +10,7 @@ import { getLanguageColor } from "@/lib/language-colors";
 import { useState } from "react";
 import { RepoType } from "@/lib/repo-type";
 import { REPO_TIERS, type TierFilter } from "@/lib/repo-tier";
+import { type SortField, type SortDirection } from "@/lib/repo-sort";
 import { useRateLimit, RateLimitDisplay } from "./RateLimitIndicator";
 import { ProfileMenu } from "./ProfileMenu";
 
@@ -26,6 +27,9 @@ interface HeaderProps {
     filterLanguage?: string;
     filterFork?: 'all' | 'no-forks' | 'forks-only';
     filterTier?: TierFilter;
+    sortField?: SortField;
+    sortDirection?: SortDirection;
+    onSortChange?: (field: SortField, direction: SortDirection) => void;
     languages?: string[];
     onAddRepoUrlChange?: (url: string) => void;
     onAddRepoTypeChange?: (type: RepoType) => void;
@@ -62,6 +66,9 @@ export default function Header(props: HeaderProps = {}) {
         filterLanguage,
         filterFork,
         filterTier = 'all',
+        sortField = 'name',
+        sortDirection = 'asc',
+        onSortChange,
         languages = [],
         onAddRepoUrlChange,
         onAddRepoTypeChange,
@@ -254,6 +261,30 @@ export default function Header(props: HeaderProps = {}) {
                                                 ))}
                                                 <option value="untiered" className="bg-slate-900 text-slate-300">Untiered</option>
                                             </select>
+                                        )}
+                                        {onSortChange && (
+                                            <div className="flex items-center gap-1">
+                                                <select
+                                                    aria-label="Sort by"
+                                                    value={sortField}
+                                                    onChange={(e) => onSortChange?.(e.target.value as SortField, sortDirection)}
+                                                    className="px-3 py-1.5 bg-slate-700/60 border-2 border-indigo-500/60 rounded-lg text-slate-100 hover:border-indigo-400/80 hover:shadow-sm hover:shadow-indigo-500/30 focus:outline-none focus:border-indigo-400 transition-all duration-200 text-sm font-medium cursor-pointer"
+                                                >
+                                                    <option value="name" className="bg-slate-900 text-slate-300">Name</option>
+                                                    <option value="health" className="bg-slate-900 text-slate-300">Health</option>
+                                                    <option value="tier" className="bg-slate-900 text-slate-300">Tier</option>
+                                                    <option value="stars" className="bg-slate-900 text-slate-300">Stars</option>
+                                                    <option value="updated" className="bg-slate-900 text-slate-300">Updated</option>
+                                                    <option value="language" className="bg-slate-900 text-slate-300">Language</option>
+                                                </select>
+                                                <button
+                                                    onClick={() => onSortChange?.(sortField, sortDirection === 'asc' ? 'desc' : 'asc')}
+                                                    className="px-2 py-1.5 bg-slate-700/60 border-2 border-indigo-500/60 rounded-lg text-slate-100 hover:border-indigo-400/80 hover:shadow-sm hover:shadow-indigo-500/30 focus:outline-none focus:border-indigo-400 transition-all duration-200 text-sm font-medium cursor-pointer"
+                                                    aria-label={sortDirection === 'asc' ? 'Sort descending' : 'Sort ascending'}
+                                                >
+                                                    {sortDirection === 'asc' ? '↑' : '↓'}
+                                                </button>
+                                            </div>
                                         )}
                                         {/* Hidden toggle inside filter dropdown */}
                                         {onToggleHidden && (
@@ -518,6 +549,30 @@ export default function Header(props: HeaderProps = {}) {
                                     ))}
                                     <option value="untiered">Untiered</option>
                                 </select>
+                            )}
+                            {onSortChange && (
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        aria-label="Sort by"
+                                        value={sortField}
+                                        onChange={(e) => onSortChange?.(e.target.value as SortField, sortDirection)}
+                                        className="flex-1 px-3 py-2 bg-slate-700/60 border border-indigo-500/60 rounded-lg text-slate-100 focus:outline-none text-sm"
+                                    >
+                                        <option value="name">Name</option>
+                                        <option value="health">Health</option>
+                                        <option value="tier">Tier</option>
+                                        <option value="stars">Stars</option>
+                                        <option value="updated">Updated</option>
+                                        <option value="language">Language</option>
+                                    </select>
+                                    <button
+                                        onClick={() => onSortChange?.(sortField, sortDirection === 'asc' ? 'desc' : 'asc')}
+                                        className="flex-1 px-3 py-2 bg-slate-700/60 border border-indigo-500/60 rounded-lg text-slate-100 hover:border-indigo-400/80 hover:shadow-sm hover:shadow-indigo-500/30 focus:outline-none focus:border-indigo-400 transition-all duration-200 text-sm font-medium"
+                                        aria-label={sortDirection === 'asc' ? 'Sort descending' : 'Sort ascending'}
+                                    >
+                                        {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </button>
+                                </div>
                             )}
                         </div>
                         {/* Hidden toggle inside mobile filter dropdown */}

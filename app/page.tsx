@@ -99,6 +99,7 @@ export default function Dashboard() {
     sortField,
     sortDirection,
     handleSort,
+    setSort,
     languages,
     filteredRepos,
     clearFilters,
@@ -306,6 +307,9 @@ export default function Dashboard() {
         filterLanguage={filterLanguage}
         filterFork={filterFork}
         filterTier={filterTier}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSortChange={setSort}
         languages={languages}
         onAddRepoUrlChange={setAddRepoUrl}
         onAddRepoTypeChange={setAddRepoType}
@@ -370,17 +374,29 @@ export default function Dashboard() {
                   <tr>
                     <th
                       className="px-3 md:px-6 py-3 md:py-4 text-left text-sm font-semibold text-slate-300"
-                      aria-sort={sortField === 'name' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      aria-sort={sortField === 'name' || sortField === 'tier' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
                     >
-                      <button
-                        onClick={() => handleSort('name')}
-                        className="flex items-center gap-2 hover:text-purple-400 transition-colors"
-                      >
-                        Repository
-                        {sortField === 'name' && (
-                          <span className="text-purple-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
-                        )}
-                      </button>
+                      {/* The tier badge lives in this cell, so tier sorts from here too. */}
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => handleSort('name')}
+                          className="flex items-center gap-2 hover:text-purple-400 transition-colors"
+                        >
+                          Repository
+                          {sortField === 'name' && (
+                            <span className="text-purple-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleSort('tier')}
+                          className="flex items-center gap-2 text-xs text-slate-400 hover:text-purple-400 transition-colors"
+                        >
+                          Tier
+                          {sortField === 'tier' && (
+                            <span className="text-purple-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                          )}
+                        </button>
+                      </div>
                     </th>
                     <th className="px-3 md:px-6 py-3 md:py-4 text-left text-sm font-semibold text-slate-300 hidden xl:table-cell">
                       Description

@@ -5,9 +5,7 @@ import { Repo } from '@/types/repo';
 import { RepoType, detectRepoType } from '@/lib/repo-type';
 import { ForkFilter } from '@/lib/sync-filters';
 import { TierFilter, matchesTierFilter } from '@/lib/repo-tier';
-
-export type SortField = 'name' | 'health' | 'stars' | 'updated' | 'language';
-export type SortDirection = 'asc' | 'desc';
+import { compareRepos, type SortField, type SortDirection } from '@/lib/repo-sort';
 
 export function useRepoFilters(repos: Repo[]) {
   const [filterType, setFilterType] = useState<RepoType | 'all'>('all');
@@ -34,41 +32,8 @@ export function useRepoFilters(repos: Repo[]) {
       return true;
     });
 
-    // Sort the filtered results
-    return filtered.sort((a, b) => {
-      let aVal: string | number | Date;
-      let bVal: string | number | Date;
-
-      switch (sortField) {
-        case 'name':
-          aVal = a.name.toLowerCase();
-          bVal = b.name.toLowerCase();
-          break;
-        case 'health':
-          aVal = a.health_score || 0;
-          bVal = b.health_score || 0;
-          break;
-        case 'stars':
-          aVal = a.stars || 0;
-          bVal = b.stars || 0;
-          break;
-        case 'updated':
-          aVal = a.last_commit_date ? new Date(a.last_commit_date).getTime() : 0;
-          bVal = b.last_commit_date ? new Date(b.last_commit_date).getTime() : 0;
-          break;
-        case 'language':
-          aVal = a.language || '';
-          bVal = b.language || '';
-          break;
-        default:
-          aVal = a.name.toLowerCase();
-          bVal = b.name.toLowerCase();
-      }
-
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
+    // Sort the filtered results using the pure comparator
+    return filtered.sort((a, b) => compareRepos(a, b, sortField, sortDirection));
   }, [repos, filterType, filterLanguage, filterFork, filterTier, sortField, sortDirection]);
 
   const clearFilters = () => {
@@ -89,6 +54,11 @@ export function useRepoFilters(repos: Repo[]) {
     }
   };
 
+  const setSort = (field: SortField, direction: SortDirection) => {
+    setSortField(field);
+    setSortDirection(direction);
+  };
+
   return {
     filterType,
     setFilterType,
@@ -101,6 +71,7 @@ export function useRepoFilters(repos: Repo[]) {
     sortField,
     sortDirection,
     handleSort,
+    setSort,
     languages,
     filteredRepos,
     clearFilters,
