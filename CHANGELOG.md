@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Showcase board: `promo/spots.json` now mirrors `visual-17s` on `visual-docs-signal` and marks `metrics-tracking` `visual: none` (a sub-item of documentation tracking, which already covers METRICS.md). Linked 38/59 → 38/58; the remaining visible gaps need captures.
 - An `actions_pr_permission` check ("Allow GitHub Actions to create and approve pull requests"), scored only when a visual-docs workflow needs it, with the `gh api` command as its handoff; an informational `journeys` practice; and `visual_setup` per repo in `/api/context`.
 - Six DB-free Playwright journeys in `e2e/journeys/` (dashboard sort, repo details, chat proposal, PMO open work, relationship map, phone card) with 12 Linux baselines, `npm run test:journeys`, and `.github/workflows/journeys.yml`, which runs them nightly through nitsuah/.github's reusable workflow and files deduplicated `bot:journey` issues.
 

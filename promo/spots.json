@@ -192,7 +192,8 @@
       "spots": [
         "brag-30s",
         "health-17s",
-        "hero-37s"
+        "hero-37s",
+        "visual-17s"
       ]
     },
     {
@@ -801,7 +802,8 @@
       "title": "Metrics Tracking",
       "category": "Project Tracking",
       "screenshots": [],
-      "spots": []
+      "spots": [],
+      "visual": "none"
     },
     {
       "id": "testing-metrics",
