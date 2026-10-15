@@ -33,7 +33,7 @@ Status guide: features listed here are shipped unless explicitly marked as plann
 - **Community Standards**: 12 checks for CODE_OF_CONDUCT, CONTRIBUTING, SECURITY, LICENSE, CHANGELOG, Issue/PR templates, CODEOWNERS, Copilot Instructions, FUNDING, FLOW-TASKS Prompt, HANDOFF Prompt
 - **Org-Level Fallback Awareness**: Community standards satisfied solely by the owner's `.github` repo (no repo-local copy) are marked with a distinct "Org" badge and a tooltip naming the source repo, instead of an indistinguishable "Present"
 - **Extended File Location Detection**: Standards detection accepts files found under `docs/` or `config/` subdirectories in addition to the repo root and `.github/`, reducing false-negative health scores for repos that organize their governance files in subdirectories
-- **Repository Tiers**: User-assigned importance tier per repo — T1 Critical, T2 Important, T3 Standard, T4 Low — set from a badge next to the type icon on desktop rows and mobile cards (`PATCH /api/repos/[name]/update-tier`, write grant required, `null` clears it). Stored in `repos.tier`, never auto-detected; filterable in the dashboard filter bar (including "Untiered") and exposed to agents via MCP `list_repos` (`tier` filter) / `get_repo_health` and `GET /api/context`
+- **Repository Tiers**: User-assigned importance tier per repo — T1 Critical, T2 Important, T3 Standard, T4 Low — set from a badge next to the type icon on desktop rows and mobile cards (`PATCH /api/repos/[name]/update-tier`, write grant required, `null` clears it). Stored in `repos.tier`, never auto-detected; **filterable and sortable** in the dashboard filter bar (including "Untiered") and exposed to agents via MCP `list_repos` (`tier` filter) / `get_repo_health` and `GET /api/context`
 - **Stale-Review Detector**: Surfaces a badge when a PR's formal review decision is `CHANGES_REQUESTED` but every review thread is resolved and CI is green — a state GitHub never auto-clears on its own, which otherwise silently blocks branch-protection-gated merges until a human notices. The badge links directly to the lowest-numbered affected PR.
 
 ### 🤖 Cross-Repo Orchestration
@@ -138,7 +138,7 @@ Status guide: features listed here are shipped unless explicitly marked as plann
 - **Dynamic Text Expansion**: Right-to-left pill text reveal (icon first, text expands left) with origin-right scaling
 - **Color-Coded Filter Dropdowns**: Purple Type, Blue Language, Fuchsia Fork, Amber Tier borders with 60% opacity and subtle shadows
 - **Clickable Repository Names**: Direct GitHub links in table rows with hover underline styling
-- **Filtering & Sorting**: Filter by type, language, fork status, and tier with advanced controls
+- **Filtering & Sorting**: Filter by type, language, fork status, and tier; sort by name, health, stars, updated, language, and **tier** with advanced controls
 - **Responsive Design**: Adapts to different screen sizes with mobile-friendly controls
 - **Visual Indicators**: Icons, badges, and color-coding for quick scanning
 - **Repository Stats**: Stars, forks, branches, LOC, vulnerabilities, contributor analytics displayed in compact sidebar

@@ -306,6 +306,9 @@ export default function Dashboard() {
         filterLanguage={filterLanguage}
         filterFork={filterFork}
         filterTier={filterTier}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSortChange={handleSort}
         languages={languages}
         onAddRepoUrlChange={setAddRepoUrl}
         onAddRepoTypeChange={setAddRepoType}
@@ -395,6 +398,20 @@ export default function Dashboard() {
                       >
                         Health
                         {sortField === 'health' && (
+                          <span className="text-purple-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th
+                      className="px-3 md:px-6 py-3 md:py-4 text-left text-sm font-semibold text-slate-300"
+                      aria-sort={sortField === 'tier' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <button
+                        onClick={() => handleSort('tier')}
+                        className="flex items-center gap-2 hover:text-purple-400 transition-colors"
+                      >
+                        Tier
+                        {sortField === 'tier' && (
                           <span className="text-purple-400">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                         )}
                       </button>
