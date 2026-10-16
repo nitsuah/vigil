@@ -50,9 +50,6 @@ Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and P
 - [ ] Diagrams-only recipe job for repos with no UI.
   - Priority: P1
   - Context: the recipe already renders `.mmd` without a Playwright config. Add an Excalidraw export step, and a diagrams-only fix PR that doesn't add screenshot plumbing to a CLI/MCP repo.
-- [ ] Showcase rollout: Pages + one `/brag` spot each for vhs, skyview and nitsuah-io (vigil is done; ats-fill held).
-  - Priority: P1
-  - Context: user-run via the handoffs on each repo's Visual Docs rows (`/promo <repo> audit`, then `spot`, then `publish`). Turn Actions PRs on for vigil, fire and motor-pool first.
 - [ ] Follow-ups outside vigil.
   - Priority: P1
   - Context:
@@ -126,6 +123,7 @@ _None open. The rate-limiter identity item is under Done._
 
 _Condensed, one line per item. Full detail lives in FEATURES.md and CHANGELOG.md. The section must stay, because vigil's own TASKS parser expects Done / In Progress / Todo._
 
+- [x] Done 2026-10-15: Showcase rollout: Pages + `/brag` spots live for vhs, skyview and nitsuah-io, Actions PRs on for vigil, fire and motor-pool (showcase board scan 2026-10-15).
 - [x] Done 2026-10-09: `visual_docs` scored (recipe-adoption P3 closed by the visual best-practices epic above).
 - [x] Done 2026-09-28: Chat-driven doc editing (TASKS/ROADMAP/FEATURES), stages 1–4: `parseTaskOperationProposal` in `lib/repo-chat.ts`, `POST /api/repos/[name]/tasks`. Stage 3 shipped in #253. See FEATURES.
 - [x] Done 2026-09-27: Cross-repo relationship map foundation: `repo_relationships`, `/api/relationships`, `get_relationships` / `propose_relationship` MCP tools, and the PMO map (#248, #249, #252). See FEATURES.
