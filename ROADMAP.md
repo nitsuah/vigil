@@ -23,7 +23,7 @@ Next Review: 2026-10-24
 - [ ] **Technical-debt trending + zombie-branch detection** — velocity trending shipped (`repo_snapshots`); debt signals and a stale-branch cleanup view remain.
 - [ ] **3D / click-to-detail relationship map** — after the 2D relationship map (`RelationshipMap`) holds real, confirmed edges.
 
-- [ ] **Visual best practices epic** — `visual_docs` is scored and has fix PRs and handoffs, plus the Actions PR setting check, journeys detection and `/api/context` `visual_setup` (2026-10-09). Still to do: journeys status, run and scaffold; features-linked on the dashboard; the showcase rollout to vhs, skyview and nitsuah-io. See TASKS P1.
+- [ ] **Visual best practices epic** — `visual_docs` is scored and has fix PRs and handoffs, plus the Actions PR setting check, journeys detection and `/api/context` `visual_setup` (2026-10-09). Still to do: journeys status, run and scaffold; features-linked on the dashboard. See TASKS P1. The showcase rollout to vhs, skyview and nitsuah-io completed 2026-10-15.
 
 ### Exploratory _(carried from 2026 Q4)_
 
