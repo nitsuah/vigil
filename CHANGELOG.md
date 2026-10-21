@@ -341,7 +341,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Batch Sync Coverage:** Sync-repos endpoint now properly extracts and updates coverage_score (was missing this logic)
 - **Metrics Duplication:** Removed duplicate metrics that were accumulating from template instructions being parsed
 - **Template Content Pollution:** Identified that markdown templates with example data can pollute parsing results
-- **Duplicate Repo Type Detection:** Centralized detection logic to prevent multiple calls per render
 - **Duplicate Metrics Display:** Fixed DELETE before INSERT in metrics sync to prevent accumulation
 - **Refresh Not Refetching:** Added force=true parameter to bypass cache when using refresh button
 - **Array Mutation Warning:** Changed .reverse() to .slice().reverse() in FeaturesSection component
