@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Showcase rollout completed: Pages and `/brag` spots are live for vhs, skyview and nitsuah-io, and Actions PRs are enabled for vigil, fire and motor-pool (2026-10-15).
 - Showcase board: rendered and published `visual-17s` (17 s, Visual Docs check from the Best Practices card, then the fix PR) to `site/assets/`, via a new `visual` extra scene in the `brag-30s` composition. Its copy says Visual Docs is scored. Videos 5/7 → 6/6.
 - Showcase board: `promo/spots.json` now mirrors `visual-17s` on `visual-docs-signal` and marks `metrics-tracking` `visual: none` (a sub-item of documentation tracking, which already covers METRICS.md). Linked 38/59 → 38/58; the remaining visible gaps need captures.
 - An `actions_pr_permission` check ("Allow GitHub Actions to create and approve pull requests"), scored only when a visual-docs workflow needs it, with the `gh api` command as its handoff; an informational `journeys` practice; and `visual_setup` per repo in `/api/context`.
