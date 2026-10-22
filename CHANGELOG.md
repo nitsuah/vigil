@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Journeys: refreshed the `open-pmo`, `include-p2-work`, `open-the-relationship-map`, `expand-vigil`, `read-the-repository-stats` and `check-the-roadmap-and-tasks` baselines, which still showed the pre-#320 Tasks card order (P3 before P2) and the pre-#323 relationship-graph edges (2026-10-22).
 - **Fixed:** the production `ignore` command now returns 1 (build) when `CACHED_COMMIT_REF` or `COMMIT_REF` is empty, and quotes both. Unquoted, an empty `CACHED_COMMIT_REF` made the shell drop the argument, so `git diff --quiet` compared a commit to the working tree and could exit 0, skipping a production deploy instead of failing open.
 - Relationship map: repo-name labels now have a backdrop so edges no longer draw through the text (#277).
 - Nightly journeys: the Playwright image is now `v1.64.0`, matching `@playwright/test` 1.64. The 1.63 image had no browser for 1.64, so every journey failed at launch (#300–#304). The journeys workflow also runs on `package-lock.json` changes, so the next bump fails its own PR instead of the nightly.
