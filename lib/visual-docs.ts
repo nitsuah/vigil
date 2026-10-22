@@ -14,7 +14,7 @@
  */
 
 import type { HealthState } from '@/lib/best-practices';
-import { classifyElements, detectShowcaseFiles, type AssetState, type ShowcaseElements, type ShowcaseFiles } from '@/lib/showcase';
+import { classifyElements, detectShowcaseFiles, isScreenshotWorkflow, type AssetState, type ShowcaseElements, type ShowcaseFiles } from '@/lib/showcase';
 
 export const VISUAL_DOCS_PRACTICE = 'visual_docs';
 export const JOURNEYS_PRACTICE = 'journeys';
@@ -128,7 +128,7 @@ const DIAGRAM_SOURCE = /\.(mmd|mermaid|excalidraw|drawio|puml|plantuml|d2)$/i;
 const DIAGRAM_RENDER = /\.excalidraw\.(svg|png)$|\.drawio\.(svg|png)$/i;
 const DIAGRAM_DIR = /(^|\/)(diagrams?|architecture)\/[^/]+\.(svg|png|jpe?g|webp)$/i;
 const SCREENSHOT = /(^|\/)(screenshots?|screens)\/[^/]+\.(png|jpe?g|webp|gif)$/i;
-const VISUAL_WORKFLOW = /^\.github\/workflows\/[^/]*(screenshot|diagram|visual)[^/]*\.ya?ml$/i;
+export const VISUAL_WORKFLOW = /^\.github\/workflows\/[^/]*(screenshot|diagram|visual)[^/]*\.ya?ml$/i;
 
 const VISUAL_DOCS_PLAYWRIGHT = /(^|\/)playwright[^/]*visual[^/]*\.config\.[cm]?[jt]s$/i;
 const PLAYWRIGHT_CONFIG = /(^|\/)playwright[^/]*\.config\.[cm]?[jt]s$/i;
@@ -177,11 +177,36 @@ export function visualAutomation(
     };
 }
 
-export function detectVisualDocs(fileList: string[], readmeContent?: string | null, repo = '<repo>'): { status: HealthState; details: VisualDocsDetails } {
+/**
+ * Workflows whose contents confirm a screenshot capture. A step that runs a
+ * Playwright visual-docs config the repo doesn't have is skipped by the
+ * recipe's hashFiles() guard, so that reference doesn't count.
+ */
+export function confirmedScreenshotWorkflows(fileList: string[], workflowYaml: Record<string, string>): string[] {
+    const names = new Set(fileList.map(f => f.split('/').pop()!.toLowerCase()));
+    return Object.entries(workflowYaml)
+        .filter(([, y]) => isScreenshotWorkflow(y.replace(/playwright[\w.-]*visual[\w.-]*\.config\.[cm]?[jt]s\b/gi, m => (names.has(m.toLowerCase()) ? m : ''))))
+        .map(([f]) => f);
+}
+
+/**
+ * `workflowYaml` (path → contents of the visual-named workflows the sync read)
+ * lets a content check confirm a capture the file names miss, such as a
+ * visual-docs workflow that captures from the journeys. It only upgrades:
+ * when nothing is confirmed, the file-name rules still decide.
+ */
+export function detectVisualDocs(
+    fileList: string[],
+    readmeContent?: string | null,
+    repo = '<repo>',
+    workflowYaml?: Record<string, string>,
+): { status: HealthState; details: VisualDocsDetails } {
     const { diagrams, screenshots } = findVisualAssets(fileList);
     const workflows = fileList.filter(f => VISUAL_WORKFLOW.test(f));
     const showcase = detectShowcaseFiles(fileList);
-    const elements = classifyElements({ diagrams, screenshots, automated: visualAutomation(fileList, workflows, diagrams), files: showcase });
+    const confirmed = workflowYaml ? confirmedScreenshotWorkflows(fileList, workflowYaml) : [];
+    const automated = visualAutomation(fileList, workflows, diagrams, confirmed.length ? { screenshotWorkflows: confirmed } : {});
+    const elements = classifyElements({ diagrams, screenshots, automated, files: showcase });
 
     const readme = readmeContent ?? '';
     const inlineMermaid = /^\s*```mermaid\b/m.test(readme);

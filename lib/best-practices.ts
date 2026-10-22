@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import { ACTIONS_PR_PRACTICE, actionsPrHandoff, detectJourneys, detectVisualDocs, JOURNEYS_PRACTICE, needsActionsPrPermission, VISUAL_DOCS_PRACTICE } from '@/lib/visual-docs';
+import { ACTIONS_PR_PRACTICE, actionsPrHandoff, detectJourneys, detectVisualDocs, JOURNEYS_PRACTICE, needsActionsPrPermission, VISUAL_DOCS_PRACTICE, VISUAL_WORKFLOW } from '@/lib/visual-docs';
 
 /**
  * Represents the health state of a best practice check.
@@ -575,7 +575,9 @@ export async function checkBestPractices(
     });
 
     // 11. Visual docs (CI-generated diagrams + screenshots embedded in README)
-    const visualDocs = detectVisualDocs(fileList, readmeContent, repo);
+    // Visual-named workflows are read so a capture their file names miss still counts.
+    const workflowYaml = await readWorkflows(owner, repo, octokit, fileList.filter(f => VISUAL_WORKFLOW.test(f)));
+    const visualDocs = detectVisualDocs(fileList, readmeContent, repo, workflowYaml);
     practices.push({ type: VISUAL_DOCS_PRACTICE, ...visualDocs });
 
     // 12. Nightly journeys — informational until rolled out
@@ -590,6 +592,18 @@ export async function checkBestPractices(
     }
 
     return { practices };
+}
+
+/** Workflow contents by path; an unreadable file is left out, so its file-name signal still applies. */
+async function readWorkflows(owner: string, repo: string, octokit: Octokit, paths: string[]): Promise<Record<string, string>> {
+    const out: Record<string, string> = {};
+    await Promise.all(paths.map(async path => {
+        try {
+            const { data } = await octokit.repos.getContent({ owner, repo, path });
+            if (!Array.isArray(data) && 'content' in data && data.content) out[path] = Buffer.from(data.content, 'base64').toString('utf8');
+        } catch { /* unreadable: keep the file-name signal */ }
+    }));
+    return out;
 }
 
 export async function checkActionsPrPermission(owner: string, repo: string, octokit: Octokit): Promise<BestPractice | null> {
