@@ -100,13 +100,19 @@ export function TasksSection({ tasks, tasksDocExists = false, isExpanded: isExpa
     const bIsStatus = b.endsWith('-tasks');
     if (!aIsStatus && bIsStatus) return -1;
     if (aIsStatus && !bIsStatus) return 1;
+    // Both are actual subsections: sort by P0-P3 priority if present
+    const aPriority = a.match(/^P(\d)/)?.[1];
+    const bPriority = b.match(/^P(\d)/)?.[1];
+    if (aPriority && bPriority) return parseInt(aPriority) - parseInt(bPriority);
+    if (aPriority && !bPriority) return -1;
+    if (!aPriority && bPriority) return 1;
     // Among status groups, in-progress first
     if (aIsStatus && bIsStatus) {
       if (a === 'in-progress-tasks') return -1;
       if (b === 'in-progress-tasks') return 1;
     }
     return 0;
-  }).reverse();
+  });
   
   // When showing done, show all subsections by default
   const displayedSubsections = (showAllTodo || showDone) ? subsections : subsections.slice(0, 1);
