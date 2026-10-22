@@ -75,6 +75,7 @@ function Graph({ edges, tracked, focus, onFocus }: {
                             strokeWidth={1.5}
                             strokeDasharray={tracked.has(n) ? undefined : '3 2'}
                         />
+                        <rect x={p.x - 35} y={p.y + NODE_R + 2} width={70} height={14} rx={2} fill="rgb(15 23 42)" />
                         <text x={p.x} y={p.y + NODE_R + 11} textAnchor="middle" className="fill-slate-300 text-[10px]">
                             {short(n)}
                         </text>
