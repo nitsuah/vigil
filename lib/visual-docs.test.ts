@@ -51,6 +51,37 @@ describe('detectVisualDocs', () => {
     });
 });
 
+describe('visual workflow contents', () => {
+    // fire: visual-docs.yml captures from the journeys, which no file name says.
+    const files = [
+        '.github/workflows/visual-docs.yml',
+        'config/playwright.journeys.config.js',
+        'docs/diagrams/architecture.mmd',
+        'docs/diagrams/architecture.svg',
+        'docs/screenshots/projection-engine.png',
+    ];
+    const readme = '![Architecture](docs/diagrams/architecture.svg)\n![Projection](docs/screenshots/projection-engine.png)\n';
+    const journeys = 'jobs:\n  regenerate:\n    steps:\n      - name: Capture screenshots\n        run: mkdir -p docs/screenshots && npm run capture:screenshots\n';
+    const template = 'jobs:\n  regenerate:\n    steps:\n      - name: Capture screenshots\n        if: hashFiles(\'playwright.visual-docs.config.ts\') != \'\'\n        run: npx playwright test -c playwright.visual-docs.config.ts\n';
+
+    it('file names alone grade a journeys capture static', () => {
+        expect(detectVisualDocs(files, readme).details.elements.screenshots).toBe('static');
+    });
+
+    it('a confirmed capture in the workflow makes screenshots ci and the practice healthy', () => {
+        const r = detectVisualDocs(files, readme, 'fire', { '.github/workflows/visual-docs.yml': journeys });
+        expect(r.details.elements.screenshots).toBe('ci');
+        expect(r.status).toBe('healthy');
+    });
+
+    it('a template step for a visual-docs config the repo lacks does not count', () => {
+        const r = detectVisualDocs(files, readme, 'motor-pool', { '.github/workflows/visual-docs.yml': template });
+        expect(r.details.elements.screenshots).toBe('static');
+        const withConfig = detectVisualDocs([...files, 'playwright.visual-docs.config.ts'], readme, 'vigil', { '.github/workflows/visual-docs.yml': template });
+        expect(withConfig.details.elements.screenshots).toBe('ci');
+    });
+});
+
 describe('visual_docs scoring and fixes', () => {
     const ci = ['.github/workflows/visual-docs.yml', 'playwright.visual-docs.config.ts', 'docs/diagrams/arch.mmd', 'docs/diagrams/arch.svg', 'docs/screenshots/dash.png'];
 
