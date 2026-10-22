@@ -167,13 +167,14 @@ test.describe('Repo chat authentication boundary (browser)', () => {
     await mockApi(context);
     const page = await context.newPage();
 
+    // Observe the initial Auth.js session lookup before navigating so logout
+    // cannot race with a request that was already in flight during hydration.
+    const initialSessionLookup = page.waitForResponse((response) =>
+      response.url().includes('/api/auth/session') && response.request().method() === 'GET'
+    );
     await page.goto('/');
     await expect(page.locator('[data-tour="repo-chat"]').first()).toBeVisible({ timeout: 30000 });
-
-    // Let Auth.js finish its initial session check before revoking the cookie.
-    // Otherwise a session response already in flight can race with clearCookies
-    // and make this test depend on request timing rather than logout behavior.
-    await page.waitForLoadState('networkidle');
+    await initialSessionLookup;
     await context.clearCookies();
 
     // Verify the server no longer recognizes this browser before checking the
