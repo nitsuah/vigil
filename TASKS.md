@@ -56,7 +56,7 @@ Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and P
     - stash: `agent/scripts/sotu.py` reads `visual_setup` from `/api/context` for the Visual setup table (filed as a stash task, not edited from here).
     - nitsuah/.github: add the Actions PR setting to `/promo`'s first-run checklist (`skills/promo/SKILL.md`).
 
-- [ ] Tasks card shows the lowest-priority group first and hides the rest (#275).
+- [x] Tasks card shows the lowest-priority group first and hides the rest (#275).
   - Priority: P1
   - Context: found by the journeys review pass, 2026-10-09. `TasksSection.tsx` sorts subsections and then calls `.reverse()`.
 
