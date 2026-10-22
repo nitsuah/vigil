@@ -170,7 +170,19 @@ test.describe('Repo chat authentication boundary (browser)', () => {
     await page.goto('/');
     await expect(page.locator('[data-tour="repo-chat"]').first()).toBeVisible({ timeout: 30000 });
 
+    // Let Auth.js finish its initial session check before revoking the cookie.
+    // Otherwise a session response already in flight can race with clearCookies
+    // and make this test depend on request timing rather than logout behavior.
+    await page.waitForLoadState('networkidle');
     await context.clearCookies();
+
+    // Verify the server no longer recognizes this browser before checking the
+    // UI. This catches a cookie-name/clearing regression separately from a
+    // client-side session-rendering regression.
+    const sessionResponse = await page.request.get('/api/auth/session');
+    expect(sessionResponse.ok()).toBeTruthy();
+    expect(await sessionResponse.json()).toEqual({});
+
     await page.reload();
 
     await expect(page.locator('table tbody tr').first()).toContainText('demo-repo', { timeout: 30000 });
