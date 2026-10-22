@@ -69,7 +69,7 @@ All three appear per repo as `visual_setup` in `/api/context`.
 Run it locally the same way CI does (Docker keeps the fonts identical):
 
 ```bash
-docker run --rm --ipc=host -v "$PWD:/app" -w /app mcr.microsoft.com/playwright:v1.63.0-noble bash -lc '
+docker run --rm --ipc=host -v "$PWD:/app" -w /app mcr.microsoft.com/playwright:v1.64.0-noble bash -lc '
   set -e
   if [ -f package-lock.json ]; then npm ci; fi
   if [ -f playwright.visual-docs.config.ts ]; then npx playwright test -c playwright.visual-docs.config.ts; fi
