@@ -170,12 +170,21 @@ test.describe('Repo chat authentication boundary (browser)', () => {
     await page.goto('/');
     await expect(page.locator('[data-tour="repo-chat"]').first()).toBeVisible({ timeout: 30000 });
 
-    await context.clearCookies();
-    await page.reload();
+    // Exercise the real Auth.js logout flow rather than simulating it by
+    // deleting cookies: this verifies the app clears the session and updates
+    // the authenticated UI, including the chat affordance.
+    await page.getByRole('button', { name: 'Profile, status and sign out' }).click();
+    await page.getByRole('menuitem', { name: 'Sign out' }).click();
 
+    await expect(page.getByRole('button', { name: /sign in/i }).first()).toBeVisible({ timeout: 30000 });
     await expect(page.locator('table tbody tr').first()).toContainText('demo-repo', { timeout: 30000 });
     await expect(page.locator('[data-tour="repo-chat"]')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /sign in/i }).first()).toBeVisible();
+
+    // Pair the UI assertion with a server-side check so stale client state
+    // cannot make a failed logout look successful.
+    const sessionResponse = await page.request.get('/api/auth/session');
+    expect(sessionResponse.ok()).toBeTruthy();
+    expect(await sessionResponse.json()).toBeNull();
     await context.close();
   });
 
