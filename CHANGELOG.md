@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Fixed:** the production `ignore` command now returns 1 (build) when `CACHED_COMMIT_REF` or `COMMIT_REF` is empty, and quotes both. Unquoted, an empty `CACHED_COMMIT_REF` made the shell drop the argument, so `git diff --quiet` compared a commit to the working tree and could exit 0, skipping a production deploy instead of failing open.
+- Relationship map: repo-name labels now have a backdrop so edges no longer draw through the text (#277).
 - Nightly journeys: the Playwright image is now `v1.64.0`, matching `@playwright/test` 1.64. The 1.63 image had no browser for 1.64, so every journey failed at launch (#300–#304). The journeys workflow also runs on `package-lock.json` changes, so the next bump fails its own PR instead of the nightly.
 - Visual Docs: the dashboard sync now reads the visual-named workflows, so a screenshot capture their file names miss (fire's capture from the journeys) grades `ci` instead of `static`. A template step for a missing `playwright.visual-docs.config.*` still doesn't count. The dormant hint now gives the actual reason (no embed, a missing screenshot or diagram embed, or a row CI doesn't regenerate) instead of always saying the README embeds nothing.
 - Repo details: the collapsed Tasks card shows the highest-priority group (P0 → P3), not the lowest (#275).
