@@ -5,6 +5,13 @@
 [build.environment]
   SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**"
 
+# Every production deploy costs Netlify credits, so skip the ones that cannot change
+# what is served (docs, tests, CI config, promo assets). Exit 0 = no relevant changes =
+# skip; a missing CACHED_COMMIT_REF makes git exit non-zero, so it fails open.
+# Production only: deploy previews are free and stay on for review.
+[context.production]
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)docs' ':(exclude)tests' ':(exclude)e2e' ':(exclude)promo' ':(exclude)site' ':(exclude)skills' ':(exclude).github' ':(exclude).husky' ':(exclude)*.md'"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 

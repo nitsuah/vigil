@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Changed:** `netlify.toml` gains a production-only `ignore` command, so a push to `main` deploys only when something outside docs, tests, CI config or promo assets changed. Each production deploy costs 15 Netlify credits, and docs/test-only merges no longer spend them. Deploy previews are unaffected, and a missing `CACHED_COMMIT_REF` makes the check fail open so the build still runs.
 - `visual_docs` is now scored. Healthy means CI regenerates the screenshots and diagrams and the README embeds them. Each row (screenshots, diagrams, videos, Pages) shows its own grade. A row offers the recipe PR (which now includes `docs/VISUAL_DOCS_HOWTO.md`) when CI alone can fix it; otherwise it shows a `/promo` handoff with the repo path and inputs.
 - The demo portfolio and API mocks moved from `e2e/visual-docs/screenshots.spec.ts` to `e2e/fixtures/demo-portfolio.ts`, shared by the screenshots and the journeys.
 
