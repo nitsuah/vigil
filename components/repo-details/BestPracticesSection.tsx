@@ -4,7 +4,7 @@ import { CheckCircle2, XCircle, Circle } from 'lucide-react';
 import { BestPractice } from '@/types/repo';
 import { getStatusColor } from '@/lib/expandable-row-utils';
 import { useState } from 'react';
-import type { RowFix, VisualRow } from '@/lib/visual-docs';
+import type { RowFix, VisualDocsDetails, VisualRow } from '@/lib/visual-docs';
 
 function HandoffCommand({ fix }: { fix: RowFix }) {
   if (fix.kind !== 'handoff') return null;
@@ -24,6 +24,20 @@ function HandoffCommand({ fix }: { fix: RowFix }) {
 function hasPrFix(p: BestPractice): boolean {
   if (p.practice_type !== 'visual_docs' || !Array.isArray(p.details?.rows)) return true;
   return (p.details.rows as VisualRow[]).some((r) => r.fix?.kind === 'pr');
+}
+
+/** Why visual_docs is dormant: a missing README embed, or a scored row that CI doesn't regenerate. */
+function visualDormantReason(details: BestPractice['details']): string {
+  const d = (details ?? {}) as Partial<VisualDocsDetails>;
+  const embedded = d.embedded ?? [];
+  const shotShown = embedded.some((f) => d.screenshots?.includes(f));
+  const diagramShown = !!d.inlineMermaid || embedded.some((f) => d.diagrams?.includes(f));
+  if (!shotShown && !diagramShown) return 'Diagrams or screenshots exist but the README does not embed any of them.';
+  if (!shotShown) return 'The README embeds diagrams but no screenshots.';
+  if (!diagramShown) return 'The README embeds screenshots but no diagram.';
+  const notCi = (['screenshots', 'diagrams'] as const).filter((k) => d.elements?.[k] !== 'ci');
+  if (notCi.length) return `The README embeds them, but no workflow regenerates the ${notCi.join(' or ')} (graded ${notCi.map((k) => d.elements?.[k] ?? 'missing').join(' / ')}).`;
+  return 'Not every scored row passes yet.';
 }
 
 /** Per-row grade plus its fix: a PR vigil opens (CI recipe) or a handoff (skill run, setting). */
@@ -248,9 +262,9 @@ export function BestPracticesSection({
                   {practice.practice_type === 'visual_docs' && practice.status !== 'healthy' && (
                     <div className="mt-2 ml-6 text-xs text-slate-400">
                       {practice.status === 'dormant'
-                        ? 'Diagrams or screenshots exist but the README does not embed any of them.'
+                        ? visualDormantReason(practice.details)
                         : 'No architecture diagram or app screenshots found.'}
-                      {' '}Add the CI recipe that regenerates them and rewrites a marked README block:{' '}
+                      {' '}{(practice.details?.workflows as string[] | undefined)?.length ? 'See' : 'Add the CI recipe that regenerates them and rewrites a marked README block:'}{' '}
                       <a
                         href="https://github.com/nitsuah/vigil/blob/main/docs/VISUAL_DOCS.md"
                         target="_blank"
