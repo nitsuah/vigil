@@ -101,8 +101,8 @@ export function TasksSection({ tasks, tasksDocExists = false, isExpanded: isExpa
     if (!aIsStatus && bIsStatus) return -1;
     if (aIsStatus && !bIsStatus) return 1;
     // Both are actual subsections: sort by P0-P3 priority if present
-    const aPriority = a.match(/^P(\d)/)?.[1];
-    const bPriority = b.match(/^P(\d)/)?.[1];
+    const aPriority = a.match(/^P([0-3])\b/)?.[1];
+    const bPriority = b.match(/^P([0-3])\b/)?.[1];
     if (aPriority && bPriority) return parseInt(aPriority) - parseInt(bPriority);
     if (aPriority && !bPriority) return -1;
     if (!aPriority && bPriority) return 1;
