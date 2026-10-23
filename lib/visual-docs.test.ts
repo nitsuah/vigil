@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { actionsPrHandoff, detectJourneys, detectVisualDocs, needsActionsPrPermission, visualRows, visualSetup } from './visual-docs';
+import { actionsPrHandoff, detectJourneys, detectVisualDocs, needsActionsPrPermission, usesTemplatePr, visualRows, visualSetup } from './visual-docs';
 
 describe('detectVisualDocs', () => {
     it('is missing when there are no diagrams, screenshots, or mermaid blocks', () => {
@@ -144,5 +144,21 @@ describe('journeys and the Actions PR setting', () => {
         expect(s.rows).toHaveLength(4);
         expect(s.actions_pr_permission?.status).toBe('missing');
         expect(s.journeys).toBeNull();
+    });
+});
+
+describe('usesTemplatePr', () => {
+    it('returns true only for visual_docs', () => {
+        expect(usesTemplatePr('visual_docs')).toBe(true);
+        expect(usesTemplatePr('dependabot')).toBe(false);
+        expect(usesTemplatePr('env_template')).toBe(false);
+        expect(usesTemplatePr('docker')).toBe(false);
+        expect(usesTemplatePr('ci_cd')).toBe(false);
+        expect(usesTemplatePr('gitignore')).toBe(false);
+        expect(usesTemplatePr('pre_commit_hooks')).toBe(false);
+        expect(usesTemplatePr('linting')).toBe(false);
+        expect(usesTemplatePr('testing')).toBe(false);
+        expect(usesTemplatePr('deploy_badge')).toBe(false);
+        expect(usesTemplatePr('unknown')).toBe(false);
     });
 });

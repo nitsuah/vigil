@@ -276,6 +276,25 @@ export function useRepoActions(
     try {
       setFixingDoc(true);
 
+      // Template-driven practices (e.g., visual_docs) skip AI generation and go straight to fix-best-practice
+      const { usesTemplatePr } = await import('@/lib/visual-docs');
+      if (usesTemplatePr(practiceType)) {
+        const res = await fetch(`/api/repos/${repoName}/fix-best-practice`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ practiceType }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.prUrl) window.open(data.prUrl, '_blank');
+          setToastMessage(`PR created for ${practiceType}!`);
+        } else {
+          const err = await res.json();
+          handlePRError(err);
+        }
+        return;
+      }
+
       // First, generate the AI content using prompt chain
       const generateRes = await fetch('/api/repos/generate-best-practice', {
         method: 'POST',

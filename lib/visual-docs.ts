@@ -268,3 +268,12 @@ export function visualSetup(rows: VisualSetupRow[]) {
 }
 
 export const VISUAL_SETUP_PRACTICES = [VISUAL_DOCS_PRACTICE, ACTIONS_PR_PRACTICE, JOURNEYS_PRACTICE];
+
+/**
+ * Returns true for practice types that use a template-driven PR (no AI prompt chain).
+ * Currently only visual_docs: the fix-best-practice route builds the whole recipe
+ * (workflow, HOWTO, readme script, mermaid config) when no content/path is sent.
+ */
+export function usesTemplatePr(practiceType: string): boolean {
+    return practiceType === VISUAL_DOCS_PRACTICE;
+}
