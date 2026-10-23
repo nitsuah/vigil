@@ -62,7 +62,7 @@ Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and P
 
 ### P2 - Medium
 
-- [ ] Journeys review findings, 2026-10-09: confirmed relationships listed under "Needs review" (#276), ~~relationship graph edges cross node labels (#277)~~ (fixed in #323), ~~Pages site never links the live dashboard (#279)~~ (fixed in #328).
+- [ ] Journeys review findings, 2026-10-09: ~~confirmed relationships listed under "Needs review" (#276)~~ (fixed in #333), ~~relationship graph edges cross node labels (#277)~~ (fixed in #323), ~~Pages site never links the live dashboard (#279)~~ (fixed in #328).
   - Priority: P2
 
 - [ ] Fold the visual-docs screenshots into the journeys (`{ docs: '<feature id>' }` steps + a `capture:screenshots` script), so one suite produces both. fire's `visual-docs.yml` is the reference.

@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- PMO relationships: confirmed links get their own "Confirmed (n)" heading instead of sitting under "Needs review" (#276).
 - Visual Docs: "Open visual-docs CI recipe PR" now opens the PR instead of failing with `Unknown practice type: visual_docs`. The `visual_docs` practice is template-driven; `handleFixPractice` now skips the AI prompt chain and POSTs directly to `fix-best-practice` (#315).
 - Journeys: refreshed the `open-pmo`, `include-p2-work`, `open-the-relationship-map`, `expand-vigil`, `read-the-repository-stats` and `check-the-roadmap-and-tasks` baselines, which still showed the pre-#320 Tasks card order (P3 before P2) and the pre-#323 relationship-graph edges (2026-10-22).
 - **Fixed:** the production `ignore` command now returns 1 (build) when `CACHED_COMMIT_REF` or `COMMIT_REF` is empty, and quotes both. Unquoted, an empty `CACHED_COMMIT_REF` made the shell drop the argument, so `git diff --quiet` compared a commit to the working tree and could exit 0, skipping a production deploy instead of failing open.
