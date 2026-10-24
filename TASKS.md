@@ -2,7 +2,7 @@
 
 > 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · **Tasks** · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
 
-updated: 2026-10-15
+updated: 2026-10-24
 
 ## In Progress
 
@@ -56,9 +56,6 @@ Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and P
     - stash: `agent/scripts/sotu.py` reads `visual_setup` from `/api/context` for the Visual setup table (filed as a stash task, not edited from here).
     - nitsuah/.github: add the Actions PR setting to `/promo`'s first-run checklist (`skills/promo/SKILL.md`).
 
-- [x] Tasks card shows the lowest-priority group first and hides the rest (#275).
-  - Priority: P1
-  - Context: found by the journeys review pass, 2026-10-09. `TasksSection.tsx` sorts subsections and then calls `.reverse()`.
 
 ### P2 - Medium
 
@@ -123,6 +120,7 @@ _None open. The rate-limiter identity item is under Done._
 
 _Condensed, one line per item. Full detail lives in FEATURES.md and CHANGELOG.md. The section must stay, because vigil's own TASKS parser expects Done / In Progress / Todo._
 
+- [x] Done 2026-10-24: Tasks card now leads with the highest-priority group (P0 → P3) and collapses the lower-priority groups (#275).
 - [x] Done 2026-10-15: Showcase rollout: Pages + `/brag` spots live for vhs, skyview and nitsuah-io, Actions PRs on for vigil, fire and motor-pool (showcase board scan 2026-10-15).
 - [x] Done 2026-10-09: `visual_docs` scored (recipe-adoption P3 closed by the visual best-practices epic above).
 - [x] Done 2026-09-28: Chat-driven doc editing (TASKS/ROADMAP/FEATURES), stages 1–4: `parseTaskOperationProposal` in `lib/repo-chat.ts`, `POST /api/repos/[name]/tasks`. Stage 3 shipped in #253. See FEATURES.
