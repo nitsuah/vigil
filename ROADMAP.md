@@ -2,7 +2,7 @@
 
 > 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · **Roadmap** · [Tasks](./TASKS.md) · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
 
-updated: 2026-10-24
+updated: 2026-10-14
 
 Next Review: 2026-10-24
 
@@ -37,7 +37,6 @@ Next Review: 2026-10-24
 
 ## Notes
 
-- The Tasks card priority-order fix (#275) shipped 2026-10-24; its completed behavior is documented in FEATURES.md / CHANGELOG.md rather than retained as planned roadmap work.
 - GitHub repositories and markdown remain the source of truth.
 - Cross-repo orchestration and autonomous plan execution are the long-term product direction.
 - Per-repo detailed execution stays in each repo's own TASKS.md; Vigil tracks aggregate state.
