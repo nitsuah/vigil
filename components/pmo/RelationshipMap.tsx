@@ -349,7 +349,10 @@ export function RelationshipMap({ repos }: { repos: PmoRepoSummary[] }): React.J
                             </div>
                         )}
                         {confirmed.length > 0 && (
-                            <ul>{confirmed.map((e) => <EdgeRow key={e.id} edge={e} onChanged={() => void load()} />)}</ul>
+                            <div>
+                                <p className="px-3 pt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Confirmed ({confirmed.length})</p>
+                                <ul>{confirmed.map((e) => <EdgeRow key={e.id} edge={e} onChanged={() => void load()} />)}</ul>
+                            </div>
                         )}
                     </div>
                 </div>
