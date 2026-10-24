@@ -5,6 +5,7 @@ import { BestPractice, Metric } from '@/types/repo';
 import { useState } from 'react';
 
 import { MAX_UNIT_LENGTH } from '../../lib/constants';
+import { joinMetricValue } from '../../lib/format-metric';
 
 interface TestingSectionProps {
   testingStatus?: string;
@@ -76,9 +77,8 @@ export function TestingSection({
     if (!metric.unit || metric.unit.length > MAX_UNIT_LENGTH) {
       return `${metric.value}`;
     }
-    
-    // Add space between value and unit for readability
-    return `${metric.value}${metric.unit}`;
+
+    return joinMetricValue(metric.value, metric.unit);
   };
 
   // Helper to get detail text (unit column when it's descriptive)
