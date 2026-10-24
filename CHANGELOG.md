@@ -20,8 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Tasks card: open the highest-priority available group first (P0 → P3) and keep lower-priority groups collapsed (#275).
-
 - **Changed:** `.nvmrc` is now `22`, matching `engines.node` (22.x), CI and the Dockerfile. Netlify builds read `.nvmrc`, so the production server handler was still being built and run on Node 20, which is end-of-life.
 - **Changed:** `netlify.toml` gains a production-only `ignore` command, so a push to `main` deploys only when something outside docs, tests, CI config or promo assets changed. Each production deploy costs 15 Netlify credits, and docs/test-only merges no longer spend them. Deploy previews are unaffected, and a missing `CACHED_COMMIT_REF` makes the check fail open so the build still runs.
 - `visual_docs` is now scored. Healthy means CI regenerates the screenshots and diagrams and the README embeds them. Each row (screenshots, diagrams, videos, Pages) shows its own grade. A row offers the recipe PR (which now includes `docs/VISUAL_DOCS_HOWTO.md`) when CI alone can fix it; otherwise it shows a `/promo` handoff with the repo path and inputs.
@@ -36,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Relationship map: repo-name labels now have a backdrop so edges no longer draw through the text (#277).
 - Nightly journeys: the Playwright image is now `v1.64.0`, matching `@playwright/test` 1.64. The 1.63 image had no browser for 1.64, so every journey failed at launch (#300–#304). The journeys workflow also runs on `package-lock.json` changes, so the next bump fails its own PR instead of the nightly.
 - Visual Docs: the dashboard sync now reads the visual-named workflows, so a screenshot capture their file names miss (fire's capture from the journeys) grades `ci` instead of `static`. A template step for a missing `playwright.visual-docs.config.*` still doesn't count. The dormant hint now gives the actual reason (no embed, a missing screenshot or diagram embed, or a row CI doesn't regenerate) instead of always saying the README embeds nothing.
-- Repo details: the collapsed Tasks card shows the highest-priority group (P0 → P3), not the lowest (#275).
+- Repo details: the Tasks card opens the highest-priority available group (P0 → P3) and keeps lower-priority groups collapsed (#275).
 - `promo/capture.spec.ts` no longer marks `visual_docs` informational (it is scored; only `journeys` is informational), so promo captures stop showing a false "(not scored)" label; `site/assets/card-practices.webp` re-shot. The e2e fixture had the same stale flag, so demo screenshots and journey baselines showed "Visual Docs (not scored)"; it now marks only `journeys` informational and includes a `journeys` row (fixes #292).
 - `.env.example` now uses the variable names the app reads (`GITHUB_ID` / `GITHUB_SECRET`, not `GITHUB_CLIENT_*`), drops unused Supabase and `GITHUB_APP_ID` entries, and documents `BYOK_ENCRYPTION_KEY`, `MCP_API_KEY`, `NETLIFY_DATABASE_URL` precedence, and the OAuth callback URL. CI falls back to named dummy OAuth values when the repo secrets are unset.
 - Site: the Pages site links the live dashboard from the hero and the install section (#279).
