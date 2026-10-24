@@ -3,6 +3,7 @@
 import { TrendingUp } from 'lucide-react';
 import { Metric } from '@/types/repo';
 import { useState } from 'react';
+import { joinMetricValue } from '../../lib/format-metric';
 
 interface MetricsSectionProps {
   metrics: Metric[];
@@ -78,8 +79,7 @@ export function MetricsSection({ metrics, isExpanded: isExpandedProp, onToggleEx
               <div key={`${metric.name}-${index}`} className="flex items-center justify-between text-xs">
                 <span className="text-slate-400">{metric.name}</span>
                 <span className="text-slate-200 font-medium">
-                  {metric.value}
-                  {metric.unit ?? ''}
+                  {joinMetricValue(metric.value, metric.unit)}
                 </span>
               </div>
             ))}
