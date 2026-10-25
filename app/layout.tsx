@@ -9,11 +9,11 @@ const inter = Inter({ subsets: ["latin"] });
 const SITE_URL = "https://gh-vigil.netlify.app";
 const SHARE_DESCRIPTION =
   "Every repo graded, every TASKS.md rolled up, and your agents can ask what to work on next.";
-// Same 1920x1080 poster the GitHub Pages showcase uses for its link previews.
+// 1200x630 center-crop of the showcase poster (site/assets/poster.jpg).
 const SHARE_IMAGE = {
-  url: "https://nitsuah.github.io/vigil/assets/poster.jpg",
-  width: 1920,
-  height: 1080,
+  url: "/og-1200x630.jpg",
+  width: 1200,
+  height: 630,
   alt: "Vigil: keep watch over all of your GitHub repos",
 };
 
@@ -21,6 +21,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Vigil — Repo Intelligence",
   description: "Unified health monitoring and intelligence for all your GitHub repositories",
+  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     url: SITE_URL,
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Vigil — Repo Intelligence",
     description: SHARE_DESCRIPTION,
-    images: [SHARE_IMAGE.url],
+    images: [SHARE_IMAGE],
   },
 };
 
