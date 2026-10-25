@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "Vigil — Repo Intelligence",
   description: "Unified health monitoring and intelligence for all your GitHub repositories",
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     url: SITE_URL,
