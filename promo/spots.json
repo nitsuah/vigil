@@ -1,6 +1,6 @@
 {
   "product": "vigil",
-  "live": "https://gh-vigil.netlify.app/",
+  "live": "https://vigil.nitsuah.io/",
   "page": "https://nitsuah.github.io/vigil/",
   "pagesDir": "site",
   "features": [
@@ -1830,11 +1830,13 @@
       "site/index.html (inline favicon + header mark)",
       "promo/brag-30s/compose.html (ICON)",
       "promo/health-17s-vert/compose.html (ICON)",
-      "site/assets/poster.jpg (og:image, reel poster)"
+      "site/assets/poster.jpg (reel poster)",
+      "site/assets/og-1200x630.jpg (og:image / twitter:image)",
+      "public/og-1200x630.jpg (app Open Graph / Twitter share image)"
     ],
     "manual": [
       {
-        "what": "GitHub social preview image (upload site/assets/poster.jpg; repo link previews use it)",
+        "what": "GitHub social preview image (upload site/assets/og-1200x630.jpg; repo link previews use it)",
         "url": "https://github.com/nitsuah/vigil/settings"
       },
       {
