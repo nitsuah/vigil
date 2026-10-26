@@ -6,7 +6,7 @@ import { SessionProvider } from "next-auth/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
-const SITE_URL = "https://gh-vigil.netlify.app";
+const SITE_URL = "https://vigil.nitsuah.io";
 const SHARE_DESCRIPTION =
   "Every repo graded, every TASKS.md rolled up, and your agents can ask what to work on next.";
 // 1200x630 center-crop of the showcase poster (site/assets/poster.jpg).
