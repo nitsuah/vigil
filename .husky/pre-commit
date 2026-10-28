@@ -5,7 +5,7 @@
 #   3. else                                  -> warn and skip (CI runs lint)
 
 if [ -f node_modules/.bin/lint-staged ]; then
-  exec sh node_modules/.bin/lint-staged
+  exec node_modules/.bin/lint-staged
 fi
 
 if ! docker info >/dev/null 2>&1; then
