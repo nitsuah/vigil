@@ -80,7 +80,7 @@
   "lint-staged": {
     "*.{ts,tsx}": [
       "eslint --fix --config config/eslint.config.mjs",
-      "vitest related --run --config config/vitest.config.ts"
+      "vitest related --run --config config/vitest.config.mjs"
     ],
     "*.{json,md}": [
       "prettier --write"

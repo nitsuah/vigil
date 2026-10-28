@@ -3,7 +3,7 @@
  * Ensures the template-driven PR generation works end-to-end.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { detectVisualDocs, visualRows, usesTemplatePr, visualSetup } from '@/lib/visual-docs';
@@ -138,7 +138,7 @@ describe('Visual Docs Recipe PR Workflow', () => {
 
   describe('visualRows fix behavior', () => {
     it('offers recipe PR when no workflow exists', () => {
-      const elements = { screenshots: 'missing', diagrams: 'static', videos: 'missing', pages: 'deployed' };
+      const elements = { screenshots: 'missing', diagrams: 'static', videos: 'missing', pages: 'deployed' } as const;
       const rows = visualRows('test-repo', elements, false);
       const screenshotFix = rows.find(r => r.row === 'screenshots')!.fix;
       const diagramFix = rows.find(r => r.row === 'diagrams')!.fix;
@@ -148,7 +148,7 @@ describe('Visual Docs Recipe PR Workflow', () => {
     });
 
     it('offers /promo handoff when workflow exists', () => {
-      const elements = { screenshots: 'static', diagrams: 'static', videos: 'missing', pages: 'deployed' };
+      const elements = { screenshots: 'static', diagrams: 'static', videos: 'missing', pages: 'deployed' } as const;
       const rows = visualRows('test-repo', elements, true);
       const screenshotFix = rows.find(r => r.row === 'screenshots')!.fix;
       const diagramFix = rows.find(r => r.row === 'diagrams')!.fix;
