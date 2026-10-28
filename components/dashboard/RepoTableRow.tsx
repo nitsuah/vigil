@@ -1,6 +1,6 @@
 // Repository table row component
 
-import React, { Fragment, useMemo } from 'react';
+import React, { Fragment, useMemo, useState } from 'react';
 import {
   GitPullRequest,
   AlertCircle,
@@ -24,6 +24,8 @@ import ExpandableRow from '@/components/ExpandableRow';
 import { Repo, RepoDetails } from '@/types/repo';
 import { detectRepoType, RepoType } from '@/lib/repo-type';
 import { calculateDocHealth } from '@/lib/doc-health';
+import { buildHealthScoreInputs } from '@/lib/health-score-inputs';
+import { calculateHealthScore } from '@/lib/health-score';
 import {
   getHealthGrade,
   formatTimeAgo,
@@ -108,6 +110,22 @@ export function RepoTableRow({
 
   const docHealth = details ? calculateDocHealth(details.docStatuses, repoType) : null;
   const health = getHealthGrade(repo.health_score || 0);
+
+  // Same inputs and clock handling as the HealthBreakdown popup so the two agree.
+  const [now] = useState(() => Date.now());
+  const securityScore = useMemo<number | null>(
+    () =>
+      details && repo.security_last_checked != null
+        ? calculateHealthScore(
+            buildHealthScoreInputs(
+              { ...repo, health_profile: repo.health_profile || 'production' },
+              details,
+              now
+            )
+          ).security
+        : null,
+    [repo, details, now]
+  );
 
   return (
     <Fragment key={repo.id}>
@@ -312,6 +330,31 @@ export function RepoTableRow({
                 />
               ) : (
                 <span className={`text-lg font-bold ${health.color}`}>{health.grade}</span>
+              )}
+              {/* Security health badge - shown inline when details available */}
+              {securityScore != null && (
+                <span
+                  title={`Security health: ${securityScore}%`}
+                  aria-label={`Security health: ${securityScore}%`}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    securityScore >= 80
+                      ? 'bg-green-500/20 text-green-400'
+                      : securityScore >= 60
+                      ? 'bg-yellow-500/20 text-yellow-400'
+                      : 'bg-red-500/20 text-red-400'
+                  }`}
+                >
+                  Sec {securityScore}%
+                </span>
+              )}
+              {details && repo.security_last_checked == null && (
+                <span
+                  title="Security health unavailable (not checked yet)"
+                  aria-label="Security health unavailable (not checked yet)"
+                  className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/50 text-slate-500"
+                >
+                  Sec —
+                </span>
               )}
               {details && expandedHealth && (
                 <HealthShields details={details} repo={repo} docHealth={docHealth} />
