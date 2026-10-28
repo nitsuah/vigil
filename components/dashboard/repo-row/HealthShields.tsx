@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Repo, RepoDetails } from '@/types/repo';
+import { calculateHealthScore } from '@/lib/health-score';
+import { buildHealthScoreInputs } from '@/lib/health-score-inputs';
 
 interface HealthShieldsProps {
   details: RepoDetails;
@@ -19,12 +21,12 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
   );
   const hasCICD = repo.ci_status && repo.ci_status !== 'unknown';
   const cicdPassing = repo.ci_status === 'passing';
-  
+
   const testingChecks = [];
   if (hasTestFramework) testingChecks.push('framework');
   if (hasCICD) testingChecks.push('ci_exists');
   if (cicdPassing) testingChecks.push('ci_healthy');
-  
+
   const testingCount = testingChecks.length;
   const testingTotal = 3;
 
@@ -44,7 +46,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
   const csHealthy = details.communityStandards.filter((s) => s.status === 'healthy').length;
   const csTotal = details.communityStandards.length;
   const csPercentage = csTotal > 0 ? Math.round((csHealthy / csTotal) * 100) : 0;
-  
+
   // Build detailed Community Standards tooltip
   const csTooltip = [
     `Community Standards: ${csHealthy}/${csTotal} (${csPercentage}%)`,
@@ -55,7 +57,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       return `${status} ${name}: ${s.status}`;
     })
   ].join('\n');
-  
+
   // Build detailed Best Practices tooltip
   const bpTooltip = [
     `Best Practices: ${bpHealthy}/${bpTotal} (${bpPercentage}%)`,
@@ -66,7 +68,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       return `${status} ${name}: ${p.status}`;
     })
   ].join('\n');
-  
+
   // Build detailed Doc Health tooltip
   const repoType = repo.repo_type || 'unknown';
   const expectedDocsMap: Record<string, string[]> = {
@@ -95,19 +97,28 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       return `  ${status} ${docType.toUpperCase()}: ${healthState}`;
     })
   ].join('\n');
-  
+
+  // Security health calculation (same as HealthBreakdown.tsx)
+  const securityScore = repo.security_last_checked != null
+    ? calculateHealthScore(buildHealthScoreInputs(
+        { ...repo, health_profile: repo.health_profile || 'production' },
+        details,
+        now
+      )).security
+    : null;
+
   // Activity freshness calculation
   const getActivityColor = (dateString: string | null | undefined) => {
     if (!dateString) return 'bg-slate-700/50 text-slate-500';
     const date = new Date(dateString);
     const diffDays = Math.floor((now - date.getTime()) / 86400000);
-    
+
     if (diffDays <= 7) return 'bg-green-500/20 text-green-400';
     if (diffDays <= 30) return 'bg-yellow-500/20 text-yellow-400';
     if (diffDays <= 90) return 'bg-orange-500/20 text-orange-400';
     return 'bg-red-500/20 text-red-400';
   };
-  
+
   const formatActivityTime = (dateString: string | null | undefined): string => {
     if (!dateString) return 'Never';
     const now = new Date();
@@ -188,6 +199,30 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
           }`}
         >
           {docHealth.score}%
+        </span>
+      )}
+      {/* Security health badge */}
+      {securityScore != null ? (
+        <span
+          title={`Security health: ${securityScore}%`}
+          aria-label={`Security health: ${securityScore}%`}
+          className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+            securityScore >= 80
+              ? 'bg-green-500/20 text-green-400'
+              : securityScore >= 60
+              ? 'bg-yellow-500/20 text-yellow-400'
+              : 'bg-red-500/20 text-red-400'
+          }`}
+        >
+          Sec {securityScore}%
+        </span>
+      ) : (
+        <span
+          title="Security health unavailable (not checked yet)"
+          aria-label="Security health unavailable (not checked yet)"
+          className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/50 text-slate-500"
+        >
+          Sec —
         </span>
       )}
       <span
