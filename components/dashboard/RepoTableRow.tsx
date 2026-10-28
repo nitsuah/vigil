@@ -313,6 +313,53 @@ export function RepoTableRow({
               ) : (
                 <span className={`text-lg font-bold ${health.color}`}>{health.grade}</span>
               )}
+              {/* Security health badge - shown inline when details available */}
+              {details && repo.security_last_checked != null && (
+                <span
+                  title={`Security health: ${(() => {
+                    const score = calculateHealthScore(buildHealthScoreInputs(
+                      { ...repo, health_profile: repo.health_profile || 'production' },
+                      details,
+                      Date.now()
+                    )).security;
+                    return `${score}%`;
+                  })()}`}
+                  aria-label={`Security health: ${(calculateHealthScore(buildHealthScoreInputs(
+                    { ...repo, health_profile: repo.health_profile || 'production' },
+                    details,
+                    Date.now()
+                  )).security)}%`}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    (() => {
+                      const score = calculateHealthScore(buildHealthScoreInputs(
+                        { ...repo, health_profile: repo.health_profile || 'production' },
+                        details,
+                        Date.now()
+                      )).security;
+                      return score >= 80
+                        ? 'bg-green-500/20 text-green-400'
+                        : score >= 60
+                        ? 'bg-yellow-500/20 text-yellow-400'
+                        : 'bg-red-500/20 text-red-400';
+                    })()
+                  }`}
+                >
+                  Sec {(calculateHealthScore(buildHealthScoreInputs(
+                    { ...repo, health_profile: repo.health_profile || 'production' },
+                    details,
+                    Date.now()
+                  )).security)}%
+                </span>
+              )}
+              {details && repo.security_last_checked == null && (
+                <span
+                  title="Security health unavailable (not checked yet)"
+                  aria-label="Security health unavailable (not checked yet)"
+                  className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/50 text-slate-500"
+                >
+                  Sec —
+                </span>
+              )}
               {details && expandedHealth && (
                 <HealthShields details={details} repo={repo} docHealth={docHealth} />
               )}

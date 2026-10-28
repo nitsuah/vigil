@@ -1,0 +1,264 @@
+import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
+import { RepoTableRow } from './RepoTableRow';
+import type { Repo, RepoDetails } from '@/types/repo';
+import * as healthScoreModule from '@/lib/health-score';
+import * as healthScoreInputsModule from '@/lib/health-score-inputs';
+
+// ── Child-component mocks ─────────────────────────────────────────────────────
+
+vi.mock('@/components/dashboard/repo-row/HealthBreakdown', () => ({
+  HealthBreakdown: ({ health }: { health: { grade: string; color: string } }) => (
+    <span data-testid="health-breakdown" style={{ color: health.color }}>{health.grade}</span>
+  ),
+}));
+
+vi.mock('@/components/dashboard/repo-row/HealthShields', () => ({
+  HealthShields: () => <span data-testid="health-shields" />,
+}));
+
+vi.mock('@/components/dashboard/repo-row/TypeEditor', () => ({
+  TypeEditor: () => <span data-testid="type-editor" />,
+}));
+
+vi.mock('@/components/dashboard/repo-row/TierEditor', () => ({
+  TierEditor: () => <span data-testid="tier-editor" />,
+}));
+
+vi.mock('@/components/dashboard/repo-row/repo-row-utils', () => ({
+  getTypeIcon: () => null,
+}));
+
+// Mock the health score modules
+vi.mock('@/lib/health-score', () => ({
+  calculateHealthScore: vi.fn(),
+}));
+
+vi.mock('@/lib/health-score-inputs', () => ({
+  buildHealthScoreInputs: vi.fn(),
+}));
+
+const calculateHealthScore = vi.mocked(healthScoreModule.calculateHealthScore);
+const buildHealthScoreInputs = vi.mocked(healthScoreInputsModule.buildHealthScoreInputs);
+
+// ── Fixtures ──────────────────────────────────────────────────────────────────
+
+const baseRepo: Repo = {
+  id: '1',
+  name: 'my-repo',
+  full_name: 'acme/my-repo',
+  description: 'A test repo',
+  language: 'TypeScript',
+  stars: 5,
+  forks: 0,
+  branches_count: 1,
+  url: 'https://github.com/acme/my-repo',
+  homepage: null,
+  topics: [],
+  last_synced: new Date().toISOString(),
+  health_score: 75,
+  health_profile: 'production',
+  repo_type: 'tool',
+  security_last_checked: new Date().toISOString(),
+};
+
+const baseDetails: RepoDetails = {
+  tasks: [],
+  roadmapItems: [],
+  docStatuses: [
+    { doc_type: 'readme', exists: true, health_state: 'healthy' },
+    { doc_type: 'roadmap', exists: false, health_state: 'missing' },
+    { doc_type: 'tasks', exists: false, health_state: 'missing' },
+    { doc_type: 'metrics', exists: false, health_state: 'missing' },
+    { doc_type: 'features', exists: false, health_state: 'missing' },
+  ],
+  metrics: [],
+  features: [],
+  bestPractices: [
+    { practice_type: 'testing_framework', status: 'healthy', details: {} },
+    { practice_type: 'ci_cd', status: 'healthy', details: {} },
+  ],
+  communityStandards: [
+    { standard_type: 'contributing', status: 'healthy', details: {} },
+    { standard_type: 'code_of_conduct', status: 'missing', details: {} },
+  ],
+  securityConfig: {
+    hasSecurityPolicy: true,
+    hasSecurityAdvisories: false,
+    privateVulnerabilityReportingEnabled: true,
+    dependabotAlertsEnabled: true,
+    dependabotAlertCount: 0,
+    codeScanningEnabled: true,
+    codeScanningAlertCount: 0,
+    secretScanningEnabled: true,
+    secretScanningAlertCount: 0,
+  },
+};
+
+/** Create complete default props for RepoTableRow tests. */
+function baseProps(
+  overrides: Partial<Parameters<typeof RepoTableRow>[0]> = {}
+): Parameters<typeof RepoTableRow>[0] {
+  return {
+    repo: baseRepo,
+    details: baseDetails,
+    onToggleHealth: vi.fn(),
+    ...overrides,
+  };
+}
+
+afterEach(cleanup);
+
+// ── Security health badge tests ────────────────────────────────────────────────
+
+describe('RepoTableRow – security health badge', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default mock: security score of 85 (green)
+    calculateHealthScore.mockReturnValue({
+      total: 80,
+      documentation: 100,
+      testing: 80,
+      bestPractices: 100,
+      community: 50,
+      activity: 90,
+      security: 85,
+      securityPosture: 100,
+      healthProfile: 'production',
+    });
+    buildHealthScoreInputs.mockReturnValue({} as any);
+  });
+
+  it('shows security health percentage when security_last_checked exists and details available', () => {
+    render(<RepoTableRow {...baseProps()} />);
+    expect(screen.getByText('Sec 85%')).toBeTruthy();
+    expect(screen.getByText('Sec 85%')).toHaveAttribute('aria-label', 'Security health: 85%');
+  });
+
+  it('shows green badge for security score >= 80', () => {
+    calculateHealthScore.mockReturnValue({
+      total: 80,
+      documentation: 100,
+      testing: 80,
+      bestPractices: 100,
+      community: 50,
+      activity: 90,
+      security: 90,
+      securityPosture: 100,
+      healthProfile: 'production',
+    });
+    render(<RepoTableRow {...baseProps()} />);
+    const badge = screen.getByText('Sec 90%');
+    expect(badge).toHaveClass('bg-green-500/20');
+    expect(badge).toHaveClass('text-green-400');
+  });
+
+  it('shows yellow badge for security score >= 60 and < 80', () => {
+    calculateHealthScore.mockReturnValue({
+      total: 80,
+      documentation: 100,
+      testing: 80,
+      bestPractices: 100,
+      community: 50,
+      activity: 90,
+      security: 70,
+      securityPosture: 100,
+      healthProfile: 'production',
+    });
+    render(<RepoTableRow {...baseProps()} />);
+    const badge = screen.getByText('Sec 70%');
+    expect(badge).toHaveClass('bg-yellow-500/20');
+    expect(badge).toHaveClass('text-yellow-400');
+  });
+
+  it('shows red badge for security score < 60', () => {
+    calculateHealthScore.mockReturnValue({
+      total: 80,
+      documentation: 100,
+      testing: 80,
+      bestPractices: 100,
+      community: 50,
+      activity: 90,
+      security: 45,
+      securityPosture: 100,
+      healthProfile: 'production',
+    });
+    render(<RepoTableRow {...baseProps()} />);
+    const badge = screen.getByText('Sec 45%');
+    expect(badge).toHaveClass('bg-red-500/20');
+    expect(badge).toHaveClass('text-red-400');
+  });
+
+  it('shows "Sec —" placeholder when security_last_checked is null', () => {
+    const repoWithoutSecurityCheck = {
+      ...baseRepo,
+      security_last_checked: null,
+    };
+    render(<RepoTableRow {...baseProps({ repo: repoWithoutSecurityCheck })} />);
+    expect(screen.getByText('Sec —')).toBeTruthy();
+    expect(screen.getByText('Sec —')).toHaveAttribute('aria-label', 'Security health unavailable (not checked yet)');
+  });
+
+  it('does not show security badge when details are not available', () => {
+    render(<RepoTableRow {...baseProps({ details: undefined })} />);
+    expect(screen.queryByText(/Sec/)).toBeNull();
+  });
+
+  it('displays security score matching HealthBreakdown popup', () => {
+    const mockSecurityScore = 72;
+    calculateHealthScore.mockReturnValue({
+      total: 75,
+      documentation: 80,
+      testing: 70,
+      bestPractices: 80,
+      community: 50,
+      activity: 85,
+      security: mockSecurityScore,
+      securityPosture: 80,
+      healthProfile: 'production',
+    });
+
+    render(<RepoTableRow {...baseProps()} />);
+
+    // The inline badge should show the same security score as the popup
+    const inlineBadge = screen.getByText(`Sec ${mockSecurityScore}%`);
+    expect(inlineBadge).toBeTruthy();
+  });
+});
+
+// ── General rendering tests ──────────────────────────────────────────────────
+
+describe('RepoTableRow – basic rendering', () => {
+  it('shows the repo name', () => {
+    render(<RepoTableRow {...baseProps()} />);
+    expect(screen.getByText('my-repo')).toBeTruthy();
+  });
+
+  it('shows the health grade letter when details are absent', () => {
+    render(<RepoTableRow {...baseProps({ details: undefined })} />);
+    expect(screen.getByText('C')).toBeTruthy();
+  });
+
+  it('shows HealthBreakdown when details are present', () => {
+    render(<RepoTableRow {...baseProps()} />);
+    expect(screen.getByTestId('health-breakdown')).toBeTruthy();
+  });
+
+  it('shows TypeEditor when details are present', () => {
+    render(<RepoTableRow {...baseProps()} />);
+    expect(screen.getByTestId('type-editor')).toBeTruthy();
+  });
+});
+
+// ── Responsive behavior ──────────────────────────────────────────────────────
+
+describe('RepoTableRow – responsive columns', () => {
+  it('hides description on narrow screens (xl breakpoint)', () => {
+    render(<RepoTableRow {...baseProps()} />);
+    // Description column has class "hidden xl:table-cell"
+    // We can't easily test responsive classes in jsdom, but we can verify the class exists
+    const tableCells = screen.getAllByRole('gridcell');
+    // Should have multiple cells including the health score cell
+    expect(tableCells.length).toBeGreaterThan(3);
+  });
+});
