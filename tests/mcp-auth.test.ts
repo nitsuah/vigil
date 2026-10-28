@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// A tracked repo that is NOT in DEFAULT_REPOS, so only an authorized caller may read it.
+const PRIVATE_REPO = { id: 'r1', name: 'private-repo', full_name: 'o/private-repo', is_hidden: false };
+let dbRows: unknown[] = [];
 vi.mock('@/lib/db', () => ({
   getNeonClient: () =>
-    Object.assign(vi.fn().mockResolvedValue([]), { transaction: vi.fn().mockResolvedValue([[], [], [], [], [], []]) }),
+    Object.assign(vi.fn().mockImplementation(async () => dbRows), { transaction: vi.fn().mockResolvedValue([[], [], [], [], [], []]) }),
   ensureSchema: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('@/lib/log', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
@@ -23,14 +26,14 @@ import { POST, TOOL_SCOPES, GET as mcpGet } from '@/app/api/mcp/route';
 import { GET as contextGet } from '@/app/api/context/route';
 import { resolveScopes, hasScopes } from '@/lib/mcp-auth';
 
-const rpc = (token: string | null, body: unknown) =>
+const rpc = (token: string | null, body: unknown): ReturnType<typeof POST> =>
   POST(new Request('http://localhost/api/mcp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(body),
   }) as never);
 
-const call = (token: string | null, name: string, args: Record<string, unknown> = {}) =>
+const call = (token: string | null, name: string, args: Record<string, unknown> = {}): ReturnType<typeof POST> =>
   rpc(token, { jsonrpc: '2.0', method: 'tools/call', params: { name, arguments: args }, id: 1 });
 
 const MINIMAL_ARGS: Record<string, Record<string, unknown>> = {
@@ -132,24 +135,26 @@ describe('/api/mcp per-tool authorization', () => {
 });
 
 describe('/api/context bearer scopes', () => {
-  const ctx = (token: string | null, q = '') =>
+  const ctx = (token: string | null, q = ''): ReturnType<typeof contextGet> =>
     contextGet(new Request(`http://localhost/api/context${q}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }) as never);
 
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    dbRows = [PRIVATE_REPO];
+  });
 
   it('refuses portfolio view to a repo:read key and repo view to a portfolio-only key', async () => {
     expect((await ctx(READER)).status).toBe(403);
     expect((await ctx(PORTFOLIO, '?repo=x')).status).toBe(403);
   });
   it('allows keys holding the right scope', async () => {
-    expect((await ctx(READER, '?repo=x')).status).not.toBe(403);
+    expect((await ctx(READER, '?repo=private-repo')).status).toBe(200);
     expect((await ctx(PORTFOLIO)).status).toBe(200);
     expect((await ctx(ADMIN)).status).toBe(200);
   });
-  it('an invalid bearer gets guest access only (default repos), never admin', async () => {
-    const res = await ctx('wrong', '?repo=definitely-not-a-default-repo');
-    expect(res.status).toBe(404);
+  it('an invalid bearer gets guest access only: the same non-default repo is hidden', async () => {
+    expect((await ctx('wrong', '?repo=private-repo')).status).toBe(404);
+    expect((await ctx(null, '?repo=private-repo')).status).toBe(404);
   });
 });

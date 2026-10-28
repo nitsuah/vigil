@@ -25,7 +25,7 @@ export const MIN_SCOPED_KEY_LENGTH = 16;
 // Not password storage: both sides are MACed under a per-process random key only so the
 // buffers handed to timingSafeEqual have equal length and no early-exit timing leak.
 const MAC_KEY = randomBytes(32);
-const digest = (s: string) => createHmac('sha256', MAC_KEY).update(s).digest();
+const digest = (s: string): Buffer => createHmac('sha256', MAC_KEY).update(s).digest();
 function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(digest(a), digest(b));
 }

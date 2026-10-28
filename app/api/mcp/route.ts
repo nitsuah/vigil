@@ -797,7 +797,7 @@ export async function GET(req?: NextRequest) {
     auth:            'Authorization: Bearer <MCP_API_KEY env var, or a scoped key from MCP_SCOPED_KEYS>',
     rateLimit:       `${RATE_LIMIT} requests / minute per IP`,
     endpoint:        'POST /api/mcp',
-    context_endpoint: 'GET /api/context (no auth — default repos; Bearer token — full portfolio)',
+    context_endpoint: 'GET /api/context (no auth — default repos only; Bearer with repo:read — ?repo=<name>; Bearer with portfolio:read — full portfolio; a valid key lacking the scope gets 403)',
   });
 }
 
