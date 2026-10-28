@@ -59,9 +59,6 @@ Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and P
 
 ### P2 - Medium
 
-- [ ] Journeys review findings, 2026-10-09: ~~confirmed relationships listed under "Needs review" (#276)~~ (fixed in #333), ~~relationship graph edges cross node labels (#277)~~ (fixed in #323), ~~Pages site never links the live dashboard (#279)~~ (fixed in #328).
-  - Priority: P2
-
 - [ ] Fold the visual-docs screenshots into the journeys (`{ docs: '<feature id>' }` steps + a `capture:screenshots` script), so one suite produces both. fire's `visual-docs.yml` is the reference.
   - Priority: P2
 
@@ -120,6 +117,7 @@ _None open. The rate-limiter identity item is under Done._
 
 _Condensed, one line per item. Full detail lives in FEATURES.md and CHANGELOG.md. The section must stay, because vigil's own TASKS parser expects Done / In Progress / Todo._
 
+- [x] Done 2026-10-28: Journeys review findings, 2026-10-09, all fixed: confirmed relationships under "Needs review" (#276, fixed in #333), relationship graph edges crossing node labels (#277, fixed in #323), Pages site not linking the live dashboard (#279, fixed in #328).
 - [x] Done 2026-10-24: Tasks card now leads with the highest-priority group (P0 → P3) and collapses the lower-priority groups (#275).
 - [x] Done 2026-10-15: Showcase rollout: Pages + `/brag` spots live for vhs, skyview and nitsuah-io, Actions PRs on for vigil, fire and motor-pool (showcase board scan 2026-10-15).
 - [x] Done 2026-10-09: `visual_docs` scored (recipe-adoption P3 closed by the visual best-practices epic above).
