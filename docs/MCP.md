@@ -20,7 +20,29 @@ There is one key, not per-user tokens. Generate it once:
 openssl rand -hex 32
 ```
 
-Set it as `MCP_API_KEY` in Netlify (Site configuration → Environment variables) and redeploy. Keep a copy in your shell profile as `VIGIL_MCP_KEY`. To rotate, change both, then update every Claude Code client: rerun the `claude mcp add` command below (after `claude mcp remove vigil --scope user`), because it stored the old key in `~/.claude.json`. Clients using the `.mcp.json` setup only need the new `VIGIL_MCP_KEY` in their environment and a restart. Every holder of the key sees the whole portfolio, so treat it like a password.
+Set it as `MCP_API_KEY` in Netlify (Site configuration → Environment variables) and redeploy. Keep a copy in your shell profile as `VIGIL_MCP_KEY`. To rotate, change both, then update every Claude Code client: rerun the `claude mcp add` command below (after `claude mcp remove vigil --scope user`), because it stored the old key in `~/.claude.json`. Clients using the `.mcp.json` setup only need the new `VIGIL_MCP_KEY` in their environment and a restart. Every holder of this admin key has every scope below (whole portfolio, plus the one write tool), so treat it like a password. Never log or paste it; vigil logs only tool name and IP.
+
+### Least-privilege keys (optional)
+
+For a client that needs less, give it a scoped key instead of the admin key. Set `MCP_SCOPED_KEYS` in Netlify to a JSON array (keys of 16+ characters, e.g. `openssl rand -hex 32`):
+
+```json
+[{ "name": "ci-bot", "key": "<random>", "scopes": ["repo:read"] }]
+```
+
+Scopes come only from this server-side config, never from the token. Malformed JSON, short keys and unknown scopes are ignored (fail closed). Rotate by editing the array and redeploying. A valid key without the scope a tool needs gets HTTP 403 (JSON-RPC `-32003`); a missing or invalid key gets 401. Rate limit: 60 req/min per IP (in-memory).
+
+### ACL matrix
+
+| Tool / endpoint                                                                                             | Scope                 | Effect                                                                               |
+| ----------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------ |
+| `get_repo_health`, `list_tasks`, `list_repos`, `get_repo_details`, `search_repos`; `GET /api/context?repo=` | `repo:read`           | read, vigil DB only                                                                  |
+| `get_portfolio_overview`, `get_open_tasks`; `GET /api/context`                                              | `portfolio:read`      | read, vigil DB only                                                                  |
+| `get_security_summary`                                                                                      | `security:read`       | read, vigil DB only                                                                  |
+| `get_relationships`                                                                                         | `relationships:read`  | read                                                                                 |
+| `propose_relationship`                                                                                      | `relationships:write` | the only write: inserts a `proposed` edge between repos, confirmed by a person later |
+
+No tool calls GitHub or reads outside the vigil database, and none can modify repos. `/api/context` without a valid bearer or session still returns default repos only (guest), as before.
 
 ## 2. Add it to Claude Code
 

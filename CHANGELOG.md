@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Per-tool authorization on `/api/mcp` and `/api/context` (#345): optional least-privilege keys via `MCP_SCOPED_KEYS` (scopes `repo:read`, `portfolio:read`, `security:read`, `relationships:read`, `relationships:write`); `MCP_API_KEY` stays the all-scope admin key; keys compared in constant time; an authenticated key lacking a tool's scope gets 403, unknown tools are denied; ACL matrix in docs/MCP.md.
+
 ### Added
 
 - Security health badge ("Sec NN%") in the repo health row, scored with the same inputs as the Health Breakdown popup; "Sec —" when the repo has not been security-checked yet (vigil-340).

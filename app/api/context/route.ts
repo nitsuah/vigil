@@ -10,7 +10,7 @@
  *                  use the get_open_tasks MCP tool for the full filterable list)
  *
  * Auth (checked in order):
- *   1. Authorization: Bearer <MCP_API_KEY>  →  full portfolio access
+ *   1. Authorization: Bearer <key>  -> per scope: repo:read (?repo=) or portfolio:read (portfolio)
  *   2. NextAuth session cookie              →  repos this user may access
  *   3. No auth                              →  default repos only
  */
@@ -22,6 +22,7 @@ import { auth } from '@/auth';
 import { DEFAULT_REPOS } from '@/lib/default-repos';
 import { canAccessRepo, getAccessibleRepoIds } from '@/lib/repo-access';
 import logger from '@/lib/log';
+import { resolveScopes, hasScopes } from '@/lib/mcp-auth';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
 import { loadOpenTasks, rollupOpenTasks } from '@/lib/task-rollup';
 import { describeRelationship, listRelationships } from '@/lib/relationships';
@@ -40,22 +41,22 @@ function describeIssues(r: Row): string {
   return issues.length ? issues.join(', ') : 'low health score';
 }
 
-function isAuthenticated(req: NextRequest): boolean {
-  const apiKey = process.env.MCP_API_KEY;
-  if (apiKey) {
-    const authHeader = req.headers.get('authorization');
-    if (authHeader === `Bearer ${apiKey}`) return true;
-  }
-  return false;
-}
-
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const repoName = searchParams.get('repo');
 
     // Determine auth level: Bearer token > session > guest
-    const bearerOk  = isAuthenticated(req);
+    // A bearer token holds scopes (lib/mcp-auth): repo:read for ?repo=, portfolio:read for the
+    // portfolio view. A valid token lacking the scope is refused (403), never downgraded to guest.
+    const scopes    = resolveScopes(req.headers.get('authorization'));
+    const bearerOk  = scopes !== null;
+    if (scopes && !hasScopes(scopes, [repoName ? 'repo:read' : 'portfolio:read'])) {
+      return NextResponse.json(
+        { error: `Forbidden — requires scope: ${repoName ? 'repo:read' : 'portfolio:read'}` },
+        { status: 403 }
+      );
+    }
     const session   = bearerOk ? null : await auth();
     const authed    = bearerOk || !!session;
 
