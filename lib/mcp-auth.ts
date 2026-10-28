@@ -9,7 +9,7 @@
  * or an unknown tool all resolve to "no access". Tokens are opaque; scopes are
  * never read from the token itself.
  */
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 
 export const ALL_SCOPES = [
   'repo:read',
@@ -22,12 +22,16 @@ export type Scope = (typeof ALL_SCOPES)[number];
 
 export const MIN_SCOPED_KEY_LENGTH = 16;
 
-// Not password storage: both sides are MACed under a per-process random key only so the
-// buffers handed to timingSafeEqual have equal length and no early-exit timing leak.
-const MAC_KEY = randomBytes(32);
-const digest = (s: string): Buffer => createHmac('sha256', MAC_KEY).update(s).digest();
+/** Constant-time compare of two secrets without hashing; only the length can leak. */
 function safeEqual(a: string, b: string): boolean {
-  return timingSafeEqual(digest(a), digest(b));
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  const len = Math.max(ba.length, bb.length, 1);
+  const pa = Buffer.alloc(len);
+  const pb = Buffer.alloc(len);
+  ba.copy(pa);
+  bb.copy(pb);
+  return timingSafeEqual(pa, pb) && ba.length === bb.length;
 }
 
 function bearerToken(header: string | null): string | null {
