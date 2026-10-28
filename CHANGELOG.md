@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Pre-commit hook runs lint-staged from git worktrees too: it uses `node_modules/.bin/lint-staged` when present, otherwise lints in a `node:22` Docker container when Docker is running, and otherwise warns and skips (CI still runs lint). Dependencies install into a named volume, so later commits skip the install.
 - Metrics and Testing cards put a space between a value and its label (e.g. "2.4992 functions", "151 🟢 Pass") (#313).
 - PMO relationships: confirmed links get their own "Confirmed (n)" heading instead of sitting under "Needs review" (#276).
 - Visual Docs: "Open visual-docs CI recipe PR" now opens the PR instead of failing with `Unknown practice type: visual_docs`. The `visual_docs` practice is template-driven; `handleFixPractice` now skips the AI prompt chain and POSTs directly to `fix-best-practice` (#315).

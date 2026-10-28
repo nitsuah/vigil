@@ -1,2 +1,68 @@
 #!/usr/bin/env sh
-npx lint-staged
+# Run lint-staged on commit. Git worktrees have no node_modules, so:
+#   1. node_modules/.bin/lint-staged exists  -> run it locally
+#   2. else Docker is running                -> run it in a node:22 container
+#   3. else                                  -> warn and skip (CI runs lint)
+
+if [ -f node_modules/.bin/lint-staged ]; then
+  exec sh node_modules/.bin/lint-staged
+fi
+
+if ! docker info >/dev/null 2>&1; then
+  echo "husky - lint-staged skipped: no node_modules and Docker is not running." >&2
+  echo "husky - run 'npm install' or start Docker Desktop to lint locally. CI still runs lint." >&2
+  exit 0
+fi
+
+# Convert a Git Bash path to a Windows path Docker Desktop accepts.
+to_win() {
+  if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi
+}
+
+repo=$(pwd)
+gitdir=$(git rev-parse --path-format=absolute --git-dir)
+common=$(git rev-parse --path-format=absolute --git-common-dir)
+
+# lint-staged unsets GIT_DIR, then finds git through /app/.git. In a worktree that
+# file points at a host path, and the worktree's commondir (../..) points at /.
+# Bind-mount one-line replacements for both files so git resolves inside the container.
+gitfile=$(mktemp)
+printf 'gitdir: /gitdir\n' > "$gitfile"
+commonfile=$(mktemp)
+printf '../../gitcommon\n' > "$commonfile"
+
+# Inside the container: install deps into a named volume only when package.json
+# changed, then run lint-staged.
+script='
+h=$(sha256sum package.json | cut -d" " -f1)
+if [ "$(cat node_modules/.vigil-deps 2>/dev/null)" != "$h" ]; then
+  echo "husky - installing lint dependencies in node:22 (first run or package.json changed)" >&2
+  if ! npm install --no-package-lock --ignore-scripts --no-audit --no-fund >&2; then
+    echo "husky - npm install failed; lint-staged skipped (CI still runs lint)" >&2
+    exit 0
+  fi
+  echo "$h" > node_modules/.vigil-deps
+fi
+npx --no-install lint-staged
+'
+
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "$(to_win "$repo"):/app" \
+  -v vigil-lint-node-modules:/app/node_modules \
+  -v vigil-lint-npm-cache:/root/.npm \
+  -v "$(to_win "$gitdir"):/gitdir" \
+  -v "$(to_win "$common"):/gitcommon" \
+  -v "$(to_win "$gitfile"):/app/.git" \
+  -v "$(to_win "$commonfile"):/gitdir/commondir" \
+  -e GIT_COMMON_DIR=/gitcommon -e GIT_WORK_TREE=/app \
+  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
+  -w /app node:22 sh -c "$script"
+rc=$?
+rm -f "$gitfile" "$commonfile"
+
+# 125 means docker itself failed (e.g. image pull), not lint-staged.
+if [ "$rc" -eq 125 ]; then
+  echo "husky - lint-staged skipped: docker run failed (exit 125). CI still runs lint." >&2
+  exit 0
+fi
+exit "$rc"
