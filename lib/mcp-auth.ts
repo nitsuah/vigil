@@ -9,7 +9,7 @@
  * or an unknown tool all resolve to "no access". Tokens are opaque; scopes are
  * never read from the token itself.
  */
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 export const ALL_SCOPES = [
   'repo:read',
@@ -22,7 +22,10 @@ export type Scope = (typeof ALL_SCOPES)[number];
 
 export const MIN_SCOPED_KEY_LENGTH = 16;
 
-const digest = (s: string) => createHash('sha256').update(s).digest();
+// Not password storage: both sides are MACed under a per-process random key only so the
+// buffers handed to timingSafeEqual have equal length and no early-exit timing leak.
+const MAC_KEY = randomBytes(32);
+const digest = (s: string) => createHmac('sha256', MAC_KEY).update(s).digest();
 function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(digest(a), digest(b));
 }
