@@ -9,7 +9,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
     plugins: [react()],
     test: {
-        globals: true,
         environment: 'jsdom',
         exclude: ['**/node_modules/**', '**/*.spec.ts', '**/.claude/**'],
         include: ['**/*.test.{ts,tsx}'],
@@ -17,7 +16,6 @@ export default defineConfig({
             '@': path.resolve(__dirname, '../'),
         },
         setupFiles: [path.resolve(__dirname, '../tests/setup-env.ts')],
-        includeSource: ['**/*.{ts,tsx}'],
         coverage: {
             provider: 'v8',
             reporter: ['text', 'html', 'json'],

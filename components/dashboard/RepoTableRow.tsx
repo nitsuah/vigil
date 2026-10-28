@@ -1,6 +1,6 @@
 // Repository table row component
 
-import React, { Fragment, useMemo } from 'react';
+import React, { Fragment, useMemo, useState } from 'react';
 import {
   GitPullRequest,
   AlertCircle,
@@ -110,6 +110,22 @@ export function RepoTableRow({
 
   const docHealth = details ? calculateDocHealth(details.docStatuses, repoType) : null;
   const health = getHealthGrade(repo.health_score || 0);
+
+  // Same inputs and clock handling as the HealthBreakdown popup so the two agree.
+  const [now] = useState(() => Date.now());
+  const securityScore = useMemo<number | null>(
+    () =>
+      details && repo.security_last_checked != null
+        ? calculateHealthScore(
+            buildHealthScoreInputs(
+              { ...repo, health_profile: repo.health_profile || 'production' },
+              details,
+              now
+            )
+          ).security
+        : null,
+    [repo, details, now]
+  );
 
   return (
     <Fragment key={repo.id}>
@@ -316,41 +332,19 @@ export function RepoTableRow({
                 <span className={`text-lg font-bold ${health.color}`}>{health.grade}</span>
               )}
               {/* Security health badge - shown inline when details available */}
-              {details && repo.security_last_checked != null && (
+              {securityScore != null && (
                 <span
-                  title={`Security health: ${(() => {
-                    const score = calculateHealthScore(buildHealthScoreInputs(
-                      { ...repo, health_profile: repo.health_profile || 'production' },
-                      details,
-                      Date.now()
-                    )).security;
-                    return `${score}%`;
-                  })()}`}
-                  aria-label={`Security health: ${(calculateHealthScore(buildHealthScoreInputs(
-                    { ...repo, health_profile: repo.health_profile || 'production' },
-                    details,
-                    Date.now()
-                  )).security)}%`}
+                  title={`Security health: ${securityScore}%`}
+                  aria-label={`Security health: ${securityScore}%`}
                   className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                    (() => {
-                      const score = calculateHealthScore(buildHealthScoreInputs(
-                        { ...repo, health_profile: repo.health_profile || 'production' },
-                        details,
-                        Date.now()
-                      )).security;
-                      return score >= 80
-                        ? 'bg-green-500/20 text-green-400'
-                        : score >= 60
-                        ? 'bg-yellow-500/20 text-yellow-400'
-                        : 'bg-red-500/20 text-red-400';
-                    })()
+                    securityScore >= 80
+                      ? 'bg-green-500/20 text-green-400'
+                      : securityScore >= 60
+                      ? 'bg-yellow-500/20 text-yellow-400'
+                      : 'bg-red-500/20 text-red-400'
                   }`}
                 >
-                  Sec {(calculateHealthScore(buildHealthScoreInputs(
-                    { ...repo, health_profile: repo.health_profile || 'production' },
-                    details,
-                    Date.now()
-                  )).security)}%
+                  Sec {securityScore}%
                 </span>
               )}
               {details && repo.security_last_checked == null && (

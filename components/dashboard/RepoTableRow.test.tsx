@@ -2,11 +2,12 @@ import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { RepoTableRow } from './RepoTableRow';
 import type { Repo, RepoDetails } from '@/types/repo';
+import type { HealthScoreInputs } from '@/lib/health-score';
 import * as healthScoreModule from '@/lib/health-score';
 import * as healthScoreInputsModule from '@/lib/health-score-inputs';
 
 // Helper to wrap the row in a table for valid HTML
-const renderRow = (props: Parameters<typeof RepoTableRow>[0]) => {
+const renderRow = (props: Parameters<typeof RepoTableRow>[0]): ReturnType<typeof render> => {
   return render(
     <table>
       <tbody>
@@ -106,6 +107,20 @@ const baseDetails: RepoDetails = {
   },
 };
 
+/** Minimal valid score inputs; the scoring module is mocked so values are irrelevant. */
+const emptyInputs: HealthScoreInputs = {
+  docHealth: 0,
+  hasTests: false,
+  bestPracticesCount: 0,
+  bestPracticesHealthy: 0,
+  communityStandardsCount: 0,
+  communityStandardsHealthy: 0,
+  hasCI: false,
+  lastCommitDays: 0,
+  openIssuesCount: 0,
+  openPRsCount: 0,
+};
+
 /** Create complete default props for RepoTableRow tests. */
 function baseProps(
   overrides: Partial<Parameters<typeof RepoTableRow>[0]> = {}
@@ -113,7 +128,24 @@ function baseProps(
   return {
     repo: baseRepo,
     details: baseDetails,
+    isExpanded: false,
+    fixingDoc: false,
+    syncingRepo: null,
+    generatingSummary: null,
+    expandedHealth: false,
     onToggleHealth: vi.fn(),
+    expandedDocs: false,
+    onToggleDocs: vi.fn(),
+    onToggleExpanded: vi.fn(),
+    onRemove: vi.fn(),
+    onFixAllDocs: vi.fn(),
+    onFixDoc: vi.fn(),
+    onFixStandard: vi.fn(),
+    onFixAllStandards: vi.fn(),
+    onFixPractice: vi.fn(),
+    onFixAllPractices: vi.fn(),
+    onGenerateSummary: vi.fn(),
+    onSyncSingleRepo: vi.fn(),
     ...overrides,
   };
 }
@@ -137,7 +169,7 @@ describe('RepoTableRow – security health badge', () => {
       securityPosture: 100,
       healthProfile: 'production',
     });
-    buildHealthScoreInputs.mockReturnValue({} as any);
+    buildHealthScoreInputs.mockReturnValue(emptyInputs);
   });
 
   it('shows security health percentage when security_last_checked exists and details available', () => {
@@ -217,25 +249,10 @@ describe('RepoTableRow – security health badge', () => {
     expect(screen.queryByText(/Sec/)).toBeNull();
   });
 
-  it('displays security score matching HealthBreakdown popup', () => {
-    const mockSecurityScore = 72;
-    calculateHealthScore.mockReturnValue({
-      total: 75,
-      documentation: 80,
-      testing: 70,
-      bestPractices: 80,
-      community: 50,
-      activity: 85,
-      security: mockSecurityScore,
-      securityPosture: 80,
-      healthProfile: 'production',
-    });
-
+  it('computes the security score once per render of the row', () => {
     renderRow(baseProps());
-
-    // The inline badge should show the same security score as the popup
-    const inlineBadge = screen.getByText(`Sec ${mockSecurityScore}%`);
-    expect(inlineBadge).toBeTruthy();
+    expect(calculateHealthScore).toHaveBeenCalledTimes(1);
+    expect(buildHealthScoreInputs).toHaveBeenCalledTimes(1);
   });
 });
 
