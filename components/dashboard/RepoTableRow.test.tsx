@@ -5,6 +5,17 @@ import type { Repo, RepoDetails } from '@/types/repo';
 import * as healthScoreModule from '@/lib/health-score';
 import * as healthScoreInputsModule from '@/lib/health-score-inputs';
 
+// Helper to wrap the row in a table for valid HTML
+const renderRow = (props: Parameters<typeof RepoTableRow>[0]) => {
+  return render(
+    <table>
+      <tbody>
+        <RepoTableRow {...props} />
+      </tbody>
+    </table>
+  );
+};
+
 // ── Child-component mocks ─────────────────────────────────────────────────────
 
 vi.mock('@/components/dashboard/repo-row/HealthBreakdown', () => ({
@@ -130,9 +141,10 @@ describe('RepoTableRow – security health badge', () => {
   });
 
   it('shows security health percentage when security_last_checked exists and details available', () => {
-    render(<RepoTableRow {...baseProps()} />);
-    expect(screen.getByText('Sec 85%')).toBeTruthy();
-    expect(screen.getByText('Sec 85%')).toHaveAttribute('aria-label', 'Security health: 85%');
+    renderRow(baseProps());
+    const badge = screen.getByText('Sec 85%').closest('span');
+    expect(badge).toBeTruthy();
+    expect(badge?.getAttribute('aria-label')).toBe('Security health: 85%');
   });
 
   it('shows green badge for security score >= 80', () => {
@@ -147,10 +159,10 @@ describe('RepoTableRow – security health badge', () => {
       securityPosture: 100,
       healthProfile: 'production',
     });
-    render(<RepoTableRow {...baseProps()} />);
-    const badge = screen.getByText('Sec 90%');
-    expect(badge).toHaveClass('bg-green-500/20');
-    expect(badge).toHaveClass('text-green-400');
+    renderRow(baseProps());
+    const badge = screen.getByText('Sec 90%').closest('span');
+    expect(badge?.className).toContain('bg-green-500/20');
+    expect(badge?.className).toContain('text-green-400');
   });
 
   it('shows yellow badge for security score >= 60 and < 80', () => {
@@ -165,10 +177,10 @@ describe('RepoTableRow – security health badge', () => {
       securityPosture: 100,
       healthProfile: 'production',
     });
-    render(<RepoTableRow {...baseProps()} />);
-    const badge = screen.getByText('Sec 70%');
-    expect(badge).toHaveClass('bg-yellow-500/20');
-    expect(badge).toHaveClass('text-yellow-400');
+    renderRow(baseProps());
+    const badge = screen.getByText('Sec 70%').closest('span');
+    expect(badge?.className).toContain('bg-yellow-500/20');
+    expect(badge?.className).toContain('text-yellow-400');
   });
 
   it('shows red badge for security score < 60', () => {
@@ -183,10 +195,10 @@ describe('RepoTableRow – security health badge', () => {
       securityPosture: 100,
       healthProfile: 'production',
     });
-    render(<RepoTableRow {...baseProps()} />);
-    const badge = screen.getByText('Sec 45%');
-    expect(badge).toHaveClass('bg-red-500/20');
-    expect(badge).toHaveClass('text-red-400');
+    renderRow(baseProps());
+    const badge = screen.getByText('Sec 45%').closest('span');
+    expect(badge?.className).toContain('bg-red-500/20');
+    expect(badge?.className).toContain('text-red-400');
   });
 
   it('shows "Sec —" placeholder when security_last_checked is null', () => {
@@ -194,13 +206,14 @@ describe('RepoTableRow – security health badge', () => {
       ...baseRepo,
       security_last_checked: null,
     };
-    render(<RepoTableRow {...baseProps({ repo: repoWithoutSecurityCheck })} />);
-    expect(screen.getByText('Sec —')).toBeTruthy();
-    expect(screen.getByText('Sec —')).toHaveAttribute('aria-label', 'Security health unavailable (not checked yet)');
+    renderRow(baseProps({ repo: repoWithoutSecurityCheck }));
+    const badge = screen.getByText('Sec —').closest('span');
+    expect(badge).toBeTruthy();
+    expect(badge?.getAttribute('aria-label')).toBe('Security health unavailable (not checked yet)');
   });
 
   it('does not show security badge when details are not available', () => {
-    render(<RepoTableRow {...baseProps({ details: undefined })} />);
+    renderRow(baseProps({ details: undefined }));
     expect(screen.queryByText(/Sec/)).toBeNull();
   });
 
@@ -218,7 +231,7 @@ describe('RepoTableRow – security health badge', () => {
       healthProfile: 'production',
     });
 
-    render(<RepoTableRow {...baseProps()} />);
+    renderRow(baseProps());
 
     // The inline badge should show the same security score as the popup
     const inlineBadge = screen.getByText(`Sec ${mockSecurityScore}%`);
@@ -230,22 +243,22 @@ describe('RepoTableRow – security health badge', () => {
 
 describe('RepoTableRow – basic rendering', () => {
   it('shows the repo name', () => {
-    render(<RepoTableRow {...baseProps()} />);
+    renderRow(baseProps());
     expect(screen.getByText('my-repo')).toBeTruthy();
   });
 
   it('shows the health grade letter when details are absent', () => {
-    render(<RepoTableRow {...baseProps({ details: undefined })} />);
+    renderRow(baseProps({ details: undefined }));
     expect(screen.getByText('C')).toBeTruthy();
   });
 
   it('shows HealthBreakdown when details are present', () => {
-    render(<RepoTableRow {...baseProps()} />);
+    renderRow(baseProps());
     expect(screen.getByTestId('health-breakdown')).toBeTruthy();
   });
 
   it('shows TypeEditor when details are present', () => {
-    render(<RepoTableRow {...baseProps()} />);
+    renderRow(baseProps());
     expect(screen.getByTestId('type-editor')).toBeTruthy();
   });
 });
@@ -253,12 +266,11 @@ describe('RepoTableRow – basic rendering', () => {
 // ── Responsive behavior ──────────────────────────────────────────────────────
 
 describe('RepoTableRow – responsive columns', () => {
-  it('hides description on narrow screens (xl breakpoint)', () => {
-    render(<RepoTableRow {...baseProps()} />);
-    // Description column has class "hidden xl:table-cell"
-    // We can't easily test responsive classes in jsdom, but we can verify the class exists
-    const tableCells = screen.getAllByRole('gridcell');
-    // Should have multiple cells including the health score cell
-    expect(tableCells.length).toBeGreaterThan(3);
+  it('renders all table cells', () => {
+    renderRow(baseProps());
+    // The row renders multiple <td> elements (name, health, docs, metrics, etc.)
+    // Verify the structure by checking for multiple td elements
+    const tds = screen.getByRole('row').querySelectorAll('td');
+    expect(tds.length).toBeGreaterThan(3);
   });
 });

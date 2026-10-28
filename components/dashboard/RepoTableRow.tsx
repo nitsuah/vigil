@@ -24,6 +24,8 @@ import ExpandableRow from '@/components/ExpandableRow';
 import { Repo, RepoDetails } from '@/types/repo';
 import { detectRepoType, RepoType } from '@/lib/repo-type';
 import { calculateDocHealth } from '@/lib/doc-health';
+import { buildHealthScoreInputs } from '@/lib/health-score-inputs';
+import { calculateHealthScore } from '@/lib/health-score';
 import {
   getHealthGrade,
   formatTimeAgo,
