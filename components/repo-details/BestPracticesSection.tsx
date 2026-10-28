@@ -89,7 +89,15 @@ export function BestPracticesSection({
   const [internalExpanded, setInternalExpanded] = useState(false);
   const isExpanded = isExpandedProp !== undefined ? isExpandedProp : internalExpanded;
   const setIsExpanded = onToggleExpanded || (() => setInternalExpanded(!internalExpanded));
-  
+
+  // Nest actions_pr_permission under visual_docs when visual_docs exists
+  const actionsPr = bestPractices.find(p => p.practice_type === 'actions_pr_permission');
+  const hasVisual = bestPractices.some(p => p.practice_type === 'visual_docs');
+
+  const displayPractices = hasVisual
+    ? bestPractices.filter(p => p.practice_type !== 'actions_pr_permission')
+    : bestPractices;
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'healthy':
@@ -252,10 +260,29 @@ export function BestPracticesSection({
                     />
                   )}
 
-                  {practice.practice_type === 'actions_pr_permission' && practice.status !== 'healthy' && !!practice.details?.fix && (
+                  {practice.practice_type === 'actions_pr_permission' && !hasVisual && practice.status !== 'healthy' && !!practice.details?.fix && (
                     <div className="mt-2 ml-6 text-xs text-slate-400">
                       The visual-docs bot can&apos;t open its PR until this is on. Run (repo admin):
                       <HandoffCommand fix={practice.details.fix as RowFix} />
+                      {(() => {
+                        const fix = practice.details.fix as RowFix | undefined;
+                        if (fix && fix.kind === 'handoff') {
+                          const match = fix.command?.match(/\/repos\/([^/]+\/[^/]+)\/actions/);
+                          if (match) {
+                            return (
+                              <a
+                                href={`https://github.com/${match[1]}/settings/actions`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="ml-2 text-blue-400 hover:text-blue-300 underline text-[10px]"
+                              >
+                                Fix in Settings
+                              </a>
+                            );
+                          }
+                        }
+                        return null;
+                      })()}
                     </div>
                   )}
 
@@ -273,6 +300,44 @@ export function BestPracticesSection({
                       >
                         visual-docs recipe
                       </a>.
+                    </div>
+                  )}
+
+                  {/* Nested actions_pr_permission under visual_docs */}
+                  {hasVisual && actionsPr && practice.practice_type === 'visual_docs' && (
+                    <div className="mt-2 ml-6 text-xs">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(actionsPr.status)}
+                        <span className="text-slate-300">Actions PR permission</span>
+                        {getStatusBadge(actionsPr.status)}
+                      </div>
+                      <div className="text-slate-400 ml-5 mt-1">
+                        Lets workflows that open or update PRs (the visual-docs bot) do so. Other workflows don&apos;t need it.
+                      </div>
+                      {actionsPr.status !== 'healthy' && !!actionsPr.details?.fix && (
+                        <>
+                          <HandoffCommand fix={actionsPr.details.fix as RowFix} />
+                          {(() => {
+                            const fix = actionsPr.details.fix as RowFix | undefined;
+                            if (fix && fix.kind === 'handoff') {
+                              const match = fix.command?.match(/\/repos\/([^/]+\/[^/]+)\/actions/);
+                              if (match) {
+                                return (
+                                  <a
+                                    href={`https://github.com/${match[1]}/settings/actions`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="ml-2 text-blue-400 hover:text-blue-300 underline text-[10px]"
+                                  >
+                                    Fix in Settings
+                                  </a>
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </>
+                      )}
                     </div>
                   )}
 
