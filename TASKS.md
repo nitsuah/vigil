@@ -56,7 +56,6 @@ Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and P
     - stash: `agent/scripts/sotu.py` reads `visual_setup` from `/api/context` for the Visual setup table (filed as a stash task, not edited from here).
     - nitsuah/.github: add the Actions PR setting to `/promo`'s first-run checklist (`skills/promo/SKILL.md`).
 
-
 ### P2 - Medium
 
 - [ ] Fold the visual-docs screenshots into the journeys (`{ docs: '<feature id>' }` steps + a `capture:screenshots` script), so one suite produces both. fire's `visual-docs.yml` is the reference.
@@ -89,6 +88,7 @@ _None open. The rate-limiter identity item is under Done._
 - [ ] Per-user API tokens for MCP / `/api/context`.
   - Priority: P3
   - Context: today a single shared `MCP_API_KEY` (Netlify env) is the only machine credential — fine while vigil has one owner (see docs/MCP.md). Once other people use vigil, each needs their own revocable key scoped to the repos they can access (a bearer key currently means full-portfolio admin).
+  - Partial 2026-10-28 (#345): scoped least-privilege keys via `MCP_SCOPED_KEYS` shipped (per-tool scopes, ACL matrix in docs/MCP.md); per-user identity and revocation remain.
   - Acceptance Criteria: `api_tokens` table storing only a hash, with `user_id`, `name`, `created_at`, `last_used_at`, `revoked_at`; tokens resolve to the owning user's `getAccessibleRepoIds` scope rather than full portfolio; a small Settings panel to create (shown once), list, and revoke; the shared `MCP_API_KEY` keeps working as the admin key.
 
 - [ ] Add zombie-branch detection.

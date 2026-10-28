@@ -2,7 +2,7 @@
  * Vigil MCP Server — exposes repo intelligence as MCP tools.
  *
  * Transport: HTTP JSON-RPC 2.0 (MCP 2024-11-05 through 2025-06-18; Streamable HTTP, JSON-only)
- * Auth:      Authorization: Bearer <MCP_API_KEY>
+ * Auth:      Authorization: Bearer <MCP_API_KEY | scoped key>; per-tool scopes in TOOL_SCOPES (docs/MCP.md)
  * Rate limit: 60 req/min per IP (in-memory, resets on cold start)
  *
  * Tools
@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import logger from '@/lib/log';
+import { resolveScopes, hasScopes, type Scope } from '@/lib/mcp-auth';
 import { REPO_TIER_IDS, isRepoTier } from '@/lib/repo-tier';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
 import { loadOpenTasks, parseOpenTaskFilters, rollupOpenTasks, DEFAULT_ROLLUP_LIMIT, MAX_ROLLUP_LIMIT } from '@/lib/task-rollup';
@@ -63,15 +64,22 @@ function checkRateLimit(ip: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Auth
+// Auth (scopes live in lib/mcp-auth.ts; every tool must be listed here)
 // ---------------------------------------------------------------------------
 
-function authenticate(req: NextRequest): boolean {
-  const apiKey = process.env.MCP_API_KEY;
-  if (!apiKey) return false;
-  const auth = req.headers.get('authorization');
-  return auth === `Bearer ${apiKey}`;
-}
+/** Scope required per tool. A tool missing from this table is denied. */
+export const TOOL_SCOPES: Record<string, readonly Scope[]> = {
+  get_repo_health: ['repo:read'],
+  list_tasks: ['repo:read'],
+  list_repos: ['repo:read'],
+  get_repo_details: ['repo:read'],
+  get_portfolio_overview: ['portfolio:read'],
+  search_repos: ['repo:read'],
+  get_security_summary: ['security:read'],
+  get_open_tasks: ['portfolio:read'],
+  get_relationships: ['relationships:read'],
+  propose_relationship: ['relationships:write'],
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -786,7 +794,7 @@ export async function GET(req?: NextRequest) {
     supportedProtocolVersions: SUPPORTED_PROTOCOL_VERSIONS,
     description:     'Vigil repo intelligence as MCP tools — portfolio health, task tracking, security posture, and roadmap status',
     tools:           TOOLS.map(t => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
-    auth:            'Authorization: Bearer <MCP_API_KEY env var>',
+    auth:            'Authorization: Bearer <MCP_API_KEY env var, or a scoped key from MCP_SCOPED_KEYS>',
     rateLimit:       `${RATE_LIMIT} requests / minute per IP`,
     endpoint:        'POST /api/mcp',
     context_endpoint: 'GET /api/context (no auth — default repos; Bearer token — full portfolio)',
@@ -804,7 +812,8 @@ export async function POST(req: NextRequest) {
     return rpcError(null, -32029, 'Rate limit exceeded (60 req/min)', 429);
   }
 
-  if (!authenticate(req)) {
+  const granted = resolveScopes(req.headers.get('authorization'));
+  if (!granted) {
     return rpcError(null, -32001, 'Unauthorized — set Authorization: Bearer <MCP_API_KEY>', 401);
   }
 
@@ -858,6 +867,15 @@ export async function POST(req: NextRequest) {
       case 'tools/call': {
         const toolName = String(params.name ?? '');
         const toolArgs = (params.arguments ?? {}) as Row;
+
+        // Per-tool authorization: unknown tools and tools without a scope entry are denied.
+        const required = TOOL_SCOPES[toolName];
+        if (!Object.hasOwn(TOOL_SCOPES, toolName) || !TOOLS.some(t => t.name === toolName)) {
+          return rpcError(id, -32601, `Unknown tool: "${toolName}"`);
+        }
+        if (!hasScopes(granted, required)) {
+          return rpcError(id, -32003, `Forbidden — tool "${toolName}" requires scope: ${required.join(', ')}`, 403);
+        }
 
         let text: string;
         switch (toolName) {
