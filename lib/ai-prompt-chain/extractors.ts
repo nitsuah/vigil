@@ -1,6 +1,8 @@
 export function extractBadges(readme: string): string[] {
-  const badgeRegex = /\[!\[.*?\]\(.*?\)\]\(.*?\)/g;
-  return readme.match(badgeRegex) || [];
+  const badgeRegex = /\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)/g;
+  const inputCap = 100000;
+  const input = readme.length > inputCap ? readme.slice(0, inputCap) : readme;
+  return input.match(badgeRegex) || [];
 }
 
 export function extractBuildSteps(readme: string): string {

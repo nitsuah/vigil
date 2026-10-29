@@ -13,6 +13,15 @@ Some other text`;
   it('returns empty array when no badges', () => {
     expect(extractBadges('# Project\nNo badges here')).toEqual([]);
   });
+
+  it('matches on pathological input in linear time', () => {
+    const pathological = '['.repeat(50000) + ']('.repeat(50000) + ')'.repeat(50000);
+    const start = Date.now();
+    const result = extractBadges(pathological);
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(100);
+    expect(result).toEqual([]);
+  });
 });
 
 describe('extractBuildSteps', () => {
