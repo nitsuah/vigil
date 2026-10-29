@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fixed:** the pre-commit hook installs its lint dependencies from the lockfile (`npm ci`) and runs the repo's `postinstall` patch (which makes `gray-matter` work with `js-yaml` 5), so parser changes no longer fail the hook with `Cannot read properties of undefined (reading 'bind')`.
+
 - Pre-commit hook runs lint-staged from git worktrees too: it uses `node_modules/.bin/lint-staged` when present, otherwise lints in a `node:22` Docker container when Docker is running, and otherwise warns and skips (CI still runs lint). Dependencies install into a named volume, so later commits skip the install.
 - Metrics and Testing cards put a space between a value and its label (e.g. "2.4992 functions", "151 🟢 Pass") (#313).
 - PMO relationships: confirmed links get their own "Confirmed (n)" heading instead of sitting under "Needs review" (#276).
