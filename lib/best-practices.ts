@@ -444,7 +444,12 @@ export async function checkBestPractices(
         // Robust detection of CI/CD and deploy badges via URL + alt-text keywords with scoring
         const badgeMdRegex = /!\[[^\]]*\]\(([^)]+)\)/gi; // Markdown image
         const badgeLinkMdRegex = /\[!\[[^\]]*\]\(([^)]+)\)\]\(([^)]+)\)/gi; // Linked badge
-        const badgeHtmlRegex = /<img[^>]+src=["']([^"']+)["'][^>]*?(?:alt=["']([^"']+)["'])?[^>]*>/gi; // HTML image
+        // HTML image: find the tag first (one linear pass), then read src/alt from that tag only, so attribute
+        // patterns can never backtrack across the rest of the README.
+        const imgTagRegex = /<img\s[^>]*>/gi;
+        const imgSrcRegex = /\bsrc=["']([^"']+)["']/i;
+        const imgAltRegex = /\balt=["']([^"']+)["']/i;
+        const MAX_BADGE_SCAN_CHARS = 200_000;
         
         const urlPatterns: RegExp[] = [
             /github\.com\/.+?\/actions\/workflows\/.+?\.yml\/badge\.svg/i, // GitHub Actions workflow badge
@@ -488,10 +493,10 @@ export async function checkBestPractices(
         evidences.push(score(src));
     }
     // Extract HTML badges
-    for (const match of readmeContent.matchAll(badgeHtmlRegex)) {
-        const src = match[1] || '';
-        const alt = match[2];
-        evidences.push(score(src, alt));
+    for (const tag of readmeContent.slice(0, MAX_BADGE_SCAN_CHARS).matchAll(imgTagRegex)) {
+        const src = tag[0].match(imgSrcRegex)?.[1];
+        if (!src) continue;
+        evidences.push(score(src, tag[0].match(imgAltRegex)?.[1]));
     }
     const top = evidences.sort((a, b) => b.confidence - a.confidence)[0];
     const hasDeploy = evidences.some(e => e.kind === 'deploy' && e.confidence >= 0.6) ||

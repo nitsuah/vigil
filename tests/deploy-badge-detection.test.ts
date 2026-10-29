@@ -73,6 +73,20 @@ test('CI badge on deployable repo (has netlify.toml) yields dormant', async () =
   expect(deploy?.details.isDeployable).toBe(true);
 });
 
+test('handles a pathological unterminated HTML img tag quickly', async () => {
+  const pathologicalInput = '<img src="x" ' + 'a="b" '.repeat(50000);
+  const start = Date.now();
+  const res = await checkBestPractices('owner', 'repo', mockOctokit(), [], pathologicalInput);
+  expect(Date.now() - start).toBeLessThan(500);
+  expect(res.practices.find((p) => p.type === 'deploy_badge')).toBeDefined();
+});
+
+test('HTML img badge still uses alt text and src (netlify badge in an img tag is a deploy badge)', async () => {
+  const readme = '<a href="https://app.netlify.com"><img alt="Netlify deploy status" src="https://api.netlify.com/api/v1/badges/0a1b2c3d-0000-0000-0000-000000000000/deploy-status"></a>';
+  const res = await checkBestPractices('owner', 'repo', mockOctokit(), [], readme);
+  expect(res.practices.find((p) => p.type === 'deploy_badge')?.status).toBe('healthy');
+});
+
 test('multiple CI badges (linting, fast, slow) on research repo yields healthy', async () => {
   const readme = `
 [![CI fast](https://github.com/nitsuah/kryptos/actions/workflows/ci-fast.yml/badge.svg)](https://github.com/nitsuah/kryptos/actions)
