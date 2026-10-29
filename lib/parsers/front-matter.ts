@@ -14,8 +14,10 @@ const OPTIONS = {
 
 /** The document with its leading front-matter block (opening fence line through the closing "---" line) removed. */
 function stripFrontMatterBlock(content: string): string {
-    const lines = content.split(/\r?\n/);
-    if (!lines[0]?.startsWith('---')) return content;
+    // gray-matter ignores a leading UTF-8 BOM, so the opening fence can sit behind one.
+    const text = content.charCodeAt(0) === 0xfeff ? content.slice(1) : content;
+    const lines = text.split(/\r?\n/);
+    if (!lines[0]?.startsWith('---')) return text;
     const close = lines.findIndex((line, i) => i > 0 && line.trimEnd() === '---');
     return close === -1 ? '' : lines.slice(close + 1).join('\n');
 }
