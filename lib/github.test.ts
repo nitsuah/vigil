@@ -23,6 +23,7 @@ const mockGitGetTree = vi.fn();
 const mockActionsListWorkflowRunsForRepo = vi.fn();
 const mockRequest = vi.fn();
 const mockGraphql = vi.fn();
+const mockIssuesListForRepo = vi.fn();
 
 const mockOctokitInstance = {
     repos: {
@@ -47,6 +48,9 @@ const mockOctokitInstance = {
     },
     actions: {
         listWorkflowRunsForRepo: mockActionsListWorkflowRunsForRepo,
+    },
+    issues: {
+        listForRepo: mockIssuesListForRepo,
     },
     request: mockRequest,
     graphql: mockGraphql,
@@ -327,6 +331,69 @@ describe('GitHubClient', () => {
             mockGraphql.mockRejectedValue(new Error('GraphQL error'));
             const branches = await client.getZombieBranches('repo-1');
             expect(branches).toEqual([]);
+        });
+    });
+
+    describe('getOpenIssueLabels', () => {
+        const page = (n: number, extra: object = {}) =>
+            Array.from({ length: n }, () => ({ labels: [], ...extra }));
+
+        it('should paginate through multiple pages', async () => {
+            mockIssuesListForRepo
+                .mockResolvedValueOnce({ data: page(100) })
+                .mockResolvedValueOnce({ data: page(5) });
+
+            const result = await client.getOpenIssueLabels('repo-1');
+
+            expect(result.issues).toHaveLength(105);
+            expect(result.complete).toBe(true);
+            expect(mockIssuesListForRepo).toHaveBeenCalledTimes(2);
+            expect(mockIssuesListForRepo.mock.calls[1]).toMatchObject([{ page: 2 }]);
+        });
+
+        it('should extract labels and PR flag correctly', async () => {
+            mockIssuesListForRepo.mockResolvedValue({
+                data: [
+                    { labels: ['bug', { name: 'security' }] },
+                    { labels: [], pull_request: { url: 'x' } },
+                ],
+            });
+
+            const result = await client.getOpenIssueLabels('repo-1');
+
+            expect(result.issues[0].labels).toEqual(['bug', 'security']);
+            expect(result.issues[0].isPullRequest).toBe(false);
+            expect(result.issues[1].isPullRequest).toBe(true);
+            expect(result.complete).toBe(true);
+        });
+
+        it('should cap at MAX_OPEN_ISSUE_PAGES and mark incomplete', async () => {
+            mockIssuesListForRepo.mockResolvedValue({ data: page(100) });
+
+            const result = await client.getOpenIssueLabels('repo-1');
+
+            expect(mockIssuesListForRepo).toHaveBeenCalledTimes(10);
+            expect(result.issues).toHaveLength(1000);
+            expect(result.complete).toBe(false);
+        });
+
+        it('should return empty result on permission error without throwing', async () => {
+            mockIssuesListForRepo.mockRejectedValue(Object.assign(new Error('Forbidden'), { status: 403 }));
+
+            const result = await client.getOpenIssueLabels('repo-1');
+
+            expect(result).toEqual({ issues: [], complete: false });
+        });
+
+        it('should return partial results when mid-walk error occurs', async () => {
+            mockIssuesListForRepo
+                .mockResolvedValueOnce({ data: page(100) })
+                .mockRejectedValueOnce(new Error('Network error'));
+
+            const result = await client.getOpenIssueLabels('repo-1');
+
+            expect(result.issues).toHaveLength(100);
+            expect(result.complete).toBe(false);
         });
     });
 

@@ -126,6 +126,10 @@ export class GitHubClient {
     return Repos.getIssues(this.octokit, owner || this.owner, repo, state, perPage);
   }
 
+  getOpenIssueLabels(repo: string, owner?: string): Promise<Repos.OpenIssueLabels> {
+    return Repos.getOpenIssueLabels(this.octokit, owner || this.owner, repo);
+  }
+
   // PR operations
   getPullRequests(repo: string, owner?: string): Promise<PullRequestInfo[]> {
     return PRs.getPullRequests(this.octokit, owner || this.owner, repo);

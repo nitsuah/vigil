@@ -400,3 +400,54 @@ export async function getIssues(
     return [];
   }
 }
+
+export interface OpenIssueLabels {
+  /** Every open item the issues endpoint returned: issues and pull requests. Use isPullRequest to tell them apart. */
+  issues: { labels: string[]; isPullRequest: boolean }[];
+  /** false when the page cap was hit, or an API error stopped the walk. The issues collected so far are still returned. */
+  complete: boolean;
+}
+
+const OPEN_ISSUES_PER_PAGE = 100;
+const MAX_OPEN_ISSUE_PAGES = 10;
+
+/**
+ * Labels of every open issue and PR in the repo, paging through
+ * GET /repos/{owner}/{repo}/issues?state=open. Never throws.
+ */
+export async function getOpenIssueLabels(
+  octokit: Octokit,
+  owner: string,
+  repo: string
+): Promise<OpenIssueLabels> {
+  const issues: OpenIssueLabels['issues'] = [];
+  let complete = false;
+  try {
+    for (let page = 1; page <= MAX_OPEN_ISSUE_PAGES; page++) {
+      const { data } = await octokit.issues.listForRepo({
+        owner,
+        repo,
+        state: 'open',
+        per_page: OPEN_ISSUES_PER_PAGE,
+        page,
+      });
+      for (const item of data) {
+        issues.push({
+          labels: (item.labels ?? [])
+            .map((l) => (typeof l === 'string' ? l : l.name))
+            .filter((l): l is string => !!l),
+          isPullRequest: !!item.pull_request,
+        });
+      }
+      // A short page means there is no next page.
+      if (data.length < OPEN_ISSUES_PER_PAGE) {
+        complete = true;
+        break;
+      }
+    }
+  } catch (error) {
+    // 403, 404, 5xx, network: keep what we have and mark it incomplete.
+    logger.warn(`[GitHub] Failed to fetch open issue labels for ${owner}/${repo}:`, error);
+  }
+  return { issues, complete };
+}
