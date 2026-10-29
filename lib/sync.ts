@@ -12,6 +12,7 @@ import { buildHealthScoreInputs, type RepoHealthFields, type RepoHealthRows } fr
 import { isTestFile, parseTestFile } from './parsers/test-cases';
 import { aggregateCodeDensity } from './parsers/code-density';
 import { ensureSchema } from './db';
+import { summarizeOpenIssues, type IssueCategorySnapshot } from './issue-categories';
 import logger from './log';
 
 const ORG_GITHUB_FALLBACK_CACHE = new Map<string, { files: string[]; expiresAt: number }>();
@@ -209,6 +210,13 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         console.warn(`Could not get issues for ${repo.name}:`, (e as Error).message);
     }
 
+    let issueCategoryCounts: IssueCategorySnapshot | null = null;
+    try {
+        issueCategoryCounts = summarizeOpenIssues(await github.getOpenIssueLabels(repo.name, owner));
+    } catch (e) {
+        console.warn(`Could not get issue labels for ${repo.name}:`, (e as Error).message);
+    }
+
     // Fetch security configuration
     let hasSecurityPolicy = false;
     let hasSecurityAdvisories = false;
@@ -245,7 +253,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             has_security_policy, has_security_advisories, private_vuln_reporting_enabled,
             dependabot_alerts_enabled, dependabot_alert_count, code_scanning_enabled, code_scanning_alert_count,
             secret_scanning_enabled, secret_scanning_alert_count, security_last_checked, private_repo, visibility_verified,
-            open_issues_count, stale_issues_count
+            open_issues_count, stale_issues_count, issue_category_counts
         )
         VALUES (
             ${repo.name}, ${repo.fullName}, ${repo.description}, ${repo.language}, ${repo.stars},
@@ -257,7 +265,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             ${hasSecurityPolicy}, ${hasSecurityAdvisories}, ${privateVulnReportingEnabled},
             ${dependabotAlertsEnabled}, ${dependabotAlertCount}, ${codeScanningEnabled}, ${codeScanningAlertCount},
             ${secretScanningEnabled}, ${secretScanningAlertCount}, NOW(), ${repo.isPrivate}, TRUE,
-            ${openIssuesCountDetailed}, ${staleIssuesCount}
+            ${openIssuesCountDetailed}, ${staleIssuesCount}, ${issueCategoryCounts === null ? null : JSON.stringify(issueCategoryCounts)}
         )
         ON CONFLICT (full_name) DO UPDATE SET
           description = EXCLUDED.description,
@@ -306,7 +314,8 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
           secret_scanning_alert_count = EXCLUDED.secret_scanning_alert_count,
           security_last_checked = EXCLUDED.security_last_checked,
           open_issues_count = EXCLUDED.open_issues_count,
-          stale_issues_count = EXCLUDED.stale_issues_count
+          stale_issues_count = EXCLUDED.stale_issues_count,
+          issue_category_counts = EXCLUDED.issue_category_counts
         RETURNING id;
     `;
     const repoId = repoRows[0].id;
