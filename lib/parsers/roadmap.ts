@@ -1,4 +1,4 @@
-import matter from 'gray-matter';
+import { parseFrontMatter } from './front-matter';
 
 export interface RoadmapData {
     frontmatter: {
@@ -51,7 +51,7 @@ export function diffRoadmapItems(existing: ExistingRoadmapRow[], parsed: Roadmap
 }
 
 export function parseRoadmap(content: string): RoadmapData {
-    const { data: frontmatter, content: markdown } = matter(content);
+    const { data: frontmatter, content: markdown } = parseFrontMatter(content);
 
     const items: RoadmapItemData[] = [];
     const lines = markdown.split(/\r?\n/);

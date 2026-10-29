@@ -1,4 +1,4 @@
-import matter from 'gray-matter';
+import { parseFrontMatter } from './front-matter';
 
 export interface FeaturesData {
     frontmatter: {
@@ -15,7 +15,7 @@ export interface FeatureCategory {
 }
 
 export function parseFeatures(content: string): FeaturesData {
-    const { data: frontmatter, content: markdown } = matter(content);
+    const { data: frontmatter, content: markdown } = parseFrontMatter(content);
 
     const categories: FeatureCategory[] = [];
     const lines = markdown.split(/\r?\n/);
