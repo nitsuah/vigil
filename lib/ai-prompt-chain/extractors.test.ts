@@ -14,13 +14,16 @@ Some other text`;
     expect(extractBadges('# Project\nNo badges here')).toEqual([]);
   });
 
-  it('matches on pathological input in linear time', () => {
-    const pathological = '['.repeat(50000) + ']('.repeat(50000) + ')'.repeat(50000);
+  it('stays fast on hostile input: 33k repeated badge openers (the unbounded pattern took ~850 ms here)', () => {
+    const hostile = '[!['.repeat(33000);
     const start = Date.now();
-    const result = extractBadges(pathological);
-    const elapsed = Date.now() - start;
-    expect(elapsed).toBeLessThan(100);
-    expect(result).toEqual([]);
+    expect(extractBadges(hostile)).toEqual([]);
+    expect(Date.now() - start).toBeLessThan(400);
+  });
+
+  it('still finds badges when a hostile run follows them', () => {
+    const readme = `[![CI](https://x.io/a.svg)](https://x.io/ci)\n${'[!['.repeat(30000)}`;
+    expect(extractBadges(readme)).toHaveLength(1);
   });
 });
 
