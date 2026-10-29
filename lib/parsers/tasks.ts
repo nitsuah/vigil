@@ -1,4 +1,4 @@
-import matter from 'gray-matter';
+import { parseFrontMatter } from './front-matter';
 import { Task, TaskPriority } from '@/types/repo';
 
 export interface TaskData {
@@ -21,7 +21,7 @@ function headingPriority(heading: string): TaskPriority | null {
 }
 
 export function parseTasks(content: string): TaskData {
-    const { data: frontmatter, content: markdown } = matter(content);
+    const { data: frontmatter, content: markdown } = parseFrontMatter(content);
 
     const tasks: Task[] = [];
     const lines = markdown.split(/\r?\n/);

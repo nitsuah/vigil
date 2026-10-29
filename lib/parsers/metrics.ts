@@ -1,4 +1,4 @@
-import matter from 'gray-matter';
+import { parseFrontMatter } from './front-matter';
 
 export interface MetricsData {
     frontmatter: {
@@ -16,7 +16,7 @@ export interface MetricItemData {
 }
 
 export function parseMetrics(content: string): MetricsData {
-    const { data: frontmatter, content: markdown } = matter(content);
+    const { data: frontmatter, content: markdown } = parseFrontMatter(content);
 
     const metrics: MetricItemData[] = [];
 
