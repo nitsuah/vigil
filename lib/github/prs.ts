@@ -3,6 +3,14 @@ import { githubCache } from '@/lib/github-cache';
 import logger from '@/lib/log';
 import type { PullRequestInfo } from './types';
 
+const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1 MiB — matches GitHub Contents API limit
+
+function assertFileSize(content: string, label: string): void {
+  if (Buffer.byteLength(content, 'utf-8') > MAX_FILE_SIZE_BYTES) {
+    throw new Error(`${label} exceeds ${MAX_FILE_SIZE_BYTES} byte limit`);
+  }
+}
+
 export async function getPullRequests(
   octokit: Octokit,
   owner: string,
@@ -330,6 +338,8 @@ export async function createPrForFile(
   content: string,
   message: string
 ): Promise<string> {
+  assertFileSize(content, 'File content');
+
   const { data: repoData } = await octokit.repos.get({ owner, repo });
   const defaultBranch = repoData.default_branch;
 
@@ -376,6 +386,9 @@ export async function createPrForFiles(
   files: Array<{ path: string; content: string }>,
   message: string
 ): Promise<string> {
+  // Validate every file before any API call so an oversized file cannot leave a half-created branch behind.
+  for (const file of files) assertFileSize(file.content, `File content (${file.path})`);
+
   const { data: repoData } = await octokit.repos.get({ owner, repo });
   logger.debug('[createPrForFiles] Repo status', {
     archived: repoData.archived,

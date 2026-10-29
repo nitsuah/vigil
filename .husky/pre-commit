@@ -31,13 +31,16 @@ printf 'gitdir: /gitdir\n' > "$gitfile"
 commonfile=$(mktemp)
 printf '../../gitcommon\n' > "$commonfile"
 
-# Inside the container: install deps into a named volume only when package.json
-# changed, then run lint-staged.
+# Inside the container: install deps into a named volume only when package.json or the lockfile
+# changed, then run lint-staged. Install from the lockfile (npm ci), because an unlocked install can resolve
+# newer transitive versions than CI and production use. --ignore-scripts skips the husky prepare step, but the
+# postinstall script patches gray-matter for js-yaml 5 (without it every parser test throws on import), so the
+# container runs that one script explicitly.
 script='
-h=$(sha256sum package.json | cut -d" " -f1)
+h=$(cat package.json package-lock.json | sha256sum | cut -d" " -f1)
 if [ "$(cat node_modules/.vigil-deps 2>/dev/null)" != "$h" ]; then
-  echo "husky - installing lint dependencies in node:22 (first run or package.json changed)" >&2
-  if ! npm install --no-package-lock --ignore-scripts --no-audit --no-fund >&2; then
+  echo "husky - installing lint dependencies in node:22 (first run or dependencies changed)" >&2
+  if ! { npm ci --ignore-scripts --no-audit --no-fund && npm run postinstall --if-present; } >&2; then
     echo "husky - npm install failed; lint-staged skipped (CI still runs lint)" >&2
     exit 0
   fi
