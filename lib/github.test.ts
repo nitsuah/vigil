@@ -827,6 +827,73 @@ describe('GitHubClient', () => {
         errorSpy.mockRestore();
     });
 
+    it('should reject createPrForFile when content exceeds 1 MiB', async () => {
+        mockGetRepo.mockResolvedValue({ data: { default_branch: 'main' } });
+        mockGitGetRef.mockResolvedValue({ data: { object: { sha: 'abc123' } } });
+        mockGitCreateRef.mockResolvedValue({ data: { ref: 'refs/heads/feat/test' } });
+
+        const largeContent = 'x'.repeat(1024 * 1024 + 1); // 1 MiB + 1 byte
+
+        await expect(
+            client.createPrForFile('repo-1', 'feat/test', 'large.txt', largeContent, 'docs: add large')
+        ).rejects.toThrow('exceeds 1048576 byte limit');
+
+        expect(mockCreateOrUpdateFileContents).not.toHaveBeenCalled();
+        expect(mockPullsCreate).not.toHaveBeenCalled();
+    });
+
+    it('should reject createPrForFiles when any file content exceeds 1 MiB', async () => {
+        mockGetRepo.mockResolvedValue({ data: { default_branch: 'main', archived: false, disabled: false, permissions: { push: true } } });
+        mockGitGetRef.mockResolvedValue({ data: { object: { sha: 'sha-main' } } });
+        mockGitCreateRef.mockResolvedValue({ data: { ref: 'refs/heads/feat/multi' } });
+
+        const largeContent = 'x'.repeat(1024 * 1024 + 1);
+
+        await expect(
+            client.createPrForFiles('repo-1', 'feat/multi', [{ path: 'big.txt', content: largeContent }], 'chore: add large')
+        ).rejects.toThrow('exceeds 1048576 byte limit');
+
+        expect(mockGitCreateRef).not.toHaveBeenCalled();
+        expect(mockCreateOrUpdateFileContents).not.toHaveBeenCalled();
+        expect(mockPullsCreate).not.toHaveBeenCalled();
+    });
+
+    it('should accept createPrForFile with content under 1 MiB', async () => {
+        mockGetRepo.mockResolvedValue({ data: { default_branch: 'main' } });
+        mockGitGetRef.mockResolvedValue({ data: { object: { sha: 'abc123' } } });
+        mockGitCreateRef.mockResolvedValue({ data: { ref: 'refs/heads/feat/test' } });
+        mockCreateOrUpdateFileContents.mockResolvedValue({ data: { commit: { sha: 'c1' } } });
+        mockPullsCreate.mockResolvedValue({ data: { html_url: 'https://github.com/pr/1' } });
+
+        const okContent = 'x'.repeat(1024 * 1024); // exactly 1 MiB
+
+        const prUrl = await client.createPrForFile('repo-1', 'feat/test', 'ok.txt', okContent, 'docs: add ok');
+
+        expect(prUrl).toBe('https://github.com/pr/1');
+        expect(mockCreateOrUpdateFileContents).toHaveBeenCalled();
+    });
+
+    it('should accept createPrForFiles with all files under 1 MiB', async () => {
+        vi.useFakeTimers();
+        mockGetRepo.mockResolvedValue({ data: { default_branch: 'main', archived: false, disabled: false, permissions: { push: true } } });
+        mockGitGetRef.mockResolvedValue({ data: { object: { sha: 'sha-main' } } });
+        mockGitCreateRef.mockResolvedValue({ data: { ref: 'refs/heads/feat/multi' } });
+        mockGetContent.mockRejectedValue({ status: 404 });
+        mockCreateOrUpdateFileContents.mockResolvedValue({ data: { commit: { sha: 'c1' } } });
+        mockPullsCreate.mockResolvedValue({ data: { html_url: 'https://github.com/pr/2' } });
+
+        const okContent = 'x'.repeat(1024 * 1024); // exactly 1 MiB
+
+        const prPromise = client.createPrForFiles('repo-1', 'feat/multi', [{ path: 'ok.txt', content: okContent }], 'chore: add ok');
+        await vi.runAllTimersAsync();
+        const prUrl = await prPromise;
+
+        expect(prUrl).toBe('https://github.com/pr/2');
+        expect(mockCreateOrUpdateFileContents).toHaveBeenCalled();
+
+        vi.useRealTimers();
+    });
+
     it('should return file last modified date when commit exists', async () => {
         mockListCommits.mockResolvedValue({
             data: [{ commit: { committer: { date: '2024-01-01T00:00:00Z' } } }],
