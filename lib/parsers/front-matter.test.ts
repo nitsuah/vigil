@@ -34,4 +34,18 @@ describe('front matter never executes code', () => {
         expect(parseFrontMatter('---json\n{"a":1}\n---\nbody').data).toEqual({ a: 1 });
         expect(parseFrontMatter('no front matter\n').content).toBe('no front matter\n');
     });
+
+    it('drops a refused fence instead of returning its text as document content', () => {
+        const doc = '---js\n- [ ] injected task inside the fence\n---\n## P1\n- [ ] real task\n';
+        const out = parseFrontMatter(doc);
+        expect(out.data).toEqual({});
+        expect(out.content).not.toContain('injected task');
+        expect(out.content).toContain('real task');
+        const tasks = parseTasks(doc).tasks.map((t) => t.title);
+        expect(tasks).not.toContain('injected task inside the fence');
+    });
+
+    it('still throws on genuinely malformed YAML so callers abort instead of acting on half a document', () => {
+        expect(() => parseFrontMatter('---\nkey: [unclosed\n---\nbody')).toThrow();
+    });
 });
