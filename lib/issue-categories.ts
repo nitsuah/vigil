@@ -41,3 +41,15 @@ export function countIssuesByCategory(
   }
   return counts;
 }
+
+export interface IssueCategorySnapshot extends IssueCategoryCounts {
+  complete: boolean;
+}
+
+/** Counts one label scan. `complete` says whether every open issue page was read. */
+export function summarizeOpenIssues(
+  scan: { issues: Array<{ labels: string[]; isPullRequest?: boolean }>; complete: boolean },
+  map: LabelMap = DEFAULT_LABEL_MAP,
+): IssueCategorySnapshot {
+  return { ...countIssuesByCategory(scan.issues, map), complete: scan.complete };
+}

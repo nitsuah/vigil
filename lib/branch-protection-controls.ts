@@ -11,9 +11,10 @@ export interface BranchProtectionDetails {
   allowForcePushes?: boolean;
   allowDeletions?: boolean;
   requiredConversationResolution?: boolean;
+  unreadable?: boolean;
 }
 
-export type ControlStatus = 'enabled' | 'missing';
+export type ControlStatus = 'enabled' | 'missing' | 'unknown';
 
 export interface BranchControl {
   id: string;
@@ -47,7 +48,7 @@ export function branchProtectionControls(details: BranchProtectionDetails, fullN
   const controls: BranchControl[] = checks.map(([id, label, ok]) => ({
     id,
     label,
-    status: isProtected && ok ? 'enabled' : 'missing',
+    status: isProtected && ok ? 'enabled' : details.unreadable === true ? 'unknown' : 'missing',
     fixUrl,
   }));
   return { controls, enabled: controls.filter((c) => c.status === 'enabled').length, total: controls.length };
