@@ -116,3 +116,45 @@ describe('BestPracticesSection nesting actions_pr_permission under visual_docs',
     expect(fixLink.getAttribute('href')).toBe('https://github.com/o/x/settings/actions');
   });
 });
+
+describe('BestPracticesSection journeys handoff', () => {
+  const handoff = {
+    kind: 'handoff',
+    skill: '/journeys',
+    command: '/journeys x',
+    inputs: ['repo: ~/code/x', 'add Playwright journeys that write docs/screenshots/<feature-id>.png (docs/VISUAL_DOCS.md)'],
+  };
+
+  it('shows the journeys handoff command and inputs under the label when not healthy', () => {
+    render(
+      <BestPracticesSection
+        bestPractices={[
+          { practice_type: 'journeys', status: 'missing', details: { exists: false, dirs: [], workflow: null, informational: true, fix: handoff } },
+        ]}
+        repoName="o/x"
+        isAuthenticated={true}
+        isExpanded={true}
+      />
+    );
+
+    expect(screen.getByText('Journeys')).toBeTruthy();
+    expect(screen.getByText('/journeys x')).toBeTruthy();
+    expect(screen.getByText('repo: ~/code/x')).toBeTruthy();
+  });
+
+  it('shows no journeys handoff when healthy, even if a fix is present', () => {
+    render(
+      <BestPracticesSection
+        bestPractices={[
+          { practice_type: 'journeys', status: 'healthy', details: { exists: true, dirs: ['e2e/journeys'], workflow: '.github/workflows/journeys.yml', informational: true, fix: handoff } },
+        ]}
+        repoName="o/x"
+        isAuthenticated={true}
+        isExpanded={true}
+      />
+    );
+
+    expect(screen.getByText('Journeys')).toBeTruthy();
+    expect(screen.queryByText('/journeys x')).toBeNull();
+  });
+});

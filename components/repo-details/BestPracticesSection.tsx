@@ -252,6 +252,12 @@ export function BestPracticesSection({
                     </div>
                   </div>
 
+                  {practice.practice_type === 'journeys' && practice.status !== 'healthy' && !!practice.details?.fix && (
+                    <div className="mt-2 ml-6 text-xs">
+                      <HandoffCommand fix={practice.details.fix as RowFix} />
+                    </div>
+                  )}
+
                   {practice.practice_type === 'visual_docs' && Array.isArray(practice.details?.rows) && (
                     <VisualRowsList
                       rows={practice.details.rows as VisualRow[]}
