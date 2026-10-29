@@ -14,6 +14,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { writeAtomic } from '../lib/atomic-write';
 import { detectVisualDocs, findVisualAssets, visualAutomation } from '../lib/visual-docs';
 import {
     auditShowcase,
@@ -48,13 +49,6 @@ function listFiles(root: string): string[] {
     };
     walk(root, '');
     return out;
-}
-
-/** Write via a temp file and rename, so an interrupted run never leaves a truncated file. */
-function writeAtomic(file: string, content: string) {
-    const tmp = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.tmp`);
-    fs.writeFileSync(tmp, content);
-    fs.renameSync(tmp, file);
 }
 
 const read = (root: string, rel: string): string | null => {
