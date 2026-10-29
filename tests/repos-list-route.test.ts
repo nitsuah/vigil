@@ -75,4 +75,17 @@ describe('GET /api/repos', () => {
         expect(body[0]).toMatchObject({ name: 'a', token_density: 8.25, comment_to_code_ratio: 0.18, stars: 3 });
         expect(typeof body[0].token_density).toBe('number');
     });
+
+    it('returns issue_category_counts from the database', async () => {
+        mockAuth.mockResolvedValue({ user: { name: 'u' }, userId: 'gh-42', expires: 'x' } as Session);
+        const { db } = makeDb([
+            { name: 'a', issue_category_counts: { total: 2, vulnerability: 1, bug: 1, feedback: 0, other: 0, complete: true } },
+            { name: 'b', issue_category_counts: null },
+        ]);
+        mockGetNeonClient.mockReturnValue(db as never);
+
+        const body = await (await GET(request())).json();
+        expect(body[0].issue_category_counts).toEqual({ total: 2, vulnerability: 1, bug: 1, feedback: 0, other: 0, complete: true });
+        expect(body[1].issue_category_counts).toBeNull();
+    });
 });

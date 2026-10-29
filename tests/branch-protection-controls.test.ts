@@ -34,4 +34,11 @@ describe('branchProtectionControls', () => {
     expect(byId['no-deletion']).toBe('enabled');
     expect(r.enabled).toBe(1);
   });
+
+  it('reports controls as unknown, not missing, when branch protection is unreadable', () => {
+    const r = branchProtectionControls({ protected: false, unreadable: true, allowForcePushes: false, allowDeletions: false }, 'o/x');
+    expect(r.enabled).toBe(0);
+    expect(r.total).toBe(9);
+    expect(r.controls.every((c) => c.status === 'unknown')).toBe(true);
+  });
 });

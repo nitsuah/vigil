@@ -5,6 +5,7 @@ import { BestPractice } from '@/types/repo';
 import { getStatusColor } from '@/lib/expandable-row-utils';
 import { useState } from 'react';
 import type { RowFix, VisualDocsDetails, VisualRow } from '@/lib/visual-docs';
+import { branchProtectionControls, type BranchProtectionDetails } from '@/lib/branch-protection-controls';
 
 function HandoffCommand({ fix }: { fix: RowFix }) {
   if (fix.kind !== 'handoff') return null;
@@ -63,6 +64,30 @@ function VisualRowsList({ rows, canFix, onFix }: { rows: VisualRow[]; canFix: bo
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+function BranchControlList({ details, repoName }: { details: BranchProtectionDetails; repoName: string }) {
+  const summary = branchProtectionControls(details, repoName);
+  return (
+    <div className="mt-2 ml-6 text-xs">
+      <div className="text-[10px] text-slate-400">{`${summary.enabled} of ${summary.total} controls`}</div>
+      <ul className="mt-1 space-y-1">
+        {summary.controls.map((c) => (
+          <li key={c.id} className="flex items-center gap-2">
+            {c.status === 'enabled' && <CheckCircle2 aria-label="Enabled" className="h-3 w-3 text-green-400" />}
+            {c.status === 'missing' && <XCircle aria-label="Missing" className="h-3 w-3 text-red-400" />}
+            {c.status === 'unknown' && <Circle aria-label="Unknown" className="h-3 w-3 text-slate-500" />}
+            <span className="text-slate-300">{c.label}</span>
+            {c.status === 'missing' && (
+              <a href={c.fixUrl} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 underline text-[10px]">
+                Fix in Settings
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -251,6 +276,10 @@ export function BestPracticesSection({
                       {getStatusBadge(practice.status)}
                     </div>
                   </div>
+
+                  {practice.practice_type === 'branch_protection' && repoName && (
+                    <BranchControlList details={practice.details as BranchProtectionDetails} repoName={repoName} />
+                  )}
 
                   {practice.practice_type === 'journeys' && practice.status !== 'healthy' && !!practice.details?.fix && (
                     <div className="mt-2 ml-6 text-xs">
