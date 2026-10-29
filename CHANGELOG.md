@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The demo portfolio and API mocks moved from `e2e/visual-docs/screenshots.spec.ts` to `e2e/fixtures/demo-portfolio.ts`, shared by the screenshots and the journeys.
 
 ### Fixed
+- **Fixed:** `extractBadges` uses bounded character classes and caps its input at 100,000 characters, so a malformed README can no longer cause super-linear regex backtracking.
 
 - **Fixed:** `createPrForFile` and `createPrForFiles` reject file content over 1 MiB (the Contents API limit) before making any GitHub call, so an oversized file can no longer leave a half-created branch.
 

@@ -165,18 +165,27 @@ function jobBlocks(yaml: string): string[] {
 const NPM_SCREENSHOT_SCRIPT = /npm\s+run\s+[\w:-]*screenshots?\b/i;
 const SCREENSHOT_RUNNER = new RegExp(`playwright\\s+test|capture[-_:]?screenshots?|${NPM_SCREENSHOT_SCRIPT.source}`, 'i');
 /**
- * What it captures: a spec or script named after screenshots
- * (tests/e2e/screenshots.spec.mjs, scripts/publish-screenshot-gallery.sh), or a
- * screenshots/ folder the job creates or mounts, or a Playwright visual-docs
- * config (vigil's `playwright.visual-docs.config.ts`), or an npm script named
- * after screenshots (`npm run capture:screenshots`). An artifact *named*
- * "playwright-screenshots" that uploads test-results/ on failure matches none of these.
+ * What it captures: a screenshots/ folder the job creates or mounts, or an
+ * npm script named after screenshots (`npm run capture:screenshots`). Script
+ * names and visual-docs configs are matched per token by hasScreenshotToken.
  */
 const SCREENSHOT_TARGET = new RegExp(
-    String.raw`[\w./-]*screenshots?[\w.-]*\.(?:m?[jt]s|cjs|sh|py)\b|mkdir\s+(?:-p\s+)?\S*screenshots\b|-v\s+\S*screenshots:|playwright[\w.-]*visual[\w.-]*\.config\.[cm]?[jt]s\b|` +
-        NPM_SCREENSHOT_SCRIPT.source,
+    String.raw`mkdir\s+(?:-p\s+)?\S*screenshots\b|-v\s+\S*screenshots:|` + NPM_SCREENSHOT_SCRIPT.source,
     'i',
 );
+
+/** Script/config names are matched per path-like token, never across the whole job, so cost stays linear. */
+const SCREENSHOT_SCRIPT_TOKEN = /screenshots?[\w.-]*\.(?:m?[jt]s|cjs|sh|py)\b/i;
+const VISUAL_DOCS_CONFIG_TOKEN = /playwright[\w.-]*visual[\w.-]*\.config\.[cm]?[jt]s\b/i;
+const MAX_TOKEN_LENGTH = 300;
+
+function hasScreenshotToken(job: string): boolean {
+    for (const token of job.split(/[^\w./-]+/)) {
+        if (token.length > MAX_TOKEN_LENGTH) continue;
+        if (SCREENSHOT_SCRIPT_TOKEN.test(token) || VISUAL_DOCS_CONFIG_TOKEN.test(token)) return true;
+    }
+    return false;
+}
 
 /**
  * Content check: the workflow regenerates product screenshots, whatever its
@@ -185,7 +194,7 @@ const SCREENSHOT_TARGET = new RegExp(
  */
 export function isScreenshotWorkflow(yaml: string): boolean {
     // Runner and target must sit in the same job: a test job plus an unrelated screenshots mount isn't a capture.
-    return jobBlocks(stripYamlComments(yaml)).some(j => SCREENSHOT_RUNNER.test(j) && SCREENSHOT_TARGET.test(j));
+    return jobBlocks(stripYamlComments(yaml)).some(j => SCREENSHOT_RUNNER.test(j) && (SCREENSHOT_TARGET.test(j) || hasScreenshotToken(j)));
 }
 
 /** Store listing images, promo tiles, or icon/favicon/logo generation. */

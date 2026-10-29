@@ -13,6 +13,18 @@ Some other text`;
   it('returns empty array when no badges', () => {
     expect(extractBadges('# Project\nNo badges here')).toEqual([]);
   });
+
+  it('stays fast on hostile input: 33k repeated badge openers (the unbounded pattern took ~850 ms here)', () => {
+    const hostile = '[!['.repeat(33000);
+    const start = Date.now();
+    expect(extractBadges(hostile)).toEqual([]);
+    expect(Date.now() - start).toBeLessThan(400);
+  });
+
+  it('still finds badges when a hostile run follows them', () => {
+    const readme = `[![CI](https://x.io/a.svg)](https://x.io/ci)\n${'[!['.repeat(30000)}`;
+    expect(extractBadges(readme)).toHaveLength(1);
+  });
 });
 
 describe('extractBuildSteps', () => {

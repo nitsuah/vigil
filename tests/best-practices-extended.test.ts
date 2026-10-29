@@ -37,7 +37,17 @@ function mockOctokitWithBranchError(): Octokit {
   return {
     rest: {
       repos: {
-        getBranchProtection: vi.fn().mockRejectedValue(new Error('404 Not Found')),
+        getBranchProtection: vi.fn().mockRejectedValue(Object.assign(new Error('404 Not Found'), { status: 404 })),
+      },
+    },
+  } as unknown as Octokit;
+}
+
+function mockOctokitWithBranchStatus(status: number): Octokit {
+  return {
+    rest: {
+      repos: {
+        getBranchProtection: vi.fn().mockRejectedValue(Object.assign(new Error(`${status} error`), { status })),
       },
     },
   } as unknown as Octokit;
@@ -84,9 +94,36 @@ test('detects missing branch protection when not protected', async () => {
 test('handles branch protection check error gracefully', async () => {
   const octokit = mockOctokitWithBranchError();
   const result = await checkBestPractices('owner', 'repo', octokit, []);
-  
+
   const branchProt = result.practices.find((p) => p.type === 'branch_protection');
   expect(branchProt?.status).toBe('missing');
+});
+
+test('404 on branch protection is missing and not unreadable', async () => {
+  const octokit = mockOctokitWithBranchStatus(404);
+  const result = await checkBestPractices('owner', 'repo', octokit, []);
+
+  const branchProt = result.practices.find((p) => p.type === 'branch_protection');
+  expect(branchProt?.status).toBe('missing');
+  expect(branchProt?.details.unreadable).toBe(false);
+});
+
+test('403 on branch protection stays missing but sets unreadable', async () => {
+  const octokit = mockOctokitWithBranchStatus(403);
+  const result = await checkBestPractices('owner', 'repo', octokit, []);
+
+  const branchProt = result.practices.find((p) => p.type === 'branch_protection');
+  expect(branchProt?.status).toBe('missing');
+  expect(branchProt?.details.unreadable).toBe(true);
+});
+
+test('500 on branch protection stays missing but sets unreadable', async () => {
+  const octokit = mockOctokitWithBranchStatus(500);
+  const result = await checkBestPractices('owner', 'repo', octokit, []);
+
+  const branchProt = result.practices.find((p) => p.type === 'branch_protection');
+  expect(branchProt?.status).toBe('missing');
+  expect(branchProt?.details.unreadable).toBe(true);
 });
 
 test('detects gitignore when present', async () => {

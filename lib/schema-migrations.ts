@@ -102,6 +102,9 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS stale_review_pr_numbers JSONB DEFAULT '[]'::jsonb`,
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS zombie_branch_count INTEGER DEFAULT 0`,
 
+    // repos: open issue category counts (lib/issue-categories.ts). NULL = not synced yet.
+    `ALTER TABLE repos ADD COLUMN IF NOT EXISTS issue_category_counts JSONB`,
+
     // repos: identity keyed by full_name (owner/name) so repos with the same
     // short name across different owners don't share state. Drop the UNIQUE on
     // `name` (it would block inserting a second repo with a colliding short

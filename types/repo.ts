@@ -102,6 +102,7 @@ export interface Repo {
   open_issues?: number;
   open_issues_count?: number | null;
   stale_issues_count?: number | null;
+  issue_category_counts?: { total: number; vulnerability: number; bug: number; feedback: number; other: number; complete: boolean } | null;
   readme_last_updated?: string | null;
   total_loc?: number;
   loc_language_breakdown?: Record<string, number>;
