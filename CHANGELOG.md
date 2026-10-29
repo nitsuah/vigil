@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed:** `extractBadges` uses bounded character classes and caps its input at 100,000 characters, so a malformed README can no longer cause super-linear regex backtracking.
 
 - **Fixed:** the diff preview bounds its LCS matrix (about 4 million cells); larger inputs match only the identical leading and trailing lines instead of freezing the browser tab (`lib/diff-lcs.ts`).
+- **Fixed:** `createPrForFile` and `createPrForFiles` reject file content over 1 MiB (the Contents API limit) before making any GitHub call, so an oversized file can no longer leave a half-created branch.
 - **Fixed:** the pre-commit hook's Docker fallback (used in git worktrees, where there is no local `node_modules`) installs its lint dependencies from the lockfile (`npm ci`) and runs the repo's `postinstall` patch (which makes `gray-matter` work with `js-yaml` 5), so parser changes no longer fail there with `Cannot read properties of undefined (reading 'bind')`. A local checkout that installed with scripts disabled still needs `npm run postinstall`.
 - **Fixed:** the README HTML-badge scan in `checkBestPractices` finds each `<img>` tag in one linear pass, reads `src`/`alt` from that tag only, and scans at most 200,000 characters, so a malformed README can no longer cause super-linear regex backtracking.
 
