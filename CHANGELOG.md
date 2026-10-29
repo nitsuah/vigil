@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Fixed (critical):** the roadmap, tasks, features and metrics parsers no longer let a repository document run JavaScript on the server through a `---js` front-matter fence. Front matter is now parsed as YAML/JSON only (`lib/parsers/front-matter.ts`); other languages are treated as no front matter.
+
 - Per-tool authorization on `/api/mcp` and `/api/context` (#345): optional least-privilege keys via `MCP_SCOPED_KEYS` (scopes `repo:read`, `portfolio:read`, `security:read`, `relationships:read`, `relationships:write`); `MCP_API_KEY` stays the all-scope admin key; keys compared in constant time; an authenticated key lacking a tool's scope gets 403, unknown tools are denied; ACL matrix in docs/MCP.md.
 
 ### Added
@@ -36,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed:** `extractBadges` uses bounded character classes and caps its input at 100,000 characters, so a malformed README can no longer cause super-linear regex backtracking.
 
 - **Fixed:** `createPrForFile` and `createPrForFiles` reject file content over 1 MiB (the Contents API limit) before making any GitHub call, so an oversized file can no longer leave a half-created branch.
+- **Fixed:** the README HTML-badge scan in `checkBestPractices` finds each `<img>` tag in one linear pass, reads `src`/`alt` from that tag only, and scans at most 200,000 characters, so a malformed README can no longer cause super-linear regex backtracking.
 
 - Pre-commit hook runs lint-staged from git worktrees too: it uses `node_modules/.bin/lint-staged` when present, otherwise lints in a `node:22` Docker container when Docker is running, and otherwise warns and skips (CI still runs lint). Dependencies install into a named volume, so later commits skip the install.
 - Metrics and Testing cards put a space between a value and its label (e.g. "2.4992 functions", "151 🟢 Pass") (#313).
