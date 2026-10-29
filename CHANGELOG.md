@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The demo portfolio and API mocks moved from `e2e/visual-docs/screenshots.spec.ts` to `e2e/fixtures/demo-portfolio.ts`, shared by the screenshots and the journeys.
 
 ### Fixed
+- **Fixed:** `extractBadges` uses bounded character classes and caps its input at 100,000 characters, so a malformed README can no longer cause super-linear regex backtracking.
 
 - **Fixed:** the showcase script's atomic write now creates its temp file exclusively with an unpredictable name (`lib/atomic-write.ts`), so a symlink planted at the temp path is refused instead of followed and truncated.
 

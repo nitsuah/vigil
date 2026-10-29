@@ -330,6 +330,14 @@ describe('in-house screenshot pipelines and brand automation', () => {
         expect(isScreenshotWorkflow(same)).toBe(true);
     });
 
+    it('classifies pathological long workflow values in linear time', () => {
+        const t = Date.now();
+        expect(isScreenshotWorkflow('- run: ' + 'screenshots'.repeat(20000) + '\n- run: npx playwright test\n')).toBe(false);
+        expect(isScreenshotWorkflow('- run: ' + 'playwright'.repeat(20000) + '\n- run: npx playwright test\n')).toBe(false);
+        expect(Date.now() - t).toBeLessThan(1000);
+        expect(isScreenshotWorkflow('- run: npx playwright test\n- run: bash ./scripts/publish-screenshot-gallery.sh\n')).toBe(true);
+    });
+
     it('CLI: content evidence replaces the file-name guess for screenshots', () => {
         const fileList = ['.github/workflows/ci.yml', 'config/playwright.config.mjs', 'tests/e2e/screenshots.spec.mjs', 'screenshots/a.png'];
         expect(visualAutomation(fileList, [], [], { screenshotWorkflows: ['.github/workflows/ci.yml'] }).screenshots).toBe(true);
