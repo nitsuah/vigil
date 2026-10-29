@@ -158,3 +158,69 @@ describe('BestPracticesSection journeys handoff', () => {
     expect(screen.queryByText('/journeys x')).toBeNull();
   });
 });
+
+describe('BestPracticesSection branch protection controls', () => {
+  afterEach(cleanup);
+
+  it('renders enabled and missing controls with fix links', () => {
+    render(
+      <BestPracticesSection
+        bestPractices={[
+          {
+            practice_type: 'branch_protection',
+            status: 'dormant',
+            details: { protected: true, requiresReviews: true, requiredApprovingReviews: 1, allowForcePushes: false, allowDeletions: false },
+          },
+        ]}
+        repoName="o/x"
+        isAuthenticated={true}
+        isExpanded={true}
+      />
+    );
+
+    expect(screen.getByText('3 of 9 controls')).toBeTruthy();
+    const fixLinks = screen.getAllByRole('link', { name: /Fix in Settings/ });
+    expect(fixLinks).toHaveLength(6);
+    expect(fixLinks[0].getAttribute('href')).toBe('https://github.com/o/x/settings/branches');
+  });
+
+  it('renders unknown controls with no fix links', () => {
+    render(
+      <BestPracticesSection
+        bestPractices={[
+          {
+            practice_type: 'branch_protection',
+            status: 'missing',
+            details: { exists: false, unreadable: true },
+          },
+        ]}
+        repoName="o/x"
+        isAuthenticated={true}
+        isExpanded={true}
+      />
+    );
+
+    expect(screen.getByText('0 of 9 controls')).toBeTruthy();
+    const unknownElements = screen.getAllByLabelText('Unknown');
+    expect(unknownElements).toHaveLength(9);
+    expect(screen.queryByRole('link', { name: /Fix in Settings/ })).toBeNull();
+  });
+
+  it('renders nothing when repoName is omitted', () => {
+    render(
+      <BestPracticesSection
+        bestPractices={[
+          {
+            practice_type: 'branch_protection',
+            status: 'dormant',
+            details: { protected: true, requiresReviews: true, requiredApprovingReviews: 1, allowForcePushes: false, allowDeletions: false },
+          },
+        ]}
+        isAuthenticated={true}
+        isExpanded={true}
+      />
+    );
+
+    expect(screen.queryByText(/controls$/)).toBeNull();
+  });
+});
