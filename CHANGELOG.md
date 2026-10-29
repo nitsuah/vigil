@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fixed:** the diff preview bounds its LCS matrix (about 4 million cells); larger inputs match only the identical leading and trailing lines instead of freezing the browser tab (`lib/diff-lcs.ts`).
+
 - Pre-commit hook runs lint-staged from git worktrees too: it uses `node_modules/.bin/lint-staged` when present, otherwise lints in a `node:22` Docker container when Docker is running, and otherwise warns and skips (CI still runs lint). Dependencies install into a named volume, so later commits skip the install.
 - Metrics and Testing cards put a space between a value and its label (e.g. "2.4992 functions", "151 🟢 Pass") (#313).
 - PMO relationships: confirmed links get their own "Confirmed (n)" heading instead of sitting under "Needs review" (#276).

@@ -1,4 +1,5 @@
 import React from 'react';
+import { computeLCS } from '@/lib/diff-lcs';
 
 interface DiffViewProps {
   original: string;
@@ -349,58 +350,6 @@ function computeDiff(original: string, modified: string): DiffLine[] {
   
   // Collapse context to focus on changes
   return collapseContext(diff);
-}
-
-/**
- * Computes the Longest Common Subsequence (LCS) between two arrays of strings.
- * Optionally ignores whitespace differences by trimming lines before comparison.
- * Note: When ignoreWhitespace is true, whitespace-only changes will be treated as unchanged.
- * @param a - The first array of lines.
- * @param b - The second array of lines.
- * @param ignoreWhitespace - If true, trims lines before comparison. Default: false.
- */
-function computeLCS(
-  a: string[],
-  b: string[],
-  ignoreWhitespace: boolean = false
-): Array<{ oldIdx: number; newIdx: number }> {
-  const m = a.length;
-  const n = b.length;
-  
-  // Normalize lines for comparison if requested
-  const aNorm = ignoreWhitespace ? a.map(line => line.trim()) : a;
-  const bNorm = ignoreWhitespace ? b.map(line => line.trim()) : b;
-  
-  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-  
-  // Build LCS length matrix
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (aNorm[i - 1] === bNorm[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1;
-      } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-      }
-    }
-  }
-  
-  // Backtrack to find LCS
-  const lcs: Array<{ oldIdx: number; newIdx: number }> = [];
-  let i = m, j = n;
-  
-  while (i > 0 && j > 0) {
-    if (aNorm[i - 1] === bNorm[j - 1]) {
-      lcs.unshift({ oldIdx: i - 1, newIdx: j - 1 });
-      i--;
-      j--;
-    } else if (dp[i - 1][j] > dp[i][j - 1]) {
-      i--;
-    } else {
-      j--;
-    }
-  }
-  
-  return lcs;
 }
 
 function collapseContext(diff: DiffLine[]): DiffLine[] {
