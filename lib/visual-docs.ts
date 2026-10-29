@@ -89,16 +89,26 @@ export function needsActionsPrPermission(fileList: string[]): boolean {
     return fileList.some(f => /^\.github\/workflows\/[^/]*(visual|screenshot|diagram)[^/]*\.ya?ml$/i.test(f));
 }
 
+/** Copyable handoff for repos without healthy nightly journeys (same shape as the visualRows handoffs). */
+export function journeysHandoff(repo: string): RowFix {
+    return {
+        kind: 'handoff',
+        skill: '/journeys',
+        command: `/journeys ${repo}`,
+        inputs: [`repo: ${repoPath(repo)}`, 'add Playwright journeys that write docs/screenshots/<feature-id>.png (docs/VISUAL_DOCS.md)'],
+    };
+}
+
 /**
  * Nightly journeys (nitsuah/.github journeys/STANDARD.md), from the file list:
  * healthy = a journeys workflow plus tests/journeys/ or e2e/journeys/,
  * dormant = journeys without the nightly, missing = neither. Informational.
  */
-export function detectJourneys(fileList: string[]): { status: HealthState; details: { exists: boolean; dirs: string[]; workflow: string | null; informational: true } } {
+export function detectJourneys(fileList: string[], repo?: string): { status: HealthState; details: { exists: boolean; dirs: string[]; workflow: string | null; informational: true; fix: RowFix | null } } {
     const dirs = [...new Set(fileList.map(f => f.match(/^((?:tests|e2e)\/journeys)\//)?.[1]).filter((d): d is string => !!d))];
     const workflow = fileList.find(f => /^\.github\/workflows\/[^/]*journeys[^/]*\.ya?ml$/i.test(f)) ?? null;
     const status: HealthState = dirs.length && workflow ? 'healthy' : dirs.length ? 'dormant' : 'missing';
-    return { status, details: { exists: dirs.length > 0, dirs, workflow, informational: true } };
+    return { status, details: { exists: dirs.length > 0, dirs, workflow, informational: true, fix: repo && status !== 'healthy' ? journeysHandoff(repo) : null } };
 }
 
 export interface VisualDocsDetails {

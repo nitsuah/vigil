@@ -120,6 +120,13 @@ describe('journeys and the Actions PR setting', () => {
         expect(detectJourneys(['src/a.ts']).status).toBe('missing');
     });
 
+    it('hands off a /journeys run until nightly journeys are healthy', () => {
+        expect(detectJourneys(['src/a.ts'], 'fire').details.fix).toMatchObject({ kind: 'handoff', command: '/journeys fire' });
+        expect(detectJourneys(['tests/journeys/a.spec.ts'], 'fire').details.fix).toMatchObject({ kind: 'handoff' });
+        expect(detectJourneys(['e2e/journeys/a.spec.ts', '.github/workflows/journeys.yml'], 'fire').details.fix).toBeNull();
+        expect(detectJourneys(['src/a.ts']).details.fix).toBeNull();
+    });
+
     it('needs the setting only for workflows whose bot opens PRs', () => {
         expect(needsActionsPrPermission(['.github/workflows/visual-docs.yml'])).toBe(true);
         expect(needsActionsPrPermission(['.github/workflows/journeys.yml'])).toBe(false);
