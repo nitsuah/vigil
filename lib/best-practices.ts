@@ -581,7 +581,7 @@ export async function checkBestPractices(
     practices.push({ type: VISUAL_DOCS_PRACTICE, ...visualDocs });
 
     // 12. Nightly journeys — informational until rolled out
-    practices.push({ type: JOURNEYS_PRACTICE, ...detectJourneys(fileList) });
+    practices.push({ type: JOURNEYS_PRACTICE, ...detectJourneys(fileList, repo) });
 
     // 13. "Allow GitHub Actions to create and approve pull requests": only checked
     // (and scored) when a visual-docs workflow that opens PRs needs it. Skipped when
