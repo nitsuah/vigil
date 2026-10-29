@@ -39,6 +39,7 @@ export async function checkBestPractices(
         status: 'missing',
         details: {
             exists: false,
+            unreadable: false,
             protected: false,
             requiresReviews: false,
             requiredApprovingReviews: 0,
@@ -59,6 +60,10 @@ export async function checkBestPractices(
         }
     };
     
+    let unreadable = false;
+    const httpStatus = (e: unknown): number | undefined =>
+        e instanceof Error && 'status' in e ? (e as { status?: number }).status : undefined;
+
     try {
         // Try 'main' first, then 'master' as fallback
         let protection;
@@ -71,11 +76,7 @@ export async function checkBestPractices(
             });
             protection = data;
         } catch (mainError: unknown) {
-            // If main branch not found or not protected, try master
-            const status = mainError instanceof Error && 'status' in mainError
-                ? (mainError as { status?: number }).status
-                : undefined;
-            if (status === 404) {
+            if (httpStatus(mainError) === 404) {
                 try {
                     const { data } = await octokit.rest.repos.getBranchProtection({
                         owner,
@@ -84,9 +85,13 @@ export async function checkBestPractices(
                     });
                     protection = data;
                     branchName = 'master';
-                } catch {
-                    // Neither main nor master has protection
+                } catch (masterError: unknown) {
+                    // 404 on master: neither branch is protected, so it stays missing.
+                    if (httpStatus(masterError) !== 404) unreadable = true;
                 }
+            } else {
+                // Non-404 on main (403, 500, network): unreadable, and do not try master.
+                unreadable = true;
             }
         }
 
@@ -302,6 +307,7 @@ export async function checkBestPractices(
     } catch {
         console.warn(`Failed to check branch protection for ${owner}/${repo}`);
     }
+    branchProtection.details.unreadable = unreadable;
     practices.push(branchProtection);
 
     // 2. .gitignore

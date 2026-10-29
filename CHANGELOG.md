@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The demo portfolio and API mocks moved from `e2e/visual-docs/screenshots.spec.ts` to `e2e/fixtures/demo-portfolio.ts`, shared by the screenshots and the journeys.
 
 ### Fixed
+- **Fixed:** `extractBadges` uses bounded character classes and caps its input at 100,000 characters, so a malformed README can no longer cause super-linear regex backtracking.
 
 - **Fixed:** the diff preview bounds its LCS matrix (about 4 million cells); larger inputs match only the identical leading and trailing lines instead of freezing the browser tab (`lib/diff-lcs.ts`).
 

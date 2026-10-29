@@ -1,6 +1,9 @@
 export function extractBadges(readme: string): string[] {
-  const badgeRegex = /\[!\[.*?\]\(.*?\)\]\(.*?\)/g;
-  return readme.match(badgeRegex) || [];
+  // Bounded lengths: each start position does a bounded number of steps, so total work is linear in the input.
+  const badgeRegex = /\[!\[[^\]\n]{0,300}\]\([^)\n]{0,2000}\)\]\([^)\n]{0,2000}\)/g;
+  const inputCap = 100000;
+  const input = readme.length > inputCap ? readme.slice(0, inputCap) : readme;
+  return input.match(badgeRegex) || [];
 }
 
 export function extractBuildSteps(readme: string): string {
