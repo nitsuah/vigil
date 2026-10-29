@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fixed:** `createPrForFile` and `createPrForFiles` reject file content over 1 MiB (the Contents API limit) before making any GitHub call, so an oversized file can no longer leave a half-created branch.
+
 - Pre-commit hook runs lint-staged from git worktrees too: it uses `node_modules/.bin/lint-staged` when present, otherwise lints in a `node:22` Docker container when Docker is running, and otherwise warns and skips (CI still runs lint). Dependencies install into a named volume, so later commits skip the install.
 - Metrics and Testing cards put a space between a value and its label (e.g. "2.4992 functions", "151 🟢 Pass") (#313).
 - PMO relationships: confirmed links get their own "Confirmed (n)" heading instead of sitting under "Needs review" (#276).
