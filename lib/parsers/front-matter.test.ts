@@ -30,9 +30,23 @@ describe('front matter never executes code', () => {
     });
 
     it('still parses ordinary YAML and JSON front matter', () => {
-        expect(parseFrontMatter('---\ntitle: Hello\ncount: 2\n---\nbody').data).toEqual({ title: 'Hello', count: 2 });
-        expect(parseFrontMatter('---json\n{"a":1}\n---\nbody').data).toEqual({ a: 1 });
+        const yaml = parseFrontMatter('---\ntitle: Hello\ncount: 2\n---\nbody');
+        expect(yaml.data).toEqual({ title: 'Hello', count: 2 });
+        expect(yaml.content).not.toContain('---');
+        expect(yaml.content).toContain('body');
+        const json = parseFrontMatter('---json\n{"a":1}\n---\nbody');
+        expect(json.data).toEqual({ a: 1 });
+        expect(json.content).not.toContain('---');
+        expect(json.content).toContain('body');
         expect(parseFrontMatter('no front matter\n').content).toBe('no front matter\n');
+    });
+
+    it('drops a refused fence that sits behind a UTF-8 BOM', () => {
+        const out = parseFrontMatter('﻿---js\n- [ ] injected task inside the fence\n---\n## P1\n- [ ] real task\n');
+        expect(out.data).toEqual({});
+        expect(out.content).not.toContain('---');
+        expect(out.content).not.toContain('injected task');
+        expect(out.content).toContain('real task');
     });
 
     it('drops a refused fence instead of returning its text as document content', () => {
