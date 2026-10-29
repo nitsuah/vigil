@@ -146,7 +146,7 @@ export function checkCommunityStandards(
 
     // FLOW-TASKS agent prompt — per-repo, with org .github fallback
     const hasFlowTasksInRepoLocal = lowerFiles.includes('.github/prompts/flow-tasks.md');
-    const hasFlowTasksInFallback = fallbackSet.has('.github/prompts/flow-tasks.md');
+    const hasFlowTasksInFallback = fallbackSet.has('.github/prompts/flow-tasks.md') || fallbackSet.has('prompts/flow-tasks.md');
     standards.push({
         type: 'flow_tasks_prompt',
         status: hasFlowTasksInRepoLocal || hasFlowTasksInFallback ? 'healthy' : 'missing',
@@ -160,7 +160,7 @@ export function checkCommunityStandards(
 
     // HANDOFF agent prompt — per-repo, with org .github fallback
     const hasHandoffInRepoLocal = lowerFiles.includes('.github/prompts/handoff.md');
-    const hasHandoffInFallback = fallbackSet.has('.github/prompts/handoff.md');
+    const hasHandoffInFallback = fallbackSet.has('.github/prompts/handoff.md') || fallbackSet.has('prompts/handoff.md');
     standards.push({
         type: 'handoff_prompt',
         status: hasHandoffInRepoLocal || hasHandoffInFallback ? 'healthy' : 'missing',
