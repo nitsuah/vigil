@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Fixed:** `extractBadges` uses bounded character classes and caps its input at 100,000 characters, so a malformed README can no longer cause super-linear regex backtracking.
 
+- **Fixed:** the pre-commit hook's Docker fallback (used in git worktrees, where there is no local `node_modules`) installs its lint dependencies from the lockfile (`npm ci`) and runs the repo's `postinstall` patch (which makes `gray-matter` work with `js-yaml` 5), so parser changes no longer fail there with `Cannot read properties of undefined (reading 'bind')`. A local checkout that installed with scripts disabled still needs `npm run postinstall`.
 - **Fixed:** the README HTML-badge scan in `checkBestPractices` finds each `<img>` tag in one linear pass, reads `src`/`alt` from that tag only, and scans at most 200,000 characters, so a malformed README can no longer cause super-linear regex backtracking.
 
 - Pre-commit hook runs lint-staged from git worktrees too: it uses `node_modules/.bin/lint-staged` when present, otherwise lints in a `node:22` Docker container when Docker is running, and otherwise warns and skips (CI still runs lint). Dependencies install into a named volume, so later commits skip the install.
