@@ -263,3 +263,16 @@ test('flow_tasks_prompt and handoff_prompt are missing when absent from repo and
   expect(handoff?.details.existsInRepo).toBe(false);
   expect(handoff?.details.existsInGithubFallback).toBe(false);
 });
+
+test('flow_tasks_prompt and handoff_prompt are healthy when the owner .github repo keeps them under prompts/', () => {
+  const result = checkCommunityStandards(['README.md'], {
+    fallbackFiles: ['prompts/FLOW-TASKS.md', 'prompts/HANDOFF.md'],
+    fallbackRepo: 'nitsuah/.github',
+  });
+  const flowTasks = result.standards.find((s) => s.type === 'flow_tasks_prompt');
+  const handoff = result.standards.find((s) => s.type === 'handoff_prompt');
+  expect(flowTasks?.status).toBe('healthy');
+  expect(flowTasks?.details.existsInGithubFallback).toBe(true);
+  expect(handoff?.status).toBe('healthy');
+  expect(handoff?.details.existsInGithubFallback).toBe(true);
+});
