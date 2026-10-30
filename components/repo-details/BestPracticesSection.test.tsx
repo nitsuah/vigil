@@ -251,5 +251,7 @@ describe('BestPracticesSection handoff copy button', () => {
 
     const button = screen.getByRole('button', { name: /Copy handoff command/ });
     button.click();
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('gh test\narg1\narg2');
   });
 });
