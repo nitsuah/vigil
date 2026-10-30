@@ -110,7 +110,7 @@ Rename a file and the README follows on the next run. Override the locations wit
 | `responsive-design.png` | Mobile | repository-tiers, responsive-design |
 
 - Run: adopt the repo and set a Docker image with the command in "Adopt it in a repo", then `npx playwright test -c playwright.visual-docs.config.ts`.
-- Update: edit this spec, run the tests, review the bot PR. The runner regenerates baselines.
+- Update: edit this spec, run the tests, review the bot PR. The runner regenerates the PNGs in `docs/screenshots/`.
 - Desktop shots are 1280x800 dark; `responsive-design` is 390x844 mobile.
 
 ## Notes
