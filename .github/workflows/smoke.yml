@@ -25,10 +25,77 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Netlify's production ignore rule compares the previous deployed
+          # commit with the current commit. Fetch history so this workflow can
+          # make the equivalent decision for the pushed commit range.
+          fetch-depth: 0
+
+      - name: Check whether Netlify will build this commit
+        id: deploy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          # Manual runs are explicit requests to smoke-test the current site.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # A new branch / unavailable base must fail open: run the smoke test.
+          if [ -z "$BEFORE_SHA" ] || [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed=$(git diff --name-only "$BEFORE_SHA" "$EXPECTED_SHA") || {
+            echo "::warning::Could not determine changed paths; running smoke test."
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          if [ -z "$changed" ]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Keep this list aligned with [context.production].ignore in
+          # netlify.toml. Netlify intentionally skips builds for these paths.
+          deploy_required=false
+          while IFS= read -r path; do
+            case "$path" in
+              docs|docs/*|tests|tests/*|e2e|e2e/*|promo|promo/*|site|site/*|skills|skills/*|.github|.github/*|.husky|.husky/*|*.md)
+                ;;
+              *)
+                deploy_required=true
+                break
+                ;;
+            esac
+          done <<< "$changed"
+
+          echo "required=$deploy_required" >> "$GITHUB_OUTPUT"
+          if [ "$deploy_required" = "false" ]; then
+            echo "Netlify's production ignore rule will skip this docs/test-only change; no new deploy SHA can become live."
+          fi
+
+      - name: Explain skipped deploy smoke
+        if: steps.deploy.outputs.required == 'false'
+        run: |
+          {
+            echo "### Production smoke skipped"
+            echo
+            echo "Netlify's production ignore rule skips this commit because it only changes paths excluded in `netlify.toml`."
+            echo "No production deploy is expected, so polling `/api/version` for this commit would time out by design."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Wait for the deploy of this commit
+        if: steps.deploy.outputs.required == 'true'
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
         run: |
-          expected="${{ github.sha }}"
+          expected="$EXPECTED_SHA"
           echo "Waiting for $SITE_URL/api/version to report $expected"
           body=$(mktemp); gone=0
           for attempt in $(seq 1 60); do
@@ -41,8 +108,7 @@ jobs:
             fi
             # Netlify answers a site name it doesn't know with a plain-text 404
             # ("Not Found - Request ID: ..."). A renamed or deleted site never
-            # recovers, so fail now instead of waiting out the timeout: from
-            # 2026-09-30 to 10-08 the rename to gh-vigil read as "deploy timed out".
+            # recovers, so fail now instead of waiting out the timeout.
             if [ "$status" = 404 ] && grep -q '^Not Found - Request ID' "$body"; then
               gone=$((gone + 1))
               if [ "$gone" -ge 3 ]; then
@@ -58,25 +124,29 @@ jobs:
           exit 1
 
       - name: Setup Node.js
+        if: steps.deploy.outputs.required == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
+        if: steps.deploy.outputs.required == 'true'
         run: npm ci
 
       - name: Install Playwright browser
+        if: steps.deploy.outputs.required == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run smoke tests against production
+        if: steps.deploy.outputs.required == 'true'
         run: npx playwright test -c playwright.smoke.config.ts
         env:
           CI: true
           SMOKE_URL: ${{ env.SITE_URL }}
 
       - name: Upload Playwright report
-        if: failure()
+        if: failure() && steps.deploy.outputs.required == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: smoke-report
