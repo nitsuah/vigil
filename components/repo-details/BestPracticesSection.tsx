@@ -3,19 +3,27 @@
 import { CheckCircle2, XCircle, Circle } from 'lucide-react';
 import { BestPractice } from '@/types/repo';
 import { getStatusColor } from '@/lib/expandable-row-utils';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { RowFix, VisualDocsDetails, VisualRow } from '@/lib/visual-docs';
 import { branchProtectionControls, type BranchProtectionDetails } from '@/lib/branch-protection-controls';
 
 function HandoffCommand({ fix }: { fix: RowFix }) {
   const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   if (fix.kind !== 'handoff') return null;
   const copy = () => {
     if (!navigator.clipboard) return;
     const text = [fix.command, ...fix.inputs].join('\n');
     navigator.clipboard.writeText(text).then(
-      () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
-      () => {},
+      () => {
+        clearTimeout(resetTimer.current);
+        setCopied(true);
+        resetTimer.current = setTimeout(() => setCopied(false), 2000);
+      },
+      () => {
+        clearTimeout(resetTimer.current);
+        setCopied(false);
+      },
     );
   };
   return (
