@@ -99,5 +99,21 @@ Rename a file and the README follows on the next run. Override the locations wit
 
 ## Notes
 
+### Feature ids
+
+| Shot file | Spec test | Feature ids (promo/spots.json) |
+|-----------|-----------|--------------------------------|
+| `dashboard.png` | Dashboard | health-scoring, ci-cd-status, smart-repo-type-detection, modern-dashboard |
+| `repo-details.png` | Repo details | code-coverage-visualization, lines-of-code-loc, contributor-analytics, task-management, roadmap-visualization, per-repo-roadmap-progress, workflow-pipeline-stage-indicator, expandable-details, repository-stats |
+| `pmo.png` | Pmo | workflow-pipeline-stage-indicator, pmo-mode-dashboard |
+| `per-repo-conversational-interface.png` | Per-repo chat | per-repo-conversational-interface, chat-driven-doc-edit-proposals, chat-driven-task-operations |
+| `responsive-design.png` | Mobile | repository-tiers, responsive-design |
+
+- Run: adopt the repo and set a Docker image with the command in "Adopt it in a repo", then `npx playwright test -c playwright.visual-docs.config.ts`.
+- Update: edit this spec, run the tests, review the bot PR. The runner regenerates baselines.
+- Desktop shots are 1280x800 dark; `responsive-design` is 390x844 mobile.
+
+## Notes
+
 - PRs opened with `GITHUB_TOKEN` don't trigger other workflows. That's fine for a docs-only change; use a PAT or GitHub App token in `create-pull-request` if you need CI on it.
 - Screenshots come from `next dev` on the runner. Font or rendering differences between machines mean screenshots taken locally outside Docker will differ from CI.

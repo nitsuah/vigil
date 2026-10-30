@@ -6,6 +6,8 @@
  * DB-free: every /api call is mocked (e2e/fixtures/demo-portfolio.ts) with fixed
  * demo data and a frozen clock, so output only changes when the UI does and the
  * bot PR doesn't churn on "3 days ago" labels. Writes docs/screenshots/*.png.
+ * Each shot name passed to shoot() is that shot's stable feature id, listed in
+ * docs/VISUAL_DOCS.md under "Feature ids".
  */
 import { test, expect, type Page } from '@playwright/test';
 import { NOW, prepare, signedInContext } from '../fixtures/demo-portfolio';
