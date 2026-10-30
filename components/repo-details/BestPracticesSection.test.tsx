@@ -224,3 +224,32 @@ describe('BestPracticesSection branch protection controls', () => {
     expect(screen.queryByText(/controls$/)).toBeNull();
   });
 });
+
+describe('BestPracticesSection handoff copy button', () => {
+  beforeEach(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  it('copies handoff command when button clicked', () => {
+    render(
+      <BestPracticesSection
+        bestPractices={[
+          { practice_type: 'journeys', status: 'missing', details: { exists: false, dirs: [], workflow: null, informational: true, fix: { kind: 'handoff', command: 'gh test', inputs: ['arg1', 'arg2'] } } },
+        ]}
+        repoName="o/x"
+        isAuthenticated={true}
+        isExpanded={true}
+      />
+    );
+
+    const button = screen.getByRole('button', { name: /Copy handoff command/ });
+    button.click();
+  });
+});

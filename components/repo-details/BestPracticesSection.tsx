@@ -8,9 +8,21 @@ import type { RowFix, VisualDocsDetails, VisualRow } from '@/lib/visual-docs';
 import { branchProtectionControls, type BranchProtectionDetails } from '@/lib/branch-protection-controls';
 
 function HandoffCommand({ fix }: { fix: RowFix }) {
+  const [copied, setCopied] = useState(false);
   if (fix.kind !== 'handoff') return null;
+  const copy = () => {
+    if (!navigator.clipboard) return;
+    const text = [fix.command, ...fix.inputs].join('\n');
+    navigator.clipboard.writeText(text).then(
+      () => { setCopied(true); setTimeout(() => setCopied(false), 2000); },
+      () => {},
+    );
+  };
   return (
     <div className="mt-1">
+      <button type="button" onClick={copy} aria-label="Copy handoff command" className="mb-1 rounded bg-slate-700 px-2 py-0.5 text-[10px] text-slate-200 hover:bg-slate-600">
+        {copied ? 'Copied' : 'Copy'}
+      </button>
       <code className="block select-all break-all rounded bg-slate-900/70 px-2 py-1 text-[10px] text-slate-200">{fix.command}</code>
       {fix.inputs.length > 0 && (
         <ul className="mt-1 list-disc pl-4 text-[10px] text-slate-500">
