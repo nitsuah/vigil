@@ -2,6 +2,7 @@
 
 import { Shield, CheckCircle2, XCircle, AlertTriangle, Wrench } from 'lucide-react';
 import { useState } from 'react';
+import { securityRemediation, type SecurityControl } from '../../lib/security-settings-links';
 
 export interface SecurityConfig {
   hasSecurityPolicy: boolean;
@@ -20,6 +21,7 @@ interface SecuritySectionProps {
   isExpanded?: boolean;
   onToggleExpanded?: () => void;
   repoName?: string;
+  fullName?: string;
 }
 
 async function fixSecurityFeature(repoName: string, featureType: string) {
@@ -61,11 +63,44 @@ async function fixSecurityFeature(repoName: string, featureType: string) {
   return data as { prUrl: string };
 }
 
+function SettingsRemediationLink({
+  control,
+  fullName,
+  label,
+}: {
+  control: SecurityControl;
+  fullName: string;
+  label: string;
+}) {
+  let remediation: ReturnType<typeof securityRemediation>;
+  try {
+    remediation = securityRemediation(control, fullName);
+  } catch {
+    return null;
+  }
+
+  return (
+    <div className="ml-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+      <a
+        href={remediation.url}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={'Open settings for ' + label}
+        className="text-purple-300 underline underline-offset-2 hover:text-purple-200"
+      >
+        Open settings
+      </a>
+      <span className="text-slate-400">{remediation.prerequisite}</span>
+    </div>
+  );
+}
+
 export function SecuritySection({
   securityConfig,
   isExpanded: isExpandedProp,
   onToggleExpanded,
-  repoName
+  repoName,
+  fullName,
 }: SecuritySectionProps) {
   const [internalExpanded, setInternalExpanded] = useState(false);
   const isExpanded = isExpandedProp !== undefined ? isExpandedProp : internalExpanded;
@@ -171,6 +206,14 @@ export function SecuritySection({
               </div>
             </div>
 
+            {!securityConfig.hasSecurityPolicy && fullName && (
+              <SettingsRemediationLink
+                control="security_policy"
+                fullName={fullName}
+                label="Security Policy"
+              />
+            )}
+
             {/* Security Advisories */}
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 flex items-center gap-1.5">
@@ -193,6 +236,14 @@ export function SecuritySection({
               </div>
             </div>
 
+            {!securityConfig.hasSecurityAdvisories && fullName && (
+              <SettingsRemediationLink
+                control="security_advisories"
+                fullName={fullName}
+                label="Security Advisories"
+              />
+            )}
+
             {/* Private Vulnerability Reporting */}
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 flex items-center gap-1.5">
@@ -214,6 +265,14 @@ export function SecuritySection({
                 )}
               </div>
             </div>
+
+            {!securityConfig.privateVulnerabilityReportingEnabled && fullName && (
+              <SettingsRemediationLink
+                control="private_reporting"
+                fullName={fullName}
+                label="Private Reporting"
+              />
+            )}
 
             {/* Dependabot Alerts */}
             <div className="flex items-center justify-between text-xs">
@@ -246,6 +305,14 @@ export function SecuritySection({
               </div>
             </div>
 
+            {!securityConfig.dependabotAlertsEnabled && fullName && (
+              <SettingsRemediationLink
+                control="dependabot_alerts"
+                fullName={fullName}
+                label="Dependabot Alerts"
+              />
+            )}
+
             {/* Code Scanning */}
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 flex items-center gap-1.5">
@@ -277,6 +344,14 @@ export function SecuritySection({
               </div>
             </div>
 
+            {!securityConfig.codeScanningEnabled && fullName && (
+              <SettingsRemediationLink
+                control="code_scanning"
+                fullName={fullName}
+                label="Code Scanning"
+              />
+            )}
+
             {/* Secret Scanning */}
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 flex items-center gap-1.5">
@@ -307,6 +382,14 @@ export function SecuritySection({
                 )}
               </div>
             </div>
+
+            {!securityConfig.secretScanningEnabled && fullName && (
+              <SettingsRemediationLink
+                control="secret_scanning"
+                fullName={fullName}
+                label="Secret Scanning"
+              />
+            )}
 
             {(fixError || fixSuccess) && (
               <div className="mt-2 p-2 text-xs rounded bg-slate-800/50 border border-slate-600/50">
