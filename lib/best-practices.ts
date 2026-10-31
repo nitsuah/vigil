@@ -24,6 +24,73 @@ export interface BestPracticesResult {
     practices: BestPractice[];
 }
 
+export interface ProtectionRules {
+    required_pull_request_reviews?: { required_approving_review_count?: number; dismiss_stale_reviews?: boolean; require_code_owner_reviews?: boolean };
+    required_status_checks?: { strict?: boolean; contexts?: string[] };
+    required_signatures?: { enabled?: boolean };
+    required_linear_history?: { enabled?: boolean };
+    required_conversation_resolution?: { enabled?: boolean };
+    allow_force_pushes?: { enabled: boolean };
+    allow_deletions?: { enabled: boolean };
+    lock_branch?: { enabled: boolean };
+    allow_fork_syncing?: { enabled: boolean };
+}
+
+export type RulesetRule = { type: string; parameters?: Record<string, unknown> };
+
+export function rulesetRulesToDetails(rules: RulesetRule[]): ProtectionRules {
+    const result: ProtectionRules = {};
+    const rulesCopy = [...rules];
+
+    const reviewsRule = rulesCopy.find(r => r.type === 'pull_request');
+    if (reviewsRule?.parameters) {
+        result.required_pull_request_reviews = {
+            required_approving_review_count: (reviewsRule.parameters.required_approving_review_count as number) ?? 0,
+            dismiss_stale_reviews: reviewsRule.parameters.dismiss_stale_reviews_on_push as boolean,
+            require_code_owner_reviews: reviewsRule.parameters.require_code_owner_review as boolean,
+        };
+    }
+
+    const statusChecksRule = rulesCopy.find(r => r.type === 'required_status_checks');
+    if (statusChecksRule?.parameters) {
+        const contexts = (statusChecksRule.parameters.required_status_checks as Array<{ context?: string }>) ?? [];
+        result.required_status_checks = {
+            strict: statusChecksRule.parameters.strict_required_status_checks_policy as boolean,
+            contexts: contexts.map(c => c.context).filter(Boolean) as string[],
+        };
+    }
+
+    if (rulesCopy.some(r => r.type === 'required_signatures')) {
+        result.required_signatures = { enabled: true };
+    }
+
+    if (rulesCopy.some(r => r.type === 'required_linear_history')) {
+        result.required_linear_history = { enabled: true };
+    }
+
+    const conversationResolutionRule = rulesCopy.find(r => r.type === 'required_conversation_resolution');
+    if (conversationResolutionRule?.parameters) {
+        result.required_conversation_resolution = {
+            enabled: conversationResolutionRule.parameters.required_review_thread_resolution as boolean,
+        };
+    }
+
+    if (rulesCopy.some(r => r.type === 'non_fast_forward')) {
+        result.allow_force_pushes = { enabled: false };
+    }
+
+    if (rulesCopy.some(r => r.type === 'deletion')) {
+        result.allow_deletions = { enabled: false };
+    }
+
+    const forkSyncRule = rulesCopy.find(r => r.type === 'fork_sync');
+    if (forkSyncRule?.parameters) {
+        result.allow_fork_syncing = forkSyncRule.parameters as { enabled: boolean };
+    }
+
+    return result;
+}
+
 export async function checkBestPractices(
     owner: string,
     repo: string,
