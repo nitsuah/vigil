@@ -2,7 +2,7 @@
 
 import { useState, type JSX } from 'react';
 import { RowErrorBoundary } from './RowErrorBoundary';
-import { Task, RoadmapItem, DocStatus, Metric, Feature, BestPractice, CommunityStandard, SecurityConfig } from '@/types/repo';
+import { Repo, Task, RoadmapItem, DocStatus, Metric, Feature, BestPractice, CommunityStandard, SecurityConfig } from '@/types/repo';
 import { RepositoryStatsSectionStatic } from './repo-details/RepositoryStatsSectionStatic';
 import { TestingSection } from './repo-details/TestingSection';
 import { MetricsSection } from './repo-details/MetricsSection';
@@ -46,6 +46,7 @@ interface ExpandableRowProps {
   vulnAlertCount?: number;
   vulnCriticalCount?: number;
   vulnHighCount?: number;
+  issueCategoryCounts?: Repo['issue_category_counts'];
   contributorCount?: number;
   commitFrequency?: number;
   busFactor?: number;
@@ -101,6 +102,7 @@ function ExpandableRowContent({
   vulnAlertCount,
   vulnCriticalCount,
   vulnHighCount,
+  issueCategoryCounts,
   contributorCount,
   commitFrequency,
   busFactor,
@@ -279,10 +281,12 @@ function ExpandableRowContent({
             )}
 
             {/* Issues */}
-            <IssuesSection 
+            <IssuesSection
               vulnAlertCount={vulnAlertCount}
               vulnCriticalCount={vulnCriticalCount}
               vulnHighCount={vulnHighCount}
+              issueCategoryCounts={issueCategoryCounts}
+              repoUrl={repoUrl}
               isExpanded={row3Expanded}
               onToggleExpanded={() => setRow3Expanded(!row3Expanded)}
             />

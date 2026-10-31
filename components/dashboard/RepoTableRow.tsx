@@ -509,6 +509,7 @@ export function RepoTableRow({
               vulnAlertCount={repo.vuln_alert_count}
               vulnCriticalCount={repo.vuln_critical_count}
               vulnHighCount={repo.vuln_high_count}
+              issueCategoryCounts={repo.issue_category_counts}
               contributorCount={repo.contributor_count}
               commitFrequency={repo.commit_frequency}
               busFactor={repo.bus_factor}
