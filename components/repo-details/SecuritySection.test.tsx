@@ -44,7 +44,13 @@ describe('SecuritySection remediation links', () => {
       [config(false), undefined],
       [config(false), 'not-a-full-name'],
     ] as const) {
-      const view = render(<SecuritySection securityConfig={securityConfig} fullName={fullName} isExpanded />);
+      const view = render(
+        <SecuritySection
+          securityConfig={securityConfig}
+          fullName={fullName}
+          isExpanded
+        />,
+      );
       expect(screen.queryAllByRole('link', { name: /Open settings for/ })).toHaveLength(0);
       view.unmount();
     }
