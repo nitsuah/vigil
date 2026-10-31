@@ -37,7 +37,7 @@ test(
       await expect(page.getByRole('heading', { name: 'Repository Stats' })).toBeVisible({ timeout: 15_000 });
       await settle(page);
 
-      const issues = page.locator('[data-tour="issues"]');
+      const issues = page.locator('[data-tour="issues"]:visible').first();
       await expect(issues).toBeVisible();
       await issues.getByText('Issues', { exact: true }).click();
 
