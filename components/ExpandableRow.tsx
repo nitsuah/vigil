@@ -16,6 +16,34 @@ import { TasksSection } from './repo-details/TasksSection';
 import { FeaturesSection } from './repo-details/FeaturesSection';
 import { SecuritySection } from './repo-details/SecuritySection';
 
+function githubFullNameFromUrl(repoUrl?: string): string | undefined {
+  if (!repoUrl) return undefined;
+  try {
+    const url = new URL(repoUrl);
+    if (
+      url.protocol !== 'https:' ||
+      url.hostname !== 'github.com' ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    ) {
+      return undefined;
+    }
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments.length !== 2) return undefined;
+    const owner = segments[0];
+    let repo = segments[1];
+    if (repo.endsWith('.git')) repo = repo.slice(0, -4);
+    const fullName = owner + '/' + repo;
+    return new RegExp('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$').test(fullName)
+      ? fullName
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 interface ExpandableRowProps {
   tasks: Task[];
   roadmapItems: RoadmapItem[];
@@ -267,6 +295,7 @@ function ExpandableRowContent({
             {/* Security */}
             <SecuritySection
               securityConfig={securityConfig}
+              fullName={githubFullNameFromUrl(repoUrl)}
               isExpanded={row3Expanded}
               onToggleExpanded={() => setRow3Expanded(!row3Expanded)}
             />
