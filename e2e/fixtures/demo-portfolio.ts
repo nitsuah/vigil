@@ -19,6 +19,13 @@ const repo = <T extends { name: string; health_score: number }>(over: T) => ({
   ...over,
 });
 
+export const ISSUES_CARD_DEMO = {
+  issue_category_counts: { total: 5, vulnerability: 1, bug: 2, feedback: 1, other: 1, complete: false },
+  vuln_alert_count: 3,
+  vuln_critical_count: 0,
+  vuln_high_count: 0,
+};
+
 export const REPOS = [
   repo({ name: 'vigil', tier: 'T1', description: 'Portfolio health dashboard, PMO, and MCP server', language: 'TypeScript', repo_type: 'web-app', health_score: 92, total_loc: 48210, coverage_score: '81.2' }),
   repo({ name: 'agent-board', tier: 'T2', description: 'Local agent runtime and task board', language: 'Python', repo_type: 'tool', health_score: 78, total_loc: 15320, coverage_score: '64.0' }),
