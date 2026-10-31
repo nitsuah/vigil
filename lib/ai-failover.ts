@@ -236,7 +236,7 @@ async function generateWithOpenAI(
   const completion = await openai.chat.completions.create({
     model: provider.model!,
     messages: [{ role: 'user', content: prompt }],
-    // The current Anthropic Messages SDK/API no longer accepts sampling temperature.
+    temperature: options.temperature,
     max_tokens: options.maxTokens,
   });
 
@@ -256,7 +256,7 @@ async function generateWithAnthropic(
   const message = await anthropic.messages.create({
     model: provider.model!,
     max_tokens: options.maxTokens,
-    temperature: options.temperature,
+    // The current Anthropic Messages SDK/API no longer accepts sampling temperature.
     messages: [{ role: 'user', content: prompt }],
   });
 
