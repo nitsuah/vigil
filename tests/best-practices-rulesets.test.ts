@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rulesetRulesToDetails, RulesetRule } from '@/lib/best-practices';
+import { mergeProtection, rulesetRulesToDetails, ProtectionRules, RulesetRule } from '@/lib/best-practices';
 
 describe('rulesetRulesToDetails', () => {
     const makeRule = (type: string, parameters?: Record<string, unknown>): RulesetRule => ({ type, parameters });
@@ -66,5 +66,111 @@ describe('rulesetRulesToDetails', () => {
 
     it('returns lock_branch as undefined', () => {
         expect(rulesetRulesToDetails([makeRule('pull_request')]).lock_branch).toBeUndefined();
+    });
+});
+
+describe('mergeProtection', () => {
+    it('merges required controls with OR and uses the maximum review count', () => {
+        const classic: ProtectionRules = {
+            required_pull_request_reviews: {
+                required_approving_review_count: 1,
+                dismiss_stale_reviews: false,
+                require_code_owner_reviews: true,
+            },
+            required_status_checks: {
+                strict: false,
+                contexts: ['ci/test', 'ci/lint'],
+            },
+            required_signatures: { enabled: false },
+            required_linear_history: { enabled: true },
+            required_conversation_resolution: { enabled: false },
+            allow_force_pushes: { enabled: true },
+            allow_deletions: { enabled: false },
+            allow_fork_syncing: { enabled: true },
+            lock_branch: { enabled: true },
+        };
+        const ruleset: ProtectionRules = {
+            required_pull_request_reviews: {
+                required_approving_review_count: 2,
+                dismiss_stale_reviews: true,
+                require_code_owner_reviews: false,
+            },
+            required_status_checks: {
+                strict: true,
+                contexts: ['ci/lint', 'codeql'],
+            },
+            required_signatures: { enabled: true },
+            required_linear_history: { enabled: false },
+            required_conversation_resolution: { enabled: true },
+            allow_force_pushes: { enabled: false },
+            allow_deletions: { enabled: true },
+            allow_fork_syncing: { enabled: false },
+            lock_branch: { enabled: false },
+        };
+
+        expect(mergeProtection(classic, ruleset)).toEqual({
+            required_pull_request_reviews: {
+                required_approving_review_count: 2,
+                dismiss_stale_reviews: true,
+                require_code_owner_reviews: true,
+            },
+            required_status_checks: {
+                strict: true,
+                contexts: ['ci/test', 'ci/lint', 'codeql'],
+            },
+            required_signatures: { enabled: true },
+            required_linear_history: { enabled: true },
+            required_conversation_resolution: { enabled: true },
+            allow_force_pushes: { enabled: false },
+            allow_deletions: { enabled: false },
+            allow_fork_syncing: { enabled: false },
+            lock_branch: { enabled: true },
+        });
+    });
+
+    it('preserves classic-only and ruleset-only controls', () => {
+        const classic: ProtectionRules = {
+            allow_force_pushes: { enabled: true },
+            lock_branch: { enabled: true },
+        };
+        const ruleset: ProtectionRules = {
+            required_signatures: { enabled: true },
+            allow_deletions: { enabled: false },
+        };
+
+        expect(mergeProtection(classic, null)).toEqual(classic);
+        expect(mergeProtection(null, ruleset)).toEqual(ruleset);
+    });
+
+    it('returns null only when both sources are absent', () => {
+        expect(mergeProtection(null, undefined)).toBeNull();
+        expect(mergeProtection({}, null)).toEqual({});
+    });
+
+    it('treats an absent allowance source as neutral', () => {
+        expect(
+            mergeProtection({ allow_force_pushes: { enabled: true } }, {}),
+        ).toEqual({ allow_force_pushes: { enabled: true } });
+        expect(
+            mergeProtection({}, { allow_deletions: { enabled: false } }),
+        ).toEqual({ allow_deletions: { enabled: false } });
+    });
+
+    it('does not mutate either input or nested arrays', () => {
+        const classic: ProtectionRules = {
+            required_status_checks: { strict: false, contexts: ['ci/test'] },
+            allow_force_pushes: { enabled: true },
+        };
+        const ruleset: ProtectionRules = {
+            required_status_checks: { strict: true, contexts: ['codeql'] },
+            allow_force_pushes: { enabled: false },
+        };
+        const classicCopy = JSON.parse(JSON.stringify(classic));
+        const rulesetCopy = JSON.parse(JSON.stringify(ruleset));
+
+        mergeProtection(classic, ruleset);
+
+        expect(classic).toEqual(classicCopy);
+        expect(ruleset).toEqual(rulesetCopy);
     });
 });
