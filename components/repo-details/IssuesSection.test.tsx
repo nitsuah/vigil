@@ -23,9 +23,23 @@ describe('IssuesSection open issues', () => {
     expect(text.indexOf('Other')).toBeLessThan(text.indexOf('Vulnerabilities'));
   });
 
-  it('links Bugs to the bug label filter', () => {
+  it('links Total and Other to open issues and Feedback/Bugs to their label filters', () => {
     const { container } = render(<IssuesSection vulnAlertCount={0} issueCategoryCounts={counts} repoUrl={repoUrl} isExpanded />);
-    expect(container.querySelector('a[href$="label%3Abug"]')).not.toBeNull();
+    const links = Array.from(container.querySelectorAll('a'));
+    const openIssues = 'https://github.com/o/r/issues?q=is%3Aissue+is%3Aopen';
+    expect(links.map(link => link.getAttribute('href'))).toEqual([
+      openIssues,
+      openIssues + '+label%3Aenhancement',
+      openIssues + '+label%3Abug',
+      openIssues,
+    ]);
+  });
+
+  it('renders counts as text when repoUrl is missing', () => {
+    const { container } = render(<IssuesSection vulnAlertCount={0} issueCategoryCounts={counts} isExpanded />);
+    expect(container.querySelectorAll('a')).toHaveLength(0);
+    expect(container.textContent).toContain('Total');
+    expect(container.textContent).toContain('5');
   });
 
   it('shows the incomplete notice only when counts are incomplete', () => {
