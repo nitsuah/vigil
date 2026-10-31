@@ -4,16 +4,22 @@ import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 // One open-issues link per count. A label of undefined links the plain open-issues filter.
-function issuesHref(repoUrl: string | undefined, label?: string): string {
-  const base = (repoUrl ?? '').replace(/\/$/, '') + '/issues?q=is%3Aissue+is%3Aopen';
+function issuesHref(repoUrl: string | undefined, label?: string): string | undefined {
+  const baseUrl = repoUrl?.trim().replace(/\/$/, '');
+  if (!baseUrl) return undefined;
+  const base = baseUrl + '/issues?q=is%3Aissue+is%3Aopen';
   return label ? base + '+label%3A' + label : base;
 }
 
-function CountLink({ label, count, href }: { label: string; count: number; href: string }) {
+function CountLink({ label, count, href }: { label: string; count: number; href: string | undefined }) {
   return (
     <div className="flex items-center justify-between text-xs">
       <span className="text-slate-400">{label}</span>
-      <a href={href} target="_blank" rel="noopener noreferrer" className="text-slate-200 font-medium hover:underline">{count}</a>
+      {href ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" className="text-slate-200 font-medium hover:underline">{count}</a>
+      ) : (
+        <span className="text-slate-200 font-medium">{count}</span>
+      )}
     </div>
   );
 }
