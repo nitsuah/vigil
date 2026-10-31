@@ -474,6 +474,11 @@ export function auditShowcase(input: ShowcaseAuditInput): ShowcaseAudit {
         const current = new Set(input.features.map(f => f.id));
         const dropped = manifest.features.filter(f => !current.has(f.id)).map(f => f.title);
         if (dropped.length) add('info', 'feature-dropped', `In ${SPOTS_MANIFEST} but no longer in FEATURES.md: ${dropped.join(', ')}.`);
+        const soloHeroCuts = new Set<string>();
+        for (const r of manifest.reels ?? []) {
+            if (r.spots.length === 1) soloHeroCuts.add(r.spots[0]);
+        }
+
         for (const s of manifest.spots) {
             if (s.published && !fileSet.has(s.published)) add('warn', 'spot-unpublished', `Spot "${s.id}" says it's published at ${s.published}, which doesn't exist.`);
             if (s.rendered && input.featuresChanged && input.featuresChanged.slice(0, 10) > s.rendered) {
@@ -481,8 +486,7 @@ export function auditShowcase(input: ShowcaseAuditInput): ShowcaseAudit {
             }
             // A long spot is fine as a reel's single continuous hero cut (one intro, one outro);
             // splitting it into spots that each carry an intro is what makes a reel repeat itself.
-            const soloReel = (manifest.reels ?? []).some(r => r.spots.length === 1 && r.spots[0] === s.id);
-            if (s.seconds && s.seconds > 35 && s.format !== 'vertical' && !soloReel) add('info', 'spot-long', `Spot "${s.id}" is ${s.seconds}s. Split it into ~${DEFAULT_SPOT_SECONDS}s feature spots, or list it as a reel's single hero cut.`);
+            if (s.seconds && s.seconds > 35 && s.format !== 'vertical' && !soloHeroCuts.has(s.id)) add('info', 'spot-long', `Spot "${s.id}" is ${s.seconds}s. Split it into ~${DEFAULT_SPOT_SECONDS}s feature spots, or list it as a reel's single hero cut.`);
         }
     } else if (input.features && total > 0) {
         add('warn', 'no-manifest', `No ${SPOTS_MANIFEST}. Run apply to scaffold it from FEATURES.md.`);

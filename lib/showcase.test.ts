@@ -205,6 +205,39 @@ describe('auditShowcase', () => {
         expect(long[0]).toContain('demo-40s');
     });
 
+    it('builds solo-hero-cut index once; does not re-scan reels per spot', () => {
+        // Instrument the reels array iteration to verify it's only walked once
+        let scanCount = 0;
+        const instrumentedManifest: SpotsManifest = {
+            product: 'x',
+            features: Array.from({ length: 50 }, (_, i) => ({ id: `f${i}`, title: `F${i}`, category: 'C', spots: [`hero-${i}s`] })),
+            spots: Array.from({ length: 50 }, (_, i) => ({ id: `hero-${i}s`, seconds: 40 })),
+            reels: Array.from({ length: 50 }, (_, i) => ({ id: `hero-${i}`, spots: [`hero-${i}s`] })),
+        };
+
+        // Wrap the reels array's Symbol.iterator to count iterations
+        const reels = instrumentedManifest.reels ?? [];
+        const originalIterator = reels[Symbol.iterator];
+        const wrappedReels = new Proxy(reels, {
+            get(target, prop: string | symbol) {
+                if (prop === Symbol.iterator) {
+                    return function* () {
+                        scanCount++;
+                        yield* originalIterator.call(target);
+                    };
+                }
+                return Reflect.get(target, prop);
+            }
+        });
+
+        const manifestWithProxy = { ...instrumentedManifest, reels: wrappedReels };
+
+        scanCount = 0;
+        base({ manifest: manifestWithProxy });
+        // Index built once per audit: reels iterated once, not per spot (50 spots)
+        expect(scanCount).toBe(1);
+    });
+
     it('counts only resolvable references as coverage', () => {
         const manifest: SpotsManifest = {
             product: 'x',
