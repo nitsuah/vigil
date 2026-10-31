@@ -44,11 +44,15 @@ describe('ExpandableRow security links', () => {
     ] as const) {
       const view = renderRow(repoUrl);
       const security = openSecurity(view.container);
-      expect(security.queryAllByRole('link', { name: /Open settings for/ })).toHaveLength(expectedCount);
+      expect(
+        security.queryAllByRole('link', { name: /Open settings for/ }),
+      ).toHaveLength(expectedCount);
       expect(security.queryAllByRole('button', { name: /^Fix$/ })).toHaveLength(0);
       if (expectedCount) {
         expect(
-          security.getByRole('link', { name: 'Open settings for Security Policy' }).getAttribute('href'),
+          security
+            .getByRole('link', { name: 'Open settings for Security Policy' })
+            .getAttribute('href'),
         ).toBe('https://github.com/owner/repo/security/policy');
       }
       view.unmount();
