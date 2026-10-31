@@ -256,7 +256,7 @@ async function generateWithAnthropic(
   const message = await anthropic.messages.create({
     model: provider.model!,
     max_tokens: options.maxTokens,
-    temperature: options.temperature,
+    // The current Anthropic Messages SDK/API no longer accepts sampling temperature.
     messages: [{ role: 'user', content: prompt }],
   });
 
