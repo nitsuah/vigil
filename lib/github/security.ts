@@ -1,5 +1,6 @@
 import type { Octokit } from '@octokit/rest';
 import logger from '@/lib/log';
+import type { SecurityConfig } from '@/types/repo';
 
 export async function getVulnerabilityAlerts(
   octokit: Octokit,
@@ -24,76 +25,88 @@ export async function getVulnerabilityAlerts(
   }
 }
 
+function getStatusCode(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined;
+  const candidate = error as {
+    status?: unknown;
+    response?: { status?: unknown };
+  };
+  const status = candidate.status ?? candidate.response?.status;
+  return typeof status === 'number' ? status : undefined;
+}
+
+function falseOrUnknown(error: unknown): false | null {
+  return getStatusCode(error) === 404 ? false : null;
+}
+
 export async function getSecurityConfig(
   octokit: Octokit,
   owner: string,
   repo: string,
   /** true/false when the caller already knows (repo file tree); null = probe. */
   hasFile: (path: string) => Promise<boolean | null> = async () => null
-): Promise<{
-  hasSecurityPolicy: boolean;
-  hasSecurityAdvisories: boolean;
-  privateVulnerabilityReportingEnabled: boolean;
-  dependabotAlertsEnabled: boolean;
-  dependabotAlertCount: number;
-  codeScanningEnabled: boolean;
-  codeScanningAlertCount: number;
-  secretScanningEnabled: boolean;
-  secretScanningAlertCount: number;
-}> {
-  const defaultResponse = {
-    hasSecurityPolicy: false,
-    hasSecurityAdvisories: false,
-    privateVulnerabilityReportingEnabled: false,
-    dependabotAlertsEnabled: false,
+): Promise<SecurityConfig> {
+  const response: SecurityConfig = {
+    hasSecurityPolicy: null,
+    hasSecurityAdvisories: null,
+    privateVulnerabilityReportingEnabled: null,
+    dependabotAlertsEnabled: null,
     dependabotAlertCount: 0,
-    codeScanningEnabled: false,
+    codeScanningEnabled: null,
     codeScanningAlertCount: 0,
-    secretScanningEnabled: false,
+    secretScanningEnabled: null,
     secretScanningAlertCount: 0,
   };
 
   try {
-    let hasSecurityPolicy = false;
+    let policyFound = false;
+    let policyUnreadable = false;
     for (const path of ['SECURITY.md', '.github/SECURITY.md']) {
-      const known = await hasFile(path);
+      let known: boolean | null = null;
+      try {
+        known = await hasFile(path);
+      } catch {
+        // Fall through to the API probe; only a successful/404 response is conclusive.
+      }
+
+      if (known === true) {
+        policyFound = true;
+        break;
+      }
       if (known === false) continue;
-      if (known === true) { hasSecurityPolicy = true; break; }
+
       try {
         await octokit.repos.getContent({ owner, repo, path });
-        hasSecurityPolicy = true;
+        policyFound = true;
         break;
-      } catch {
-        // File doesn't exist
+      } catch (error) {
+        if (getStatusCode(error) !== 404) policyUnreadable = true;
       }
     }
+    response.hasSecurityPolicy = policyFound ? true : policyUnreadable ? null : false;
 
-    let hasSecurityAdvisories = false;
     try {
       const { data: advisories } = await octokit.request('GET /repos/{owner}/{repo}/security-advisories', {
         owner,
         repo,
         per_page: 1,
       });
-      hasSecurityAdvisories = Array.isArray(advisories) && advisories.length > 0;
-    } catch {
-      // Not enabled or no permission
+      response.hasSecurityAdvisories = Array.isArray(advisories) && advisories.length > 0;
+    } catch (error) {
+      response.hasSecurityAdvisories = falseOrUnknown(error);
     }
 
-    let privateVulnerabilityReportingEnabled = false;
     try {
       const { data: repoData } = await octokit.repos.get({ owner, repo });
       const analysis = (repoData as Record<string, unknown>).security_and_analysis as
         | { private_vulnerability_reporting?: { status?: string } }
         | undefined;
-      privateVulnerabilityReportingEnabled =
-        analysis?.private_vulnerability_reporting?.status === 'enabled' || false;
-    } catch {
-      // Unable to check
+      response.privateVulnerabilityReportingEnabled =
+        analysis?.private_vulnerability_reporting?.status === 'enabled';
+    } catch (error) {
+      response.privateVulnerabilityReportingEnabled = falseOrUnknown(error);
     }
 
-    let dependabotAlertsEnabled = false;
-    let dependabotAlertCount = 0;
     try {
       const { data } = await octokit.request('GET /repos/{owner}/{repo}/dependabot/alerts', {
         owner,
@@ -101,14 +114,12 @@ export async function getSecurityConfig(
         state: 'open',
         per_page: 100,
       });
-      dependabotAlertsEnabled = true;
-      dependabotAlertCount = Array.isArray(data) ? data.length : 0;
-    } catch {
-      // Not enabled or no permission
+      response.dependabotAlertsEnabled = true;
+      response.dependabotAlertCount = Array.isArray(data) ? data.length : 0;
+    } catch (error) {
+      response.dependabotAlertsEnabled = falseOrUnknown(error);
     }
 
-    let codeScanningEnabled = false;
-    let codeScanningAlertCount = 0;
     try {
       const { data } = await octokit.request('GET /repos/{owner}/{repo}/code-scanning/alerts', {
         owner,
@@ -116,14 +127,12 @@ export async function getSecurityConfig(
         state: 'open',
         per_page: 100,
       });
-      codeScanningEnabled = true;
-      codeScanningAlertCount = Array.isArray(data) ? data.length : 0;
-    } catch {
-      // Not enabled or no permission
+      response.codeScanningEnabled = true;
+      response.codeScanningAlertCount = Array.isArray(data) ? data.length : 0;
+    } catch (error) {
+      response.codeScanningEnabled = falseOrUnknown(error);
     }
 
-    let secretScanningEnabled = false;
-    let secretScanningAlertCount = 0;
     try {
       const { data } = await octokit.request('GET /repos/{owner}/{repo}/secret-scanning/alerts', {
         owner,
@@ -131,25 +140,14 @@ export async function getSecurityConfig(
         state: 'open',
         per_page: 100,
       });
-      secretScanningEnabled = true;
-      secretScanningAlertCount = Array.isArray(data) ? data.length : 0;
-    } catch {
-      // Not enabled or no permission
+      response.secretScanningEnabled = true;
+      response.secretScanningAlertCount = Array.isArray(data) ? data.length : 0;
+    } catch (error) {
+      response.secretScanningEnabled = falseOrUnknown(error);
     }
-
-    return {
-      hasSecurityPolicy,
-      hasSecurityAdvisories,
-      privateVulnerabilityReportingEnabled,
-      dependabotAlertsEnabled,
-      dependabotAlertCount,
-      codeScanningEnabled,
-      codeScanningAlertCount,
-      secretScanningEnabled,
-      secretScanningAlertCount,
-    };
   } catch (error) {
     logger.error(`[GitHub] Failed to fetch security config for ${repo}:`, error);
-    return defaultResponse;
   }
+
+  return response;
 }
