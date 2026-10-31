@@ -236,7 +236,7 @@ async function generateWithOpenAI(
   const completion = await openai.chat.completions.create({
     model: provider.model!,
     messages: [{ role: 'user', content: prompt }],
-    temperature: options.temperature,
+    // The current Anthropic Messages SDK/API no longer accepts sampling temperature.
     max_tokens: options.maxTokens,
   });
 
