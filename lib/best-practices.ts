@@ -36,6 +36,117 @@ export interface ProtectionRules {
     allow_fork_syncing?: { enabled: boolean };
 }
 
+type EnabledRule = { enabled?: boolean } | undefined;
+
+function mergeRequiredFlag(
+    classic: EnabledRule,
+    ruleset: EnabledRule,
+): { enabled: boolean } | undefined {
+    if (!classic && !ruleset) return undefined;
+    return { enabled: Boolean(classic?.enabled || ruleset?.enabled) };
+}
+
+function mergeAllowFlag(
+    classic: { enabled: boolean } | undefined,
+    ruleset: { enabled: boolean } | undefined,
+): { enabled: boolean } | undefined {
+    if (!classic && !ruleset) return undefined;
+    if (classic && ruleset) {
+        return { enabled: classic.enabled && ruleset.enabled };
+    }
+    return { enabled: (classic ?? ruleset)!.enabled };
+}
+
+/**
+ * Merge classic branch protection with ruleset-derived protection.
+ * Required controls are combined conservatively (OR); allowances are
+ * restrictive (AND when both sources specify them). This function is pure.
+ */
+export function mergeProtection(
+    classic?: ProtectionRules | null,
+    ruleset?: ProtectionRules | null,
+): ProtectionRules | null {
+    if (classic == null && ruleset == null) return null;
+
+    const merged: ProtectionRules = {};
+    const classicReviews = classic?.required_pull_request_reviews;
+    const rulesetReviews = ruleset?.required_pull_request_reviews;
+    if (classicReviews || rulesetReviews) {
+        merged.required_pull_request_reviews = {
+            required_approving_review_count: Math.max(
+                classicReviews?.required_approving_review_count ?? 0,
+                rulesetReviews?.required_approving_review_count ?? 0,
+            ),
+            dismiss_stale_reviews: Boolean(
+                classicReviews?.dismiss_stale_reviews ||
+                    rulesetReviews?.dismiss_stale_reviews,
+            ),
+            require_code_owner_reviews: Boolean(
+                classicReviews?.require_code_owner_reviews ||
+                    rulesetReviews?.require_code_owner_reviews,
+            ),
+        };
+    }
+
+    const classicChecks = classic?.required_status_checks;
+    const rulesetChecks = ruleset?.required_status_checks;
+    if (classicChecks || rulesetChecks) {
+        merged.required_status_checks = {
+            strict: Boolean(classicChecks?.strict || rulesetChecks?.strict),
+            contexts: [
+                ...new Set([
+                    ...(classicChecks?.contexts ?? []),
+                    ...(rulesetChecks?.contexts ?? []),
+                ]),
+            ],
+        };
+    }
+
+    const signatures = mergeRequiredFlag(
+        classic?.required_signatures,
+        ruleset?.required_signatures,
+    );
+    if (signatures) merged.required_signatures = signatures;
+
+    const linearHistory = mergeRequiredFlag(
+        classic?.required_linear_history,
+        ruleset?.required_linear_history,
+    );
+    if (linearHistory) merged.required_linear_history = linearHistory;
+
+    const conversationResolution = mergeRequiredFlag(
+        classic?.required_conversation_resolution,
+        ruleset?.required_conversation_resolution,
+    );
+    if (conversationResolution) {
+        merged.required_conversation_resolution = conversationResolution;
+    }
+
+    const forcePushes = mergeAllowFlag(
+        classic?.allow_force_pushes,
+        ruleset?.allow_force_pushes,
+    );
+    if (forcePushes) merged.allow_force_pushes = forcePushes;
+
+    const deletions = mergeAllowFlag(
+        classic?.allow_deletions,
+        ruleset?.allow_deletions,
+    );
+    if (deletions) merged.allow_deletions = deletions;
+
+    const forkSyncing = mergeAllowFlag(
+        classic?.allow_fork_syncing,
+        ruleset?.allow_fork_syncing,
+    );
+    if (forkSyncing) merged.allow_fork_syncing = forkSyncing;
+
+    if (classic?.lock_branch) {
+        merged.lock_branch = { ...classic.lock_branch };
+    }
+
+    return merged;
+}
+
 export type RulesetRule = { type: string; parameters?: Record<string, unknown> };
 
 export function rulesetRulesToDetails(rules: RulesetRule[]): ProtectionRules {
