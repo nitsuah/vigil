@@ -234,7 +234,7 @@ describe('auditShowcase', () => {
                         yield* target;
                     };
                 }
-                if (property === 'length' || (typeof property === 'string' && /^\\d+$/.test(property))) reads++;
+                if (property === 'length' || (typeof property === 'string' && /^\d+$/.test(property))) reads++;
                 return Reflect.get(target, property, receiver);
             },
         });
