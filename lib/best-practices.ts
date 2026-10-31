@@ -102,31 +102,43 @@ export function mergeProtection(
         };
     }
 
-    merged.required_signatures = mergeRequiredFlag(
+    const signatures = mergeRequiredFlag(
         classic?.required_signatures,
         ruleset?.required_signatures,
     );
-    merged.required_linear_history = mergeRequiredFlag(
+    if (signatures) merged.required_signatures = signatures;
+
+    const linearHistory = mergeRequiredFlag(
         classic?.required_linear_history,
         ruleset?.required_linear_history,
     );
-    merged.required_conversation_resolution = mergeRequiredFlag(
+    if (linearHistory) merged.required_linear_history = linearHistory;
+
+    const conversationResolution = mergeRequiredFlag(
         classic?.required_conversation_resolution,
         ruleset?.required_conversation_resolution,
     );
+    if (conversationResolution) {
+        merged.required_conversation_resolution = conversationResolution;
+    }
 
-    merged.allow_force_pushes = mergeAllowFlag(
+    const forcePushes = mergeAllowFlag(
         classic?.allow_force_pushes,
         ruleset?.allow_force_pushes,
     );
-    merged.allow_deletions = mergeAllowFlag(
+    if (forcePushes) merged.allow_force_pushes = forcePushes;
+
+    const deletions = mergeAllowFlag(
         classic?.allow_deletions,
         ruleset?.allow_deletions,
     );
-    merged.allow_fork_syncing = mergeAllowFlag(
+    if (deletions) merged.allow_deletions = deletions;
+
+    const forkSyncing = mergeAllowFlag(
         classic?.allow_fork_syncing,
         ruleset?.allow_fork_syncing,
     );
+    if (forkSyncing) merged.allow_fork_syncing = forkSyncing;
 
     if (classic?.lock_branch) {
         merged.lock_branch = { ...classic.lock_branch };
