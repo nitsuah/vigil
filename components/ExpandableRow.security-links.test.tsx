@@ -11,6 +11,9 @@ const securityConfig = {
   dependabotAlertsEnabled: false,
   codeScanningEnabled: false,
   secretScanningEnabled: false,
+  dependabotAlertCount: 0,
+  codeScanningAlertCount: 0,
+  secretScanningAlertCount: 0,
 };
 
 function renderRow(repoUrl?: string) {
