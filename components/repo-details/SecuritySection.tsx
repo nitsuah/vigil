@@ -3,16 +3,17 @@
 import { Shield, CheckCircle2, XCircle, AlertTriangle, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import { securityRemediation, type SecurityControl } from '../../lib/security-settings-links';
+import type { SecurityStatus } from '../../types/repo';
 
 export interface SecurityConfig {
-  hasSecurityPolicy: boolean;
-  hasSecurityAdvisories: boolean;
-  privateVulnerabilityReportingEnabled: boolean;
-  dependabotAlertsEnabled: boolean;
+  hasSecurityPolicy: SecurityStatus;
+  hasSecurityAdvisories: SecurityStatus;
+  privateVulnerabilityReportingEnabled: SecurityStatus;
+  dependabotAlertsEnabled: SecurityStatus;
   dependabotAlertCount?: number;
-  codeScanningEnabled: boolean;
+  codeScanningEnabled: SecurityStatus;
   codeScanningAlertCount?: number;
-  secretScanningEnabled: boolean;
+  secretScanningEnabled: SecurityStatus;
   secretScanningAlertCount?: number;
 }
 
@@ -111,7 +112,7 @@ export function SecuritySection({
 
   if (!securityConfig) return null;
 
-  const getStatusIcon = (enabled: boolean) => {
+  const getStatusIcon = (enabled: SecurityStatus) => {
     return enabled
       ? <CheckCircle2 className="h-3 w-3 text-green-400" />
       : <XCircle className="h-3 w-3 text-slate-500" />;

@@ -1078,7 +1078,7 @@ describe('GitHubClient', () => {
 
     it('should return hasSecurityAdvisories false for empty advisory list', async (): Promise<void> => {
         mockGetContent.mockResolvedValueOnce({ data: { type: 'file' } });
-        mockGetRepo.mockResolvedValueOnce({ data: { security_and_analysis: {} } });
+        mockGetRepo.mockResolvedValueOnce({ data: {} });
 
         mockRequest.mockImplementation(async (route: string): Promise<{ data: unknown[] }> => {
             if (route.includes('/security-advisories')) return { data: [] };
@@ -1090,23 +1090,79 @@ describe('GitHubClient', () => {
 
         const result = await client.getSecurityConfig('repo-1');
         expect(result.hasSecurityAdvisories).toBe(false);
+        expect(result.privateVulnerabilityReportingEnabled).toBe(null);
     });
 
-    it('should fallback to default security config when checks fail', async () => {
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-        mockGetContent.mockRejectedValue(new Error('not found'));
-        mockRequest.mockRejectedValue(new Error('not allowed'));
-        mockGetRepo.mockRejectedValue(new Error('no access'));
+    it('maps explicit disabled private vulnerability reporting to false', async () => {
+        mockGetContent.mockResolvedValueOnce({ data: { type: 'file' } });
+        mockGetRepo.mockResolvedValueOnce({
+            data: {
+                security_and_analysis: {
+                    private_vulnerability_reporting: { status: 'disabled' },
+                },
+            },
+        });
+        mockRequest.mockResolvedValue({ data: [] });
+
+        await expect(client.getSecurityConfig('repo-1')).resolves.toMatchObject({
+            privateVulnerabilityReportingEnabled: false,
+        });
+    });
+
+    it('maps 404 to confirmed false and other unreadable controls to unknown', async () => {
+        const notFound = Object.assign(new Error('not found'), { status: 404 });
+        const forbidden = Object.assign(new Error('forbidden'), { status: 403 });
+        const unavailable = new Error('network unavailable');
+
+        mockGetContent.mockRejectedValueOnce(forbidden).mockRejectedValueOnce(notFound);
+        mockGetRepo.mockRejectedValueOnce(forbidden);
+        mockRequest.mockImplementation(async (route: string) => {
+            if (route.includes('/security-advisories')) throw notFound;
+            if (route.includes('/dependabot/alerts')) throw forbidden;
+            if (route.includes('/code-scanning/alerts')) throw notFound;
+            if (route.includes('/secret-scanning/alerts')) throw unavailable;
+            return { data: [] };
+        });
 
         await expect(client.getSecurityConfig('repo-1')).resolves.toEqual({
-            hasSecurityPolicy: false,
+            hasSecurityPolicy: null,
             hasSecurityAdvisories: false,
-            privateVulnerabilityReportingEnabled: false,
-            dependabotAlertsEnabled: false,
+            privateVulnerabilityReportingEnabled: null,
+            dependabotAlertsEnabled: null,
             dependabotAlertCount: 0,
             codeScanningEnabled: false,
             codeScanningAlertCount: 0,
-            secretScanningEnabled: false,
+            secretScanningEnabled: null,
+            secretScanningAlertCount: 0,
+        });
+    });
+
+    it('marks the security policy absent only when both paths return 404', async () => {
+        const notFound = Object.assign(new Error('not found'), { status: 404 });
+        mockGetContent.mockRejectedValue(notFound);
+        mockGetRepo.mockResolvedValueOnce({ data: { security_and_analysis: {} } });
+        mockRequest.mockResolvedValue({ data: [] });
+
+        await expect(client.getSecurityConfig('repo-1')).resolves.toMatchObject({
+            hasSecurityPolicy: false,
+        });
+    });
+
+    it('should preserve unknown for unreadable security controls', async () => {
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        mockGetContent.mockRejectedValue(new Error('unreadable'));
+        mockRequest.mockRejectedValue(new Error('unreadable'));
+        mockGetRepo.mockRejectedValue(new Error('unreadable'));
+
+        await expect(client.getSecurityConfig('repo-1')).resolves.toEqual({
+            hasSecurityPolicy: null,
+            hasSecurityAdvisories: null,
+            privateVulnerabilityReportingEnabled: null,
+            dependabotAlertsEnabled: null,
+            dependabotAlertCount: 0,
+            codeScanningEnabled: null,
+            codeScanningAlertCount: 0,
+            secretScanningEnabled: null,
             secretScanningAlertCount: 0,
         });
 
