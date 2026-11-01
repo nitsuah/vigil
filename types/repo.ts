@@ -57,14 +57,14 @@ export interface CommunityStandard {
 }
 
 export interface SecurityConfig {
-  hasSecurityPolicy: boolean;
-  hasSecurityAdvisories: boolean;
-  privateVulnerabilityReportingEnabled: boolean;
-  dependabotAlertsEnabled: boolean;
+  hasSecurityPolicy: boolean | null;
+  hasSecurityAdvisories: boolean | null;
+  privateVulnerabilityReportingEnabled: boolean | null;
+  dependabotAlertsEnabled: boolean | null;
   dependabotAlertCount: number;
-  codeScanningEnabled: boolean;
+  codeScanningEnabled: boolean | null;
   codeScanningAlertCount: number;
-  secretScanningEnabled: boolean;
+  secretScanningEnabled: boolean | null;
   secretScanningAlertCount: number;
 }
 
@@ -120,14 +120,14 @@ export interface Repo {
   bus_factor?: number;
   avg_pr_merge_time_hours?: number;
   is_hidden?: boolean;
-  has_security_policy?: boolean;
-  has_security_advisories?: boolean;
-  private_vuln_reporting_enabled?: boolean;
-  dependabot_alerts_enabled?: boolean;
+  has_security_policy?: boolean | null;
+  has_security_advisories?: boolean | null;
+  private_vuln_reporting_enabled?: boolean | null;
+  dependabot_alerts_enabled?: boolean | null;
   dependabot_alert_count?: number;
-  code_scanning_enabled?: boolean;
+  code_scanning_enabled?: boolean | null;
   code_scanning_alert_count?: number;
-  secret_scanning_enabled?: boolean;
+  secret_scanning_enabled?: boolean | null;
   secret_scanning_alert_count?: number;
   security_last_checked?: string | null;
 }
