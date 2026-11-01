@@ -58,15 +58,18 @@ export interface CommunityStandard {
 
 export type SecurityStatus = boolean | null;
 
+/** Display/API status keeps lack of access distinct from confirmed disabled. */
+export type SecurityDisplayStatus = boolean | 'unknown';
+
 export interface SecurityConfig {
-  hasSecurityPolicy: SecurityStatus;
-  hasSecurityAdvisories: SecurityStatus;
-  privateVulnerabilityReportingEnabled: SecurityStatus;
-  dependabotAlertsEnabled: SecurityStatus;
+  hasSecurityPolicy: SecurityDisplayStatus;
+  hasSecurityAdvisories: SecurityDisplayStatus;
+  privateVulnerabilityReportingEnabled: SecurityDisplayStatus;
+  dependabotAlertsEnabled: SecurityDisplayStatus;
   dependabotAlertCount: number;
-  codeScanningEnabled: SecurityStatus;
+  codeScanningEnabled: SecurityDisplayStatus;
   codeScanningAlertCount: number;
-  secretScanningEnabled: SecurityStatus;
+  secretScanningEnabled: SecurityDisplayStatus;
   secretScanningAlertCount: number;
 }
 
