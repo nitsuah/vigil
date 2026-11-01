@@ -3,17 +3,17 @@
 import { Shield, CheckCircle2, XCircle, AlertTriangle, Wrench } from 'lucide-react';
 import { useState } from 'react';
 import { securityRemediation, type SecurityControl } from '../../lib/security-settings-links';
-import type { SecurityStatus } from '../../types/repo';
+import type { SecurityDisplayStatus } from '../../types/repo';
 
 export interface SecurityConfig {
-  hasSecurityPolicy: SecurityStatus;
-  hasSecurityAdvisories: SecurityStatus;
-  privateVulnerabilityReportingEnabled: SecurityStatus;
-  dependabotAlertsEnabled: SecurityStatus;
+  hasSecurityPolicy: SecurityDisplayStatus;
+  hasSecurityAdvisories: SecurityDisplayStatus;
+  privateVulnerabilityReportingEnabled: SecurityDisplayStatus;
+  dependabotAlertsEnabled: SecurityDisplayStatus;
   dependabotAlertCount?: number;
-  codeScanningEnabled: SecurityStatus;
+  codeScanningEnabled: SecurityDisplayStatus;
   codeScanningAlertCount?: number;
-  secretScanningEnabled: SecurityStatus;
+  secretScanningEnabled: SecurityDisplayStatus;
   secretScanningAlertCount?: number;
 }
 
@@ -112,11 +112,31 @@ export function SecuritySection({
 
   if (!securityConfig) return null;
 
-  const getStatusIcon = (enabled: SecurityStatus) => {
-    return enabled
+  const getStatusIcon = (status: SecurityDisplayStatus) => {
+    if (status === 'unknown') {
+      return <AlertTriangle className="h-3 w-3 text-slate-400" />;
+    }
+    return status
       ? <CheckCircle2 className="h-3 w-3 text-green-400" />
       : <XCircle className="h-3 w-3 text-slate-500" />;
   };
+
+  const getStatusLabel = (
+    status: SecurityDisplayStatus,
+    enabledLabel: string,
+    disabledLabel: string,
+  ) => status === 'unknown'
+    ? 'Unknown (no access)'
+    : status
+      ? enabledLabel
+      : disabledLabel;
+
+  const getStatusClass = (status: SecurityDisplayStatus) =>
+    status === true
+      ? 'text-green-400'
+      : status === false
+        ? 'text-slate-500'
+        : 'text-slate-400';
 
   const getAlertIcon = (count?: number) => {
     if (count === undefined || count === 0) {
@@ -134,11 +154,11 @@ export function SecuritySection({
     (securityConfig.secretScanningAlertCount && securityConfig.secretScanningAlertCount > 0);
 
   const allFeaturesEnabled =
-    securityConfig.hasSecurityPolicy &&
-    securityConfig.privateVulnerabilityReportingEnabled &&
-    securityConfig.dependabotAlertsEnabled &&
-    securityConfig.codeScanningEnabled &&
-    securityConfig.secretScanningEnabled;
+    securityConfig.hasSecurityPolicy === true &&
+    securityConfig.privateVulnerabilityReportingEnabled === true &&
+    securityConfig.dependabotAlertsEnabled === true &&
+    securityConfig.codeScanningEnabled === true &&
+    securityConfig.secretScanningEnabled === true;
 
   const borderColor = hasAnyAlerts
     ? (allFeaturesEnabled ? 'border-yellow-500/40' : 'border-purple-500/40')
@@ -192,10 +212,10 @@ export function SecuritySection({
                 <span>Security Policy</span>
               </span>
               <div className="flex items-center gap-2">
-                <span className={securityConfig.hasSecurityPolicy ? "text-green-400" : "text-slate-500"}>
-                  {securityConfig.hasSecurityPolicy ? 'Present' : 'Missing'}
+                <span className={getStatusClass(securityConfig.hasSecurityPolicy)}>
+                  {getStatusLabel(securityConfig.hasSecurityPolicy, 'Present', 'Missing')}
                 </span>
-                {!securityConfig.hasSecurityPolicy && repoName && (
+                {securityConfig.hasSecurityPolicy === false && repoName && (
                   <button
                     onClick={() => handleFix('security_policy')}
                     disabled={fixing === 'security_policy'}
@@ -207,7 +227,7 @@ export function SecuritySection({
               </div>
             </div>
 
-            {!securityConfig.hasSecurityPolicy && fullName && (
+            {securityConfig.hasSecurityPolicy === false && fullName && (
               <SettingsRemediationLink
                 control="security_policy"
                 fullName={fullName}
@@ -222,10 +242,10 @@ export function SecuritySection({
                 <span>Security Advisories</span>
               </span>
               <div className="flex items-center gap-2">
-                <span className={securityConfig.hasSecurityAdvisories ? "text-green-400" : "text-slate-500"}>
-                  {securityConfig.hasSecurityAdvisories ? 'Enabled' : 'Disabled'}
+                <span className={getStatusClass(securityConfig.hasSecurityAdvisories)}>
+                  {getStatusLabel(securityConfig.hasSecurityAdvisories, 'Enabled', 'Disabled')}
                 </span>
-                {!securityConfig.hasSecurityAdvisories && repoName && (
+                {securityConfig.hasSecurityAdvisories === false && repoName && (
                   <button
                     onClick={() => handleFix('security_advisories')}
                     disabled={fixing === 'security_advisories'}
@@ -237,7 +257,7 @@ export function SecuritySection({
               </div>
             </div>
 
-            {!securityConfig.hasSecurityAdvisories && fullName && (
+            {securityConfig.hasSecurityAdvisories === false && fullName && (
               <SettingsRemediationLink
                 control="security_advisories"
                 fullName={fullName}
@@ -252,10 +272,10 @@ export function SecuritySection({
                 <span>Private Reporting</span>
               </span>
               <div className="flex items-center gap-2">
-                <span className={securityConfig.privateVulnerabilityReportingEnabled ? "text-green-400" : "text-slate-500"}>
-                  {securityConfig.privateVulnerabilityReportingEnabled ? 'Enabled' : 'Disabled'}
+                <span className={getStatusClass(securityConfig.privateVulnerabilityReportingEnabled)}>
+                  {getStatusLabel(securityConfig.privateVulnerabilityReportingEnabled, 'Enabled', 'Disabled')}
                 </span>
-                {!securityConfig.privateVulnerabilityReportingEnabled && repoName && (
+                {securityConfig.privateVulnerabilityReportingEnabled === false && repoName && (
                   <button
                     onClick={() => handleFix('private_reporting')}
                     disabled={fixing === 'private_reporting'}
@@ -267,7 +287,7 @@ export function SecuritySection({
               </div>
             </div>
 
-            {!securityConfig.privateVulnerabilityReportingEnabled && fullName && (
+            {securityConfig.privateVulnerabilityReportingEnabled === false && fullName && (
               <SettingsRemediationLink
                 control="private_reporting"
                 fullName={fullName}
@@ -278,23 +298,23 @@ export function SecuritySection({
             {/* Dependabot Alerts */}
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 flex items-center gap-1.5">
-                {securityConfig.dependabotAlertsEnabled
+                {securityConfig.dependabotAlertsEnabled === true
                   ? getAlertIcon(securityConfig.dependabotAlertCount)
-                  : getStatusIcon(false)
+                  : getStatusIcon(securityConfig.dependabotAlertsEnabled)
                 }
                 <span>Dependabot Alerts</span>
               </span>
               <div className="flex items-center gap-2">
                 <span className={
-                  securityConfig.dependabotAlertsEnabled
+                  securityConfig.dependabotAlertsEnabled === true
                     ? (securityConfig.dependabotAlertCount && securityConfig.dependabotAlertCount > 0 ? "text-yellow-400" : "text-green-400")
-                    : "text-slate-500"
+                    : getStatusClass(securityConfig.dependabotAlertsEnabled)
                 }>
-                  {securityConfig.dependabotAlertsEnabled
+                  {securityConfig.dependabotAlertsEnabled === true
                     ? `${securityConfig.dependabotAlertCount || 0} alerts`
-                    : 'Disabled'}
+                    : getStatusLabel(securityConfig.dependabotAlertsEnabled, 'Enabled', 'Disabled')}
                 </span>
-                {!securityConfig.dependabotAlertsEnabled && repoName && (
+                {securityConfig.dependabotAlertsEnabled === false && repoName && (
                   <button
                     onClick={() => handleFix('dependabot_alerts')}
                     disabled={fixing === 'dependabot_alerts'}
@@ -306,7 +326,7 @@ export function SecuritySection({
               </div>
             </div>
 
-            {!securityConfig.dependabotAlertsEnabled && fullName && (
+            {securityConfig.dependabotAlertsEnabled === false && fullName && (
               <SettingsRemediationLink
                 control="dependabot_alerts"
                 fullName={fullName}
@@ -317,23 +337,23 @@ export function SecuritySection({
             {/* Code Scanning */}
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 flex items-center gap-1.5">
-                {securityConfig.codeScanningEnabled
+                {securityConfig.codeScanningEnabled === true
                   ? getAlertIcon(securityConfig.codeScanningAlertCount)
-                  : getStatusIcon(false)
+                  : getStatusIcon(securityConfig.codeScanningEnabled)
                 }
                 <span>Code Scanning</span>
               </span>
               <div className="flex items-center gap-2">
                 <span className={
-                  securityConfig.codeScanningEnabled
+                  securityConfig.codeScanningEnabled === true
                     ? (securityConfig.codeScanningAlertCount && securityConfig.codeScanningAlertCount > 0 ? "text-yellow-400" : "text-green-400")
-                    : "text-slate-500"
+                    : getStatusClass(securityConfig.codeScanningEnabled)
                 }>
-                  {securityConfig.codeScanningEnabled
+                  {securityConfig.codeScanningEnabled === true
                     ? `${securityConfig.codeScanningAlertCount || 0} alerts`
-                    : 'Disabled'}
+                    : getStatusLabel(securityConfig.codeScanningEnabled, 'Enabled', 'Disabled')}
                 </span>
-                {!securityConfig.codeScanningEnabled && repoName && (
+                {securityConfig.codeScanningEnabled === false && repoName && (
                   <button
                     onClick={() => handleFix('code_scanning')}
                     disabled={fixing === 'code_scanning'}
@@ -345,7 +365,7 @@ export function SecuritySection({
               </div>
             </div>
 
-            {!securityConfig.codeScanningEnabled && fullName && (
+            {securityConfig.codeScanningEnabled === false && fullName && (
               <SettingsRemediationLink
                 control="code_scanning"
                 fullName={fullName}
@@ -356,23 +376,23 @@ export function SecuritySection({
             {/* Secret Scanning */}
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 flex items-center gap-1.5">
-                {securityConfig.secretScanningEnabled
+                {securityConfig.secretScanningEnabled === true
                   ? getAlertIcon(securityConfig.secretScanningAlertCount)
-                  : getStatusIcon(false)
+                  : getStatusIcon(securityConfig.secretScanningEnabled)
                 }
                 <span>Secret Scanning</span>
               </span>
               <div className="flex items-center gap-2">
                 <span className={
-                  securityConfig.secretScanningEnabled
+                  securityConfig.secretScanningEnabled === true
                     ? (securityConfig.secretScanningAlertCount && securityConfig.secretScanningAlertCount > 0 ? "text-yellow-400" : "text-green-400")
-                    : "text-slate-500"
+                    : getStatusClass(securityConfig.secretScanningEnabled)
                 }>
-                  {securityConfig.secretScanningEnabled
+                  {securityConfig.secretScanningEnabled === true
                     ? `${securityConfig.secretScanningAlertCount || 0} alerts`
-                    : 'Disabled'}
+                    : getStatusLabel(securityConfig.secretScanningEnabled, 'Enabled', 'Disabled')}
                 </span>
-                {!securityConfig.secretScanningEnabled && repoName && (
+                {securityConfig.secretScanningEnabled === false && repoName && (
                   <button
                     onClick={() => handleFix('secret_scanning')}
                     disabled={fixing === 'secret_scanning'}
@@ -384,7 +404,7 @@ export function SecuritySection({
               </div>
             </div>
 
-            {!securityConfig.secretScanningEnabled && fullName && (
+            {securityConfig.secretScanningEnabled === false && fullName && (
               <SettingsRemediationLink
                 control="secret_scanning"
                 fullName={fullName}
