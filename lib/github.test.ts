@@ -1078,7 +1078,7 @@ describe('GitHubClient', () => {
 
     it('should return hasSecurityAdvisories false for empty advisory list', async (): Promise<void> => {
         mockGetContent.mockResolvedValueOnce({ data: { type: 'file' } });
-        mockGetRepo.mockResolvedValueOnce({ data: { security_and_analysis: {} } });
+        mockGetRepo.mockResolvedValueOnce({ data: {} });
 
         mockRequest.mockImplementation(async (route: string): Promise<{ data: unknown[] }> => {
             if (route.includes('/security-advisories')) return { data: [] };
@@ -1090,6 +1090,23 @@ describe('GitHubClient', () => {
 
         const result = await client.getSecurityConfig('repo-1');
         expect(result.hasSecurityAdvisories).toBe(false);
+        expect(result.privateVulnerabilityReportingEnabled).toBe(null);
+    });
+
+    it('maps explicit disabled private vulnerability reporting to false', async () => {
+        mockGetContent.mockResolvedValueOnce({ data: { type: 'file' } });
+        mockGetRepo.mockResolvedValueOnce({
+            data: {
+                security_and_analysis: {
+                    private_vulnerability_reporting: { status: 'disabled' },
+                },
+            },
+        });
+        mockRequest.mockResolvedValue({ data: [] });
+
+        await expect(client.getSecurityConfig('repo-1')).resolves.toMatchObject({
+            privateVulnerabilityReportingEnabled: false,
+        });
     });
 
     it('maps 404 to confirmed false and other unreadable controls to unknown', async () => {
