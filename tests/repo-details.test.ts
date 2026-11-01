@@ -167,4 +167,35 @@ describe('GET /api/repo-details/[name]', () => {
             communityStandards: expect.any(Array),
         });
     });
+
+    it('maps nullable security controls to unknown and preserves booleans/counts', async () => {
+        const db = makeDb([{
+            ...fakeRepo,
+            has_security_policy: undefined,
+            has_security_advisories: true,
+            private_vuln_reporting_enabled: false,
+            dependabot_alerts_enabled: null,
+            dependabot_alert_count: 3,
+            code_scanning_enabled: true,
+            code_scanning_alert_count: 0,
+            secret_scanning_enabled: null,
+            secret_scanning_alert_count: 2,
+        }]);
+        mockGetNeonClient.mockReturnValue(db as never);
+
+        const res = await GET(makeRequest('vigil'), { params: Promise.resolve({ name: 'vigil' }) });
+        const body = await res.json();
+
+        expect(body.securityConfig).toEqual({
+            hasSecurityPolicy: 'unknown',
+            hasSecurityAdvisories: true,
+            privateVulnerabilityReportingEnabled: false,
+            dependabotAlertsEnabled: 'unknown',
+            dependabotAlertCount: 3,
+            codeScanningEnabled: true,
+            codeScanningAlertCount: 0,
+            secretScanningEnabled: 'unknown',
+            secretScanningAlertCount: 2,
+        });
+    });
 });
