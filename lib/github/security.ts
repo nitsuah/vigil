@@ -115,8 +115,15 @@ export async function getSecurityConfig(
       const analysis = (repoData as Record<string, unknown>).security_and_analysis as
         | { private_vulnerability_reporting?: { status?: string } }
         | undefined;
-      privateVulnerabilityReportingEnabled =
-        analysis?.private_vulnerability_reporting?.status === 'enabled';
+      const privateVulnerabilityReportingStatus = analysis?.private_vulnerability_reporting?.status;
+      if (privateVulnerabilityReportingStatus === 'enabled') {
+        privateVulnerabilityReportingEnabled = true;
+      } else if (privateVulnerabilityReportingStatus === 'disabled') {
+        privateVulnerabilityReportingEnabled = false;
+      } else {
+        // The security_and_analysis block may be omitted when the caller lacks admin visibility.
+        privateVulnerabilityReportingEnabled = null;
+      }
     } catch (error) {
       privateVulnerabilityReportingEnabled = unavailableControl(error);
     }
