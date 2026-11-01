@@ -55,4 +55,33 @@ describe('SecuritySection remediation links', () => {
       view.unmount();
     }
   });
+
+  it('keeps unknown states neutral and hides remediation for them', () => {
+    const mixed: SecurityConfig = {
+      hasSecurityPolicy: true,
+      hasSecurityAdvisories: 'unknown',
+      privateVulnerabilityReportingEnabled: false,
+      dependabotAlertsEnabled: 'unknown',
+      dependabotAlertCount: 0,
+      codeScanningEnabled: true,
+      codeScanningAlertCount: 0,
+      secretScanningEnabled: false,
+      secretScanningAlertCount: 0,
+    };
+    const { container } = render(
+      <SecuritySection
+        securityConfig={mixed}
+        repoName="nitsuah/vigil"
+        fullName="nitsuah/vigil"
+        isExpanded
+      />,
+    );
+
+    expect(screen.getAllByText('Unknown (no access)')).toHaveLength(2);
+    expect(screen.getAllByText('Disabled')).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Fix' })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: /Open settings for/ })).toHaveLength(2);
+    expect(screen.getByText('Present')).toBeTruthy();
+    expect((container.firstChild as HTMLElement).className).not.toContain('from-green-900/30');
+  });
 });
