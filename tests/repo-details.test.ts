@@ -188,7 +188,7 @@ describe('GET /api/repo-details/[name]', () => {
 
         expect(body.securityConfig).toEqual({
             hasSecurityPolicy: 'unknown',
-            hasSecurityAdvisories: 'unknown',
+            hasSecurityAdvisories: true,
             privateVulnerabilityReportingEnabled: false,
             dependabotAlertsEnabled: 'unknown',
             dependabotAlertCount: 3,
