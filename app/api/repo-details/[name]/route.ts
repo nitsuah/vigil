@@ -78,8 +78,16 @@ export async function GET(
         }));
 
         // Build display security config without coercing unknown to disabled.
+        const securityStatusFields = [
+            repo.has_security_policy,
+            repo.has_security_advisories,
+            repo.private_vuln_reporting_enabled,
+            repo.dependabot_alerts_enabled,
+            repo.code_scanning_enabled,
+            repo.secret_scanning_enabled,
+        ];
         let securityConfig: SecurityConfig | null = null;
-        if (repo.has_security_policy !== undefined) {
+        if (securityStatusFields.some((value) => value !== undefined)) {
             securityConfig = {
                 hasSecurityPolicy: toSecurityDisplayStatus(repo.has_security_policy),
                 hasSecurityAdvisories: toSecurityDisplayStatus(repo.has_security_advisories),
