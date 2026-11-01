@@ -171,8 +171,8 @@ describe('GET /api/repo-details/[name]', () => {
     it('maps nullable security controls to unknown and preserves booleans/counts', async () => {
         const db = makeDb([{
             ...fakeRepo,
-            has_security_policy: null,
-            has_security_advisories: undefined,
+            has_security_policy: undefined,
+            has_security_advisories: true,
             private_vuln_reporting_enabled: false,
             dependabot_alerts_enabled: null,
             dependabot_alert_count: 3,
