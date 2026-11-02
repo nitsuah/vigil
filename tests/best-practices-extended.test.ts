@@ -367,3 +367,139 @@ test('branch protection can reach the full 10/10 (no 8-point cap)', async () => 
   expect(branchProt?.details.maxScore).toBe(10);
   expect(branchProt?.status).toBe('healthy');
 });
+
+
+function mockOctokitWithRulesets(
+  classicProtection: Record<string, unknown> | null,
+  rulesets: Array<Record<string, unknown>>,
+  fullRulesets: Record<number, Record<string, unknown>>,
+  defaultBranch = 'main',
+): Octokit {
+  const getBranchProtection = vi.fn().mockImplementation(async () => {
+    if (classicProtection) return { data: { ...classicProtection } };
+    throw Object.assign(new Error('404 Not Found'), { status: 404 });
+  });
+  const iterator = vi.fn().mockReturnValue((async function* () {
+    yield { data: rulesets };
+  })());
+
+  return {
+    rest: {
+      repos: {
+        getBranchProtection,
+        get: vi.fn().mockResolvedValue({ data: { default_branch: defaultBranch } }),
+        getRepoRulesets: vi.fn(),
+        getRepoRuleset: vi.fn().mockImplementation(async ({ ruleset_id }: { ruleset_id: number }) => ({
+          data: fullRulesets[ruleset_id],
+        })),
+      },
+    },
+    paginate: { iterator },
+  } as unknown as Octokit;
+}
+
+test('merges classic and all matching active rulesets before scoring without double-counting', async () => {
+  const classic = {
+    required_pull_request_reviews: {
+      required_approving_review_count: 1,
+      dismiss_stale_reviews: false,
+      require_code_owner_reviews: false,
+    },
+    required_status_checks: { strict: false, contexts: ['ci/test'] },
+    allow_force_pushes: { enabled: true },
+    allow_deletions: { enabled: true },
+  };
+  const rulesets = [
+    { id: 1, target: 'branch', enforcement: 'active' },
+    { id: 2, target: 'branch', enforcement: 'active' },
+  ];
+  const fullRulesets = {
+    1: {
+      conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } },
+      rules: [
+        { type: 'pull_request', parameters: { required_approving_review_count: 2, dismiss_stale_reviews_on_push: true, require_code_owner_review: true } },
+        { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true, required_status_checks: [{ context: 'ci/test' }, { context: 'codeql' }] } },
+        { type: 'required_signatures' },
+        { type: 'required_linear_history' },
+        { type: 'required_conversation_resolution', parameters: { required_review_thread_resolution: true } },
+      ],
+    },
+    2: {
+      conditions: { ref_name: { include: ['refs/heads/main'], exclude: [] } },
+      rules: [{ type: 'non_fast_forward' }, { type: 'deletion' }],
+    },
+  };
+  const octokit = mockOctokitWithRulesets(classic, rulesets, fullRulesets);
+
+  const result = await checkBestPractices('owner', 'repo', octokit, []);
+  const branchProt = result.practices.find((p) => p.type === 'branch_protection');
+
+  expect(branchProt?.details).toMatchObject({
+    protected: true,
+    requiresReviews: true,
+    requiredApprovingReviews: 2,
+    dismissStaleReviews: true,
+    requireCodeOwnerReviews: true,
+    requiredStatusChecks: true,
+    strictStatusChecks: true,
+    requiredStatusCheckContexts: ['ci/test', 'codeql'],
+    requireSignedCommits: true,
+    requireLinearHistory: true,
+    requiredConversationResolution: true,
+    allowForcePushes: false,
+    allowDeletions: false,
+    score: 10,
+    maxScore: 10,
+  });
+  expect(octokit.paginate.iterator).toHaveBeenCalledTimes(1);
+});
+
+test('scores a matching ruleset when classic branch protection is absent', async () => {
+  const octokit = mockOctokitWithRulesets(
+    null,
+    [{ id: 3, target: 'branch', enforcement: 'active' }],
+    {
+      3: {
+        conditions: { ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] } },
+        rules: [
+          { type: 'pull_request', parameters: { required_approving_review_count: 1 } },
+          { type: 'required_status_checks', parameters: { strict_required_status_checks_policy: true, required_status_checks: [{ context: 'ci/test' }] } },
+        ],
+      },
+    },
+  );
+
+  const result = await checkBestPractices('owner', 'repo', octokit, []);
+  const branchProt = result.practices.find((p) => p.type === 'branch_protection');
+
+  expect(branchProt?.status).toBe('dormant');
+  expect(branchProt?.details).toMatchObject({
+    protected: true,
+    requiredApprovingReviews: 1,
+    requiredStatusChecks: true,
+    strictStatusChecks: true,
+    requiredStatusCheckContexts: ['ci/test'],
+    score: 5,
+    maxScore: 10,
+  });
+});
+
+test('keeps branch protection missing when active rulesets do not match the assessed branch', async () => {
+  const octokit = mockOctokitWithRulesets(
+    null,
+    [{ id: 4, target: 'branch', enforcement: 'active' }],
+    {
+      4: {
+        conditions: { ref_name: { include: ['~ALL'], exclude: ['refs/heads/main'] } },
+        rules: [{ type: 'required_signatures' }],
+      },
+    },
+  );
+
+  const result = await checkBestPractices('owner', 'repo', octokit, []);
+  const branchProt = result.practices.find((p) => p.type === 'branch_protection');
+
+  expect(branchProt?.status).toBe('missing');
+  expect(branchProt?.details.protected).toBe(false);
+  expect(branchProt?.details.score).toBe(0);
+});

@@ -56,15 +56,20 @@ export interface CommunityStandard {
   details: Record<string, unknown>;
 }
 
+export type SecurityStatus = boolean | null;
+
+/** Display/API status keeps lack of access distinct from confirmed disabled. */
+export type SecurityDisplayStatus = boolean | 'unknown';
+
 export interface SecurityConfig {
-  hasSecurityPolicy: boolean;
-  hasSecurityAdvisories: boolean;
-  privateVulnerabilityReportingEnabled: boolean;
-  dependabotAlertsEnabled: boolean;
+  hasSecurityPolicy: SecurityDisplayStatus;
+  hasSecurityAdvisories: SecurityDisplayStatus;
+  privateVulnerabilityReportingEnabled: SecurityDisplayStatus;
+  dependabotAlertsEnabled: SecurityDisplayStatus;
   dependabotAlertCount: number;
-  codeScanningEnabled: boolean;
+  codeScanningEnabled: SecurityDisplayStatus;
   codeScanningAlertCount: number;
-  secretScanningEnabled: boolean;
+  secretScanningEnabled: SecurityDisplayStatus;
   secretScanningAlertCount: number;
 }
 
@@ -120,14 +125,14 @@ export interface Repo {
   bus_factor?: number;
   avg_pr_merge_time_hours?: number;
   is_hidden?: boolean;
-  has_security_policy?: boolean;
-  has_security_advisories?: boolean;
-  private_vuln_reporting_enabled?: boolean;
-  dependabot_alerts_enabled?: boolean;
+  has_security_policy?: SecurityStatus;
+  has_security_advisories?: SecurityStatus;
+  private_vuln_reporting_enabled?: SecurityStatus;
+  dependabot_alerts_enabled?: SecurityStatus;
   dependabot_alert_count?: number;
-  code_scanning_enabled?: boolean;
+  code_scanning_enabled?: SecurityStatus;
   code_scanning_alert_count?: number;
-  secret_scanning_enabled?: boolean;
+  secret_scanning_enabled?: SecurityStatus;
   secret_scanning_alert_count?: number;
   security_last_checked?: string | null;
 }

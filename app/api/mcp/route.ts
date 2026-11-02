@@ -88,6 +88,10 @@ export const TOOL_SCOPES: Record<string, readonly Scope[]> = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
+function securityDisplayStatus(value: unknown): boolean | 'unknown' {
+  return typeof value === 'boolean' ? value : 'unknown';
+}
+
 /** Bad or missing tool arguments → JSON-RPC -32602 (Invalid params). */
 class InvalidParamsError extends Error {}
 
@@ -617,18 +621,18 @@ async function getSecuritySummary(args: Row): Promise<string> {
         high:     r.vuln_high_count     ?? 0,
       },
       secret_scanning: {
-        enabled:     r.secret_scanning_enabled    ?? false,
+        enabled:     securityDisplayStatus(r.secret_scanning_enabled),
         alert_count: r.secret_scanning_alert_count ?? 0,
       },
       code_scanning: {
-        enabled:     r.code_scanning_enabled    ?? false,
+        enabled:     securityDisplayStatus(r.code_scanning_enabled),
         alert_count: r.code_scanning_alert_count ?? 0,
       },
-      dependabot: { enabled: r.dependabot_alerts_enabled ?? false },
+      dependabot: { enabled: securityDisplayStatus(r.dependabot_alerts_enabled) },
       policies: {
-        security_policy:        r.has_security_policy               ?? false,
-        security_advisories:    r.has_security_advisories           ?? false,
-        private_vuln_reporting: r.private_vuln_reporting_enabled    ?? false,
+        security_policy:        securityDisplayStatus(r.has_security_policy),
+        security_advisories:    securityDisplayStatus(r.has_security_advisories),
+        private_vuln_reporting: securityDisplayStatus(r.private_vuln_reporting_enabled),
       },
     });
   }
@@ -665,7 +669,10 @@ async function getSecuritySummary(args: Row): Promise<string> {
       secret_alerts: r.secret_scanning_alert_count ?? 0,
     })),
     repos_without_security_policy: rows
-      .filter(r => !r.has_security_policy)
+      .filter(r => r.has_security_policy === false)
+      .map(r => r.name),
+    repos_with_unknown_security_policy: rows
+      .filter(r => r.has_security_policy === null || r.has_security_policy === undefined)
       .map(r => r.name),
   });
 }

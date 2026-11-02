@@ -205,6 +205,45 @@ describe('auditShowcase', () => {
         expect(long[0]).toContain('demo-40s');
     });
 
+    it('audits malformed reel spot lists without throwing', () => {
+        const manifest: SpotsManifest = {
+            product: 'x',
+            features: [{ id: 'resume-learning', title: 'Resume Learning', category: 'C', spots: ['hero-37s'] }],
+            spots: [{ id: 'hero-37s', seconds: 37 }, { id: 'demo-40s', seconds: 40 }],
+            reels: [
+                { id: 'missing', spots: undefined as unknown as string[] },
+                { id: 'null', spots: null as unknown as string[] },
+                { id: 'hero', spots: ['hero-37s'] },
+            ],
+        };
+        const long = base({ manifest }).gaps.filter(g => g.code === 'spot-long').map(g => g.message);
+        expect(long).toHaveLength(1);
+        expect(long[0]).toContain('demo-40s');
+    });
+
+    it('scans reels once rather than once per spot', () => {
+        const n = 1000;
+        const spots = Array.from({ length: n }, (_, i) => ({ id: `spot-${i}`, seconds: 40 }));
+        const reels = Array.from({ length: n }, (_, i) => ({ id: `reel-${i}`, spots: [`unmatched-${i}`] }));
+        let reads = 0;
+        const instrumentedReels = new Proxy(reels, {
+            get(target, property, receiver) {
+                if (property === Symbol.iterator) {
+                    reads++;
+                    return function* () {
+                        yield* target;
+                    };
+                }
+                if (property === 'length' || (typeof property === 'string' && /^\d+$/.test(property))) reads++;
+                return Reflect.get(target, property, receiver);
+            },
+        });
+        const manifest: SpotsManifest = { product: 'x', features: [], spots, reels: instrumentedReels };
+        const result = base({ manifest });
+        expect(result.gaps.filter(g => g.code === 'spot-long')).toHaveLength(n);
+        expect(reads).toBeLessThan(n * 3);
+    });
+
     it('counts only resolvable references as coverage', () => {
         const manifest: SpotsManifest = {
             product: 'x',

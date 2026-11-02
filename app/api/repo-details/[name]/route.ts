@@ -5,6 +5,10 @@ import { DEFAULT_REPOS } from '@/lib/default-repos';
 import { canAccessRepo } from '@/lib/repo-access';
 import { normalizeRepoRow, normalizeMetricRow } from '@/lib/numeric';
 import logger from '@/lib/log';
+import type { SecurityConfig, SecurityDisplayStatus } from '@/types/repo';
+
+const toSecurityDisplayStatus = (value: unknown): SecurityDisplayStatus =>
+    value === true || value === false ? value : 'unknown';
 
 export async function GET(
     request: NextRequest,
@@ -73,19 +77,27 @@ export async function GET(
             unit: m.unit
         }));
 
-        // Build security config from repo fields
-        let securityConfig = null;
-        if (repo.has_security_policy !== undefined) {
+        // Build display security config without coercing unknown to disabled.
+        const securityStatusFields = [
+            repo.has_security_policy,
+            repo.has_security_advisories,
+            repo.private_vuln_reporting_enabled,
+            repo.dependabot_alerts_enabled,
+            repo.code_scanning_enabled,
+            repo.secret_scanning_enabled,
+        ];
+        let securityConfig: SecurityConfig | null = null;
+        if (securityStatusFields.some((value) => value !== undefined)) {
             securityConfig = {
-                hasSecurityPolicy: repo.has_security_policy || false,
-                hasSecurityAdvisories: repo.has_security_advisories || false,
-                privateVulnerabilityReportingEnabled: repo.private_vuln_reporting_enabled || false,
-                dependabotAlertsEnabled: repo.dependabot_alerts_enabled || false,
-                dependabotAlertCount: repo.dependabot_alert_count || 0,
-                codeScanningEnabled: repo.code_scanning_enabled || false,
-                codeScanningAlertCount: repo.code_scanning_alert_count || 0,
-                secretScanningEnabled: repo.secret_scanning_enabled || false,
-                secretScanningAlertCount: repo.secret_scanning_alert_count || 0,
+                hasSecurityPolicy: toSecurityDisplayStatus(repo.has_security_policy),
+                hasSecurityAdvisories: toSecurityDisplayStatus(repo.has_security_advisories),
+                privateVulnerabilityReportingEnabled: toSecurityDisplayStatus(repo.private_vuln_reporting_enabled),
+                dependabotAlertsEnabled: toSecurityDisplayStatus(repo.dependabot_alerts_enabled),
+                dependabotAlertCount: repo.dependabot_alert_count ?? 0,
+                codeScanningEnabled: toSecurityDisplayStatus(repo.code_scanning_enabled),
+                codeScanningAlertCount: repo.code_scanning_alert_count ?? 0,
+                secretScanningEnabled: toSecurityDisplayStatus(repo.secret_scanning_enabled),
+                secretScanningAlertCount: repo.secret_scanning_alert_count ?? 0,
             };
         }
 

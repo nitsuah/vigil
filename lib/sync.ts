@@ -218,14 +218,14 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
     }
 
     // Fetch security configuration
-    let hasSecurityPolicy = false;
-    let hasSecurityAdvisories = false;
-    let privateVulnReportingEnabled = false;
-    let dependabotAlertsEnabled = false;
+    let hasSecurityPolicy: boolean | null = null;
+    let hasSecurityAdvisories: boolean | null = null;
+    let privateVulnReportingEnabled: boolean | null = null;
+    let dependabotAlertsEnabled: boolean | null = null;
     let dependabotAlertCount = 0;
-    let codeScanningEnabled = false;
+    let codeScanningEnabled: boolean | null = null;
     let codeScanningAlertCount = 0;
-    let secretScanningEnabled = false;
+    let secretScanningEnabled: boolean | null = null;
     let secretScanningAlertCount = 0;
     try {
         const securityConfig = await github.getSecurityConfig(repo.name, owner);

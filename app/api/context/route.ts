@@ -33,6 +33,10 @@ export const runtime = 'nodejs';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
 
+function securityDisplayStatus(value: unknown): boolean | 'unknown' {
+  return typeof value === 'boolean' ? value : 'unknown';
+}
+
 function describeIssues(r: Row): string {
   const issues: string[] = [];
   if ((r.vuln_critical_count  ?? 0) > 0) issues.push(`${r.vuln_critical_count} critical vulns`);
@@ -137,11 +141,11 @@ export async function GET(req: NextRequest) {
             vuln_high:      repo.vuln_high_count      ?? 0,
             secret_alerts:  repo.secret_scanning_alert_count ?? 0,
             controls: {
-              security_policy: repo.has_security_policy ?? false,
-              private_vulnerability_reporting: repo.private_vuln_reporting_enabled ?? false,
-              dependabot_alerts: repo.dependabot_alerts_enabled ?? false,
-              code_scanning: repo.code_scanning_enabled ?? false,
-              secret_scanning: repo.secret_scanning_enabled ?? false,
+              security_policy: securityDisplayStatus(repo.has_security_policy),
+              private_vulnerability_reporting: securityDisplayStatus(repo.private_vuln_reporting_enabled),
+              dependabot_alerts: securityDisplayStatus(repo.dependabot_alerts_enabled),
+              code_scanning: securityDisplayStatus(repo.code_scanning_enabled),
+              secret_scanning: securityDisplayStatus(repo.secret_scanning_enabled),
             },
           },
           testing: {

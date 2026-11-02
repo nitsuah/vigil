@@ -134,6 +134,58 @@ describe('/api/mcp per-tool authorization', () => {
   });
 });
 
+describe('/api/mcp security-control unknown state', () => {
+  it('preserves unknown, true, false, and numeric alert counts in single-repo output', async () => {
+    dbRows = [{
+      ...PRIVATE_REPO,
+      vuln_alert_count: 7,
+      vuln_critical_count: 2,
+      vuln_high_count: 5,
+      secret_scanning_enabled: null,
+      secret_scanning_alert_count: 4,
+      code_scanning_enabled: false,
+      code_scanning_alert_count: 3,
+      dependabot_alerts_enabled: undefined,
+      has_security_policy: null,
+      has_security_advisories: false,
+      private_vuln_reporting_enabled: true,
+    }];
+
+    const response = await call(ADMIN, 'get_security_summary', { name: 'private-repo' });
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    const summary = JSON.parse(result.result.content[0].text);
+
+    expect(summary.secret_scanning).toEqual({ enabled: 'unknown', alert_count: 4 });
+    expect(summary.code_scanning).toEqual({ enabled: false, alert_count: 3 });
+    expect(summary.dependabot).toEqual({ enabled: 'unknown' });
+    expect(summary.policies).toEqual({
+      security_policy: 'unknown',
+      security_advisories: false,
+      private_vuln_reporting: true,
+    });
+    expect(summary.vulnerabilities).toEqual({ total: 7, critical: 2, high: 5 });
+  });
+
+  it('lists only confirmed false security policies as disabled and reports unknown separately', async () => {
+    dbRows = [
+      { name: 'disabled-policy', has_security_policy: false, vuln_critical_count: 1, vuln_high_count: 0, secret_scanning_alert_count: 0, code_scanning_alert_count: 0 },
+      { name: 'enabled-policy', has_security_policy: true, vuln_critical_count: 0, vuln_high_count: 0, secret_scanning_alert_count: 0, code_scanning_alert_count: 0 },
+      { name: 'unknown-policy', has_security_policy: null, vuln_critical_count: 2, vuln_high_count: 1, secret_scanning_alert_count: 0, code_scanning_alert_count: 0 },
+    ];
+
+    const response = await call(ADMIN, 'get_security_summary');
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    const summary = JSON.parse(result.result.content[0].text);
+
+    expect(summary.repos_without_security_policy).toEqual(['disabled-policy']);
+    expect(summary.repos_with_unknown_security_policy).toEqual(['unknown-policy']);
+    expect(summary.totals.critical_vulns).toBe(3);
+    expect(typeof summary.totals.critical_vulns).toBe('number');
+  });
+});
+
 describe('/api/context bearer scopes', () => {
   const ctx = (token: string | null, q = ''): ReturnType<typeof contextGet> =>
     contextGet(new Request(`http://localhost/api/context${q}`, {
@@ -156,5 +208,27 @@ describe('/api/context bearer scopes', () => {
   it('an invalid bearer gets guest access only: the same non-default repo is hidden', async () => {
     expect((await ctx('wrong', '?repo=private-repo')).status).toBe(404);
     expect((await ctx(null, '?repo=private-repo')).status).toBe(404);
+  });
+  it('preserves unknown security-control state in single-repo context', async () => {
+    dbRows = [{
+      ...PRIVATE_REPO,
+      has_security_policy: null,
+      private_vuln_reporting_enabled: false,
+      dependabot_alerts_enabled: undefined,
+      code_scanning_enabled: true,
+      secret_scanning_enabled: null,
+    }];
+
+    const response = await ctx(ADMIN, '?repo=private-repo');
+    expect(response.status).toBe(200);
+    const body = await response.json();
+
+    expect(body.health.security.controls).toEqual({
+      security_policy: 'unknown',
+      private_vulnerability_reporting: false,
+      dependabot_alerts: 'unknown',
+      code_scanning: true,
+      secret_scanning: 'unknown',
+    });
   });
 });
