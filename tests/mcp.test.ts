@@ -55,6 +55,13 @@ describe('GET /api/mcp', () => {
     expect(res.status).toBe(405);
     expect(res.headers.get('allow')).toBe('POST');
   });
+
+  it('returns 405 for a mixed Accept header including SSE', async () => {
+    const req = new Request('http://localhost/api/mcp', { headers: { Accept: 'text/event-stream, application/json' } }) as never;
+    const res = await GET(req);
+    expect(res.status).toBe(405);
+    expect(res.headers.get('allow')).toBe('POST');
+  });
 });
 
 describe('POST /api/mcp auth', () => {
