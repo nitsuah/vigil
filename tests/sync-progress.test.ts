@@ -196,6 +196,30 @@ test('updateSyncProgress updates phase', async () => {
   );
 });
 
+test('updateSyncProgress persists complete phase', async () => {
+  mockQuery.mockResolvedValue([]);
+
+  await updateSyncProgress('test-1', { phase: 'complete' });
+
+  expect(mockQuery).toHaveBeenCalledTimes(1);
+  expect(mockQuery).toHaveBeenCalledWith(
+    expect.stringContaining('UPDATE sync_progress SET'),
+    [null, null, null, 'complete', 'test-1']
+  );
+});
+
+test('updateSyncProgress persists error phase', async () => {
+  mockQuery.mockResolvedValue([]);
+
+  await updateSyncProgress('test-1', { phase: 'error' });
+
+  expect(mockQuery).toHaveBeenCalledTimes(1);
+  expect(mockQuery).toHaveBeenCalledWith(
+    expect.stringContaining('UPDATE sync_progress SET'),
+    [null, null, null, 'error', 'test-1']
+  );
+});
+
 test('updateSyncProgress applies multiple fields in one atomic statement', async () => {
   mockQuery.mockResolvedValue([]);
 
