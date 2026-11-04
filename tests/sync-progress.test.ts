@@ -204,7 +204,7 @@ test('updateSyncProgress persists complete phase', async () => {
   expect(mockQuery).toHaveBeenCalledTimes(1);
   expect(mockQuery).toHaveBeenCalledWith(
     expect.stringContaining('UPDATE sync_progress SET'),
-    expect.arrayContaining(['complete', 'test-1'])
+    [null, null, null, 'complete', 'test-1']
   );
 });
 
@@ -216,7 +216,7 @@ test('updateSyncProgress persists error phase', async () => {
   expect(mockQuery).toHaveBeenCalledTimes(1);
   expect(mockQuery).toHaveBeenCalledWith(
     expect.stringContaining('UPDATE sync_progress SET'),
-    expect.arrayContaining(['error', 'test-1'])
+    [null, null, null, 'error', 'test-1']
   );
 });
 
