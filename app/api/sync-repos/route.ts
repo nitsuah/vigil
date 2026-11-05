@@ -21,6 +21,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const observe = createSyncObservability({
         emit: (event) => logger.info('Sync-repos phase', event),
     });
+    let backgroundStarted = false;
     try {
         // Filters come from the dashboard's current filter state so the sync
         // refreshes exactly the repos currently displayed.
@@ -171,11 +172,12 @@ export async function POST(request: Request): Promise<NextResponse> {
 
         // Create progress tracking
         const sessionId = `sync-${githubUserId}-${Date.now()}`;
+        observe.start('completion');
         await createSyncProgress(sessionId, String(githubUserId), totalRepos);
 
         // Start background sync without awaiting to avoid timeout
+        backgroundStarted = true;
         (async () => {
-            observe.start('completion');
             // Check rate limits periodically during sync
             const checkRateLimit = async () => {
                 try {
@@ -452,7 +454,6 @@ export async function POST(request: Request): Promise<NextResponse> {
                 observe.finish('completion', 'partial', {
                     counts: {
                         total: totalRepos,
-                        succeeded: Math.max(0, successCount - detailsFailed),
                         failed: errorCount + detailsFailed,
                         completed: detailsFinished,
                         remaining: Math.max(0, totalRepos - detailsFinished),
@@ -464,7 +465,6 @@ export async function POST(request: Request): Promise<NextResponse> {
             observe.finish('completion', errorCount > 0 || detailsFailed > 0 ? 'partial' : 'success', {
                 counts: {
                     total: totalRepos,
-                    succeeded: Math.max(0, successCount - detailsFailed),
                     failed: errorCount + detailsFailed,
                     completed: detailsFinished,
                 },
@@ -487,6 +487,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             sessionId
         });
     } catch (error: unknown) {
+        if (!backgroundStarted) observe.finish('completion', 'failure', { errorClass: 'database' });
         observe.finish('auth', 'failure', { errorClass: 'unknown' });
         observe.finish('database', 'failure', { errorClass: 'database' });
         observe.finish('repository_list', 'failure', { errorClass: 'unknown' });
