@@ -21,34 +21,16 @@ export type SyncErrorClass =
   | 'timeout'
   | 'unknown';
 
-const OUTCOMES: readonly SyncOutcome[] = [
-  'success',
-  'failure',
-  'partial',
-  'skipped',
-];
+const OUTCOMES: readonly SyncOutcome[] = ['success', 'failure', 'partial', 'skipped'];
 const ERROR_CLASSES: readonly SyncErrorClass[] = [
-  'auth',
-  'database',
-  'github_api',
-  'rate_limit',
-  'timeout',
-  'unknown',
+  'auth', 'database', 'github_api', 'rate_limit', 'timeout', 'unknown',
 ];
-const COUNT_KEYS = [
-  'total',
-  'selected',
-  'succeeded',
-  'failed',
-  'completed',
-  'skipped',
-  'remaining',
-] as const;
+const COUNT_KEYS = ['total', 'selected', 'succeeded', 'failed', 'completed', 'skipped', 'remaining'] as const;
 type CountKey = (typeof COUNT_KEYS)[number];
 const MAX_COUNT = 100_000;
 const MAX_ELAPSED_MS = 3_600_000;
 
-export type SyncObservation = {
+type SyncObservation = {
   schema: 1;
   correlationId: string;
   phase: SyncPhase;
@@ -59,10 +41,7 @@ export type SyncObservation = {
   counts?: Partial<Record<CountKey, number>>;
 };
 
-type FinishDetails = {
-  errorClass?: unknown;
-  counts?: Record<string, unknown>;
-};
+type FinishDetails = { errorClass?: unknown; counts?: Record<string, unknown> };
 type Options = {
   emit?: (event: SyncObservation) => void;
   now?: () => number;
@@ -73,9 +52,7 @@ function clamp(value: number, max: number): number {
   return Math.max(0, Math.min(max, Number.isFinite(value) ? Math.trunc(value) : 0));
 }
 
-function sanitizeCounts(
-  input?: Record<string, unknown>,
-): Partial<Record<CountKey, number>> | undefined {
+function sanitizeCounts(input?: Record<string, unknown>): Partial<Record<CountKey, number>> | undefined {
   if (!input || typeof input !== 'object') return undefined;
   const counts: Partial<Record<CountKey, number>> = {};
   for (const key of COUNT_KEYS) {
@@ -105,9 +82,7 @@ export function createSyncObservability(options: Options = {}) {
       return 0;
     }
   };
-  const send = (
-    event: Omit<SyncObservation, 'schema' | 'correlationId'>,
-  ) => {
+  const send = (event: Omit<SyncObservation, 'schema' | 'correlationId'>) => {
     try {
       emit({ schema: 1, correlationId, ...event });
     } catch {
