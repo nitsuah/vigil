@@ -72,7 +72,12 @@ describe('createSyncObservability', () => {
       elapsedMs: 3_600_000,
       outcome: 'partial',
       errorClass: 'unknown',
-      counts: { total: 100_000, succeeded: 0, failed: 2, skipped: 0 },
+    });
+    expect((events[1] as { counts?: unknown }).counts).toEqual({
+      total: 100_000,
+      succeeded: 0,
+      failed: 2,
+      skipped: 0,
     });
   });
 
