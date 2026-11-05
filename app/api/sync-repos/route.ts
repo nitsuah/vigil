@@ -79,8 +79,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         let githubUserId: number;
         try {
             const userPromise = octokit.rest.users.getAuthenticated();
+            const timeoutError = new Error('GitHub API timeout');
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('GitHub API timeout')), GITHUB_API_TIMEOUT_MS)
+                setTimeout(() => reject(timeoutError), GITHUB_API_TIMEOUT_MS)
             );
             const { data: user } = await Promise.race([userPromise, timeoutPromise]) as Awaited<ReturnType<typeof octokit.rest.users.getAuthenticated>>;
             githubUsername = user.login;
@@ -91,7 +92,12 @@ export async function POST(request: Request): Promise<NextResponse> {
             logger.error('Sync-repos: Failed to get GitHub user:', error);
             // An exhausted quota is not an auth failure: say so, and when it resets.
             const quota = rateLimitExhausted(error);
-            observe.finish('auth', 'failure', { errorClass: quota ? 'rate_limit' : 'github_api' });
+            const errorClass: 'rate_limit' | 'timeout' | 'github_api' = quota
+                ? 'rate_limit'
+                : error === timeoutError
+                  ? 'timeout'
+                  : 'github_api';
+            observe.finish('auth', 'failure', { errorClass });
             if (quota) {
                 return NextResponse.json({ error: `GitHub rate limit reached · resets in ${quota.minutes} min` }, { status: 429 });
             }
@@ -199,6 +205,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             let metadataSuccess = 0;
             let metadataFailure = 0;
             const failedRepos: RepoMetadata[] = [];
+            const failedRepoNames = new Set<string>();
 
             // 1. FAST METADATA SYNC (First Pass)
             // This ensures all repos appear in the dashboard immediately
@@ -221,6 +228,7 @@ export async function POST(request: Request): Promise<NextResponse> {
                     errorCount++;
                     metadataFailure++;
                     failedRepos.push(repo);
+                    failedRepoNames.add(repo.fullName);
                 }
             }
 
@@ -239,6 +247,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             // "11/13" through the slow health phase, which looked frozen.
             let detailsFinished = 0;
             let detailsFailed = 0;
+            const detailsFailedRepos = new Set<string>();
             const markFinished = () => reportProgress({ completedRepos: ++detailsFinished });
 
             // Helper to sync details with delay and exponential backoff retry
@@ -294,6 +303,8 @@ export async function POST(request: Request): Promise<NextResponse> {
                     }
                 }
                 detailsFailed++;
+                detailsFailedRepos.add(repoMeta.fullName);
+                failedRepoNames.add(repoMeta.fullName);
             };
 
             // Set when the quota runs low: the sync stops instead of sleeping
@@ -349,6 +360,9 @@ export async function POST(request: Request): Promise<NextResponse> {
                                 await grantRepoAccess(db, repoMeta.fullName, String(githubUserId));
                                 successCount++;
                                 errorCount--;
+                                if (!detailsFailedRepos.has(repoMeta.fullName)) {
+                                    failedRepoNames.delete(repoMeta.fullName);
+                                }
                                 retrySuccess++;
                             } catch (repoError: unknown) {
                                 const message = repoError instanceof Error ? repoError.message : 'Unknown error';
@@ -365,10 +379,12 @@ export async function POST(request: Request): Promise<NextResponse> {
             }
 
             // Always sync default repos (using system token from environment)
+            let defaultSkipped = 0;
             if (defaultsToSync.length > 0) observe.start('default_repos');
             const systemToken = process.env.GITHUB_TOKEN;
             const systemUsername = process.env.GITHUB_SYSTEM_USERNAME || 'nitsuah';
             if (rateLimitedUntil !== null) {
+                defaultSkipped = defaultsToSync.length;
                 logger.warn(`Skipping ${defaultsToSync.length} default repos: rate limit low`);
                 observe.finish('default_repos', 'skipped', { counts: { total: defaultsToSync.length, skipped: defaultsToSync.length } });
             } else if (systemToken) {
@@ -392,6 +408,7 @@ export async function POST(request: Request): Promise<NextResponse> {
                         logger.warn(`Failed to sync default repo ${defaultRepo.fullName}:`, errorMessage);
                         errorCount++;
                         defaultFailure++;
+                        failedRepoNames.add(defaultRepo.fullName);
                     }
                 }
                 const defaultDetailFailures = detailsFailed - detailsFailedBeforeDefaults;
@@ -407,7 +424,6 @@ export async function POST(request: Request): Promise<NextResponse> {
                 logger.info('No GITHUB_TOKEN found - attempting to sync default repos with user token');
                 const detailsFailedBeforeDefaults = detailsFailed;
                 let defaultSuccess = 0;
-                let defaultSkipped = 0;
                 for (let i = 0; i < defaultsToSync.length; i++) {
                     const defaultRepo = defaultsToSync[i];
                     try {
@@ -454,7 +470,8 @@ export async function POST(request: Request): Promise<NextResponse> {
                 observe.finish('completion', 'partial', {
                     counts: {
                         total: totalRepos,
-                        failed: errorCount + detailsFailed,
+                        failed: failedRepoNames.size,
+                        skipped: defaultSkipped,
                         completed: detailsFinished,
                         remaining: Math.max(0, totalRepos - detailsFinished),
                     },
@@ -462,10 +479,11 @@ export async function POST(request: Request): Promise<NextResponse> {
                 return;
             }
             await reportProgress({ phase: 'complete', currentRepo: 'Complete' });
-            observe.finish('completion', errorCount > 0 || detailsFailed > 0 ? 'partial' : 'success', {
+            observe.finish('completion', errorCount > 0 || detailsFailed > 0 || defaultSkipped > 0 ? 'partial' : 'success', {
                 counts: {
                     total: totalRepos,
-                    failed: errorCount + detailsFailed,
+                    failed: failedRepoNames.size,
+                    skipped: defaultSkipped,
                     completed: detailsFinished,
                 },
             });
