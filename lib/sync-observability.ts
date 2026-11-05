@@ -17,7 +17,7 @@ export type SyncErrorClass = 'auth' | 'database' | 'github_api' | 'rate_limit' |
 
 const OUTCOMES: readonly SyncOutcome[] = ['success', 'failure', 'partial', 'skipped'];
 const ERROR_CLASSES: readonly SyncErrorClass[] = ['auth', 'database', 'github_api', 'rate_limit', 'timeout', 'unknown'];
-const COUNT_KEYS = ['total', 'succeeded', 'failed', 'completed', 'skipped', 'remaining'] as const;
+const COUNT_KEYS = ['total', 'selected', 'succeeded', 'failed', 'completed', 'skipped', 'remaining'] as const;
 type CountKey = (typeof COUNT_KEYS)[number];
 const MAX_COUNT = 100_000;
 const MAX_ELAPSED_MS = 3_600_000;
