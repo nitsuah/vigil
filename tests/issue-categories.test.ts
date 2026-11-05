@@ -11,6 +11,11 @@ describe('categorizeIssue', () => {
     expect(categorizeIssue([])).toBe('other');
   });
 
+  it('trims whitespace before matching labels', () => {
+    expect(categorizeIssue(['  BUG  '])).toBe('bug');
+    expect(categorizeIssue(['  SECURITY  '])).toBe('vulnerability');
+  });
+
   it('uses vulnerability > bug > feedback when labels overlap', () => {
     expect(categorizeIssue(['bug', 'security'])).toBe('vulnerability');
     expect(categorizeIssue(['enhancement', 'bug'])).toBe('bug');
