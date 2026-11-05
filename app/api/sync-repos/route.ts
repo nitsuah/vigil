@@ -77,9 +77,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 
         let githubUsername: string;
         let githubUserId: number;
+        const timeoutError = new Error('GitHub API timeout');
         try {
             const userPromise = octokit.rest.users.getAuthenticated();
-            const timeoutError = new Error('GitHub API timeout');
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(timeoutError), GITHUB_API_TIMEOUT_MS)
             );
