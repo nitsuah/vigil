@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createSyncObservability } from './sync-observability';
 
 describe('createSyncObservability', () => {
-  it('emits one start and terminal event per phase', () => {
+  it('emits one terminal event per started phase, including background failure', () => {
     const events: unknown[] = [];
     let time = 100;
     const observe = createSyncObservability({
@@ -17,32 +17,20 @@ describe('createSyncObservability', () => {
     observe.finish('auth', 'success');
     observe.finish('auth', 'failure');
     observe.start('auth');
-
-    expect(events).toEqual([
-      { schema: 1, correlationId: 'opaque-1', phase: 'auth', event: 'phase_started' },
-      {
-        schema: 1,
-        correlationId: 'opaque-1',
-        phase: 'auth',
-        event: 'phase_finished',
-        elapsedMs: 50,
-        outcome: 'success',
-      },
-    ]);
-  });
-
-  it('records a terminal background failure with a fixed error class', () => {
-    const events: unknown[] = [];
-    const observe = createSyncObservability({
-      emit: (event) => events.push(event),
-      correlationId: () => 'opaque-2',
-    });
     observe.start('completion');
     observe.finish('completion', 'failure', {
       errorClass: 'unknown',
       counts: { total: 2, failed: 1 },
     });
+
+    expect(events).toHaveLength(4);
     expect(events[1]).toMatchObject({
+      phase: 'auth',
+      event: 'phase_finished',
+      elapsedMs: 50,
+      outcome: 'success',
+    });
+    expect(events[3]).toMatchObject({
       phase: 'completion',
       event: 'phase_finished',
       outcome: 'failure',
@@ -57,7 +45,7 @@ describe('createSyncObservability', () => {
     const observe = createSyncObservability({
       emit: (event) => events.push(event),
       now: () => time,
-      correlationId: () => 'opaque-3',
+      correlationId: () => 'opaque-2',
     });
     observe.start('metadata');
     time = 9_000_000;
@@ -93,7 +81,7 @@ describe('createSyncObservability', () => {
       emit: () => {
         throw new Error('private emitter error');
       },
-      correlationId: () => 'opaque-4',
+      correlationId: () => 'opaque-3',
     });
     expect(() => {
       observe.start('completion');
