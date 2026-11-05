@@ -81,16 +81,35 @@ describe('createSyncObservability', () => {
     });
   });
 
-  it('fails open when the event emitter throws', () => {
+  it('keeps later phases observable after an emitter failure', () => {
+    const events: unknown[] = [];
+    let calls = 0;
     const observe = createSyncObservability({
-      emit: () => {
-        throw new Error('private emitter error');
+      emit: (event) => {
+        calls += 1;
+        if (calls === 2) throw new Error('private emitter error');
+        events.push(event);
       },
+      now: () => 0,
       correlationId: () => 'opaque-3',
     });
-    expect(() => {
-      observe.start('completion');
-      observe.finish('completion', 'failure');
-    }).not.toThrow();
+
+    observe.start('auth');
+    expect(() => observe.finish('auth', 'success')).not.toThrow();
+    observe.start('database');
+    observe.finish('database', 'success');
+
+    expect(events).toEqual([
+      { schema: 1, correlationId: 'opaque-3', phase: 'auth', event: 'phase_started' },
+      { schema: 1, correlationId: 'opaque-3', phase: 'database', event: 'phase_started' },
+      {
+        schema: 1,
+        correlationId: 'opaque-3',
+        phase: 'database',
+        event: 'phase_finished',
+        elapsedMs: 0,
+        outcome: 'success',
+      },
+    ]);
   });
 });
