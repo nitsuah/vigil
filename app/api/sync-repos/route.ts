@@ -154,7 +154,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         const defaultsToSync = defaultReposNotIn(reposToSync);
         const totalRepos = reposToSync.length + defaultsToSync.length;
         observe.finish('repository_list', 'success', {
-            counts: { total: repos.length, succeeded: reposToSync.length, skipped: Math.max(0, repos.length - reposToSync.length) },
+            counts: { total: repos.length, selected: reposToSync.length, skipped: Math.max(0, repos.length - reposToSync.length) },
         });
         logger.info(`Sync-repos: ${reposToSync.length}/${repos.length} repos match current filters`);
 
