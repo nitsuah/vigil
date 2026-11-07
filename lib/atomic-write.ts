@@ -83,9 +83,20 @@ export function readFileInside(root: string, rel: string): string {
     if (st.isSymbolicLink() || !st.isFile()) {
         throw new Error(`refusing to read: ${rel} is not a plain file`);
     }
-    const relFile = path.relative(fs.realpathSync(root), fs.realpathSync(file));
+    const realFile = fs.realpathSync(file);
+    const relFile = path.relative(fs.realpathSync(root), realFile);
     if (relFile === '' || relFile === '..' || relFile.startsWith('..' + path.sep) || path.isAbsolute(relFile)) {
         throw new Error(`refusing to read: ${rel} resolves outside the repo`);
     }
-    return fs.readFileSync(file, 'utf8');
+    // Open the resolved path without following links, and read only if it is the file that was checked.
+    const fd = fs.openSync(realFile, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+    try {
+        const opened = fs.fstatSync(fd);
+        if (!opened.isFile() || opened.ino !== st.ino || opened.dev !== st.dev) {
+            throw new Error(`refusing to read: ${rel} changed while it was being checked`);
+        }
+        return fs.readFileSync(fd, 'utf8');
+    } finally {
+        fs.closeSync(fd);
+    }
 }

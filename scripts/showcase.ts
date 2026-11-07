@@ -53,8 +53,8 @@ function listFiles(root: string): string[] {
 
 const read = (root: string, rel: string): string | null => {
     try { return readFileInside(root, rel); } catch (e) {
-        // Files under promo/ feed the manifest, so a symlink or outside path there stops the run.
-        if (rel.startsWith('promo/') && (e as NodeJS.ErrnoException).code === undefined) throw e;
+        // Files under promo/ feed the manifest, so anything but "missing" there stops the run.
+        if (rel.startsWith('promo/') && (e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
         return null;
     }
 };
