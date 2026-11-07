@@ -14,7 +14,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { writeAtomic } from '../lib/atomic-write';
+import { assertParentInside, ensureDirInside, writeAtomic } from '../lib/atomic-write';
 import { detectVisualDocs, findVisualAssets, visualAutomation } from '../lib/visual-docs';
 import {
     auditShowcase,
@@ -198,7 +198,11 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
         const next = injectExpandKit(html);
         if (next !== html) {
             changes.push(`${p}: added expand kit`);
-            if (!dryRun) writeAtomic(path.join(root, p), next);
+            if (!dryRun) {
+                const target = path.join(root, p);
+                assertParentInside(root, target);
+                writeAtomic(target, next);
+            }
         }
     }
     if (s.featuresPath) {
@@ -228,8 +232,8 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
         if (after !== before) {
             changes.push(`${SPOTS_MANIFEST}: ${before ? 'updated' : 'created'} (${next.features.length} features)`);
             if (!dryRun) {
-                fs.mkdirSync(path.join(root, 'promo'), { recursive: true });
-                writeAtomic(path.join(root, SPOTS_MANIFEST), JSON.stringify(next, null, 2) + '\n');
+                const promoDir = ensureDirInside(root, 'promo');
+                writeAtomic(path.join(promoDir, path.basename(SPOTS_MANIFEST)), JSON.stringify(next, null, 2) + '\n');
             }
         }
     } else {

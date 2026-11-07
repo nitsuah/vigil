@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { writeAtomic } from './atomic-write';
+import { assertParentInside, ensureDirInside, writeAtomic } from './atomic-write';
 
 const dirs: string[] = [];
 const tmpDir = () => {
@@ -49,5 +49,35 @@ describe('writeAtomic', () => {
         fs.writeFileSync(path.join(target, 'x'), '1'); // non-empty directory cannot be replaced by a file
         expect(() => writeAtomic(target, 'data')).toThrow();
         expect(fs.readdirSync(d)).toEqual(['adir']);
+    });
+});
+
+describe('ensureDirInside', () => {
+    it('creates a plain directory and returns its real path', () => {
+        const d = tmpDir();
+        const out = ensureDirInside(d, 'promo');
+        expect(out).toBe(path.join(fs.realpathSync(d), 'promo'));
+        expect(fs.statSync(out).isDirectory()).toBe(true);
+    });
+
+    it('refuses a symlinked directory and writes nothing outside', () => {
+        const d = tmpDir();
+        const outside = tmpDir();
+        fs.symlinkSync(outside, path.join(d, 'promo'), 'dir');
+        expect(() => ensureDirInside(d, 'promo')).toThrow(/refusing/);
+        expect(fs.readdirSync(outside)).toEqual([]);
+    });
+
+    it('refuses a non-directory entry', () => {
+        const d = tmpDir();
+        fs.writeFileSync(path.join(d, 'promo'), 'x');
+        expect(() => ensureDirInside(d, 'promo')).toThrow(/refusing/);
+    });
+
+    it('refuses when an ancestor symlink redirects the parent', () => {
+        const d = tmpDir();
+        const outside = tmpDir();
+        fs.symlinkSync(outside, path.join(d, 'site'), 'dir');
+        expect(() => assertParentInside(d, path.join(d, 'site', 'index.html'))).toThrow(/refusing/);
     });
 });

@@ -22,3 +22,36 @@ export function writeAtomic(file: string, content: string): void {
         throw e;
     }
 }
+
+/**
+ * Create (if needed) and return the real path of `<root>/<rel>`, refusing a symlinked or
+ * non-directory entry so writes stay inside the checkout.
+ */
+export function ensureDirInside(root: string, rel: string): string {
+    const dir = path.join(root, rel);
+    let st: fs.Stats | null = null;
+    try {
+        st = fs.lstatSync(dir);
+    } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    }
+    if (st && (st.isSymbolicLink() || !st.isDirectory())) {
+        throw new Error(`refusing to write: ${rel} is not a plain directory`);
+    }
+    fs.mkdirSync(dir, { recursive: true });
+    const realRoot = fs.realpathSync(root);
+    const realDir = fs.realpathSync(dir);
+    if (realDir === realRoot || !realDir.startsWith(realRoot + path.sep)) {
+        throw new Error(`refusing to write: ${rel} resolves outside the repo`);
+    }
+    return realDir;
+}
+
+/** Throw unless `file`'s parent directory resolves inside `root`. */
+export function assertParentInside(root: string, file: string): void {
+    const realRoot = fs.realpathSync(root);
+    const realParent = fs.realpathSync(path.dirname(file));
+    if (realParent !== realRoot && !realParent.startsWith(realRoot + path.sep)) {
+        throw new Error(`refusing to write: ${path.relative(root, file)} resolves outside the repo`);
+    }
+}
