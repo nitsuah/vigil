@@ -186,7 +186,18 @@ function printGaps(s: RepoScan) {
     for (const g of s.audit.gaps) console.log(`  ${g.severity.padEnd(5)} ${g.code.padEnd(24)} ${g.message}`);
 }
 
+/** Run apply; if a write is refused partway, list what this run already wrote before failing. */
 function apply(root: string, dryRun: boolean, productFlag?: string) {
+    const written: string[] = [];
+    try {
+        applyChanges(root, dryRun, productFlag, written);
+    } catch (e) {
+        if (written.length) console.log(['written before the error:', ...written.map(w => `  ${w}`)].join('\n'));
+        throw e;
+    }
+}
+
+function applyChanges(root: string, dryRun: boolean, productFlag: string | undefined, written: string[]) {
     const s = scan(root);
     // The table keeps the directory name; a local remote can lag a GitHub rename (ats-fill's still says auto-apply-plugin).
     const product = productFlag ?? repoName(root);
@@ -202,6 +213,7 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
                 const target = path.join(root, p);
                 assertParentInside(root, target);
                 writeAtomic(target, next);
+                written.push(p);
             }
         }
     }
@@ -234,6 +246,7 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
             if (!dryRun) {
                 const promoDir = ensureDirInside(root, 'promo');
                 writeAtomic(path.join(promoDir, path.basename(SPOTS_MANIFEST)), JSON.stringify(next, null, 2) + '\n');
+                written.push(SPOTS_MANIFEST);
             }
         }
     } else {

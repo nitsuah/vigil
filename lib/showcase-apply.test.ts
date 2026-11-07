@@ -41,4 +41,17 @@ describe('showcase apply output dir', () => {
         expect(r.stderr).toMatch(/refusing/);
         expect(fs.readdirSync(outside)).toEqual([]);
     });
+
+    it('reports files already written when a later write is refused', () => {
+        const repo = makeRepo();
+        fs.mkdirSync(path.join(repo, 'docs'));
+        fs.writeFileSync(path.join(repo, 'docs', 'index.html'), '<html><head></head><body>x</body></html>');
+        const outside = tmpDir();
+        fs.symlinkSync(outside, path.join(repo, 'promo'), 'dir');
+        const r = apply(repo);
+        expect(r.status).toBe(2);
+        expect(r.stdout).toContain('written before the error');
+        expect(r.stdout).toContain('docs/index.html');
+        expect(fs.readdirSync(outside)).toEqual([]);
+    });
 });

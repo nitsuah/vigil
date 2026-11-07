@@ -29,19 +29,32 @@ export function writeAtomic(file: string, content: string): void {
  */
 export function ensureDirInside(root: string, rel: string): string {
     const dir = path.join(root, rel);
-    let st: fs.Stats | null = null;
-    try {
-        st = fs.lstatSync(dir);
-    } catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+    const realRoot = fs.realpathSync(root);
+    // Resolve the deepest ancestor that already exists before creating anything below it.
+    let existing = dir;
+    for (;;) {
+        let st: fs.Stats | null = null;
+        try {
+            st = fs.lstatSync(existing);
+        } catch (e) {
+            if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+        }
+        if (st) {
+            if (existing === dir && (st.isSymbolicLink() || !st.isDirectory())) {
+                throw new Error(`refusing to write: ${rel} is not a plain directory`);
+            }
+            break;
+        }
+        existing = path.dirname(existing);
     }
-    if (st && (st.isSymbolicLink() || !st.isDirectory())) {
-        throw new Error(`refusing to write: ${rel} is not a plain directory`);
+    const fromRoot = path.relative(realRoot, fs.realpathSync(existing));
+    if (fromRoot === '..' || fromRoot.startsWith('..' + path.sep) || path.isAbsolute(fromRoot)) {
+        throw new Error(`refusing to write: ${rel} resolves outside the repo`);
     }
     fs.mkdirSync(dir, { recursive: true });
-    const realRoot = fs.realpathSync(root);
     const realDir = fs.realpathSync(dir);
-    if (realDir === realRoot || !realDir.startsWith(realRoot + path.sep)) {
+    const relDir = path.relative(realRoot, realDir);
+    if (relDir === '' || relDir === '..' || relDir.startsWith('..' + path.sep) || path.isAbsolute(relDir)) {
         throw new Error(`refusing to write: ${rel} resolves outside the repo`);
     }
     return realDir;
@@ -49,9 +62,8 @@ export function ensureDirInside(root: string, rel: string): string {
 
 /** Throw unless `file`'s parent directory resolves inside `root`. */
 export function assertParentInside(root: string, file: string): void {
-    const realRoot = fs.realpathSync(root);
-    const realParent = fs.realpathSync(path.dirname(file));
-    if (realParent !== realRoot && !realParent.startsWith(realRoot + path.sep)) {
+    const relParent = path.relative(fs.realpathSync(root), fs.realpathSync(path.dirname(file)));
+    if (relParent === '..' || relParent.startsWith('..' + path.sep) || path.isAbsolute(relParent)) {
         throw new Error(`refusing to write: ${path.relative(root, file)} resolves outside the repo`);
     }
 }

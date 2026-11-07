@@ -80,4 +80,18 @@ describe('ensureDirInside', () => {
         fs.symlinkSync(outside, path.join(d, 'site'), 'dir');
         expect(() => assertParentInside(d, path.join(d, 'site', 'index.html'))).toThrow(/refusing/);
     });
+
+    it('never creates directories below a symlinked ancestor', () => {
+        const d = tmpDir();
+        const outside = tmpDir();
+        fs.symlinkSync(outside, path.join(d, 'a'), 'dir');
+        expect(() => ensureDirInside(d, 'a/b/promo')).toThrow(/refusing/);
+        expect(fs.readdirSync(outside)).toEqual([]);
+    });
+
+    it('creates nested directories inside the root', () => {
+        const d = tmpDir();
+        const out = ensureDirInside(d, 'a/b/promo');
+        expect(out).toBe(path.join(fs.realpathSync(d), 'a', 'b', 'promo'));
+    });
 });
