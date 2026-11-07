@@ -1,0 +1,57 @@
+import { describe, it, expect, afterEach } from 'vitest';
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+const dirs: string[] = [];
+const tmpDir = () => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), 'showcase-'));
+    dirs.push(d);
+    return d;
+};
+afterEach(() => {
+    for (const d of dirs.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+});
+
+const script = path.resolve(__dirname, '../scripts/showcase.ts');
+const apply = (repo: string) =>
+    spawnSync(process.execPath, ['--import', 'tsx', script, 'apply', repo], { encoding: 'utf8', cwd: path.resolve(__dirname, '..') });
+
+const makeRepo = () => {
+    const d = tmpDir();
+    fs.writeFileSync(path.join(d, 'FEATURES.md'), '# Features\n\n## Core\n- **Alpha** - does a thing\n');
+    return d;
+};
+
+describe('showcase apply output dir', () => {
+    it('writes promo/spots.json in a normal checkout', () => {
+        const repo = makeRepo();
+        const r = apply(repo);
+        expect(r.status ?? 0).toBe(0);
+        expect(fs.existsSync(path.join(repo, 'promo', 'spots.json'))).toBe(true);
+    });
+
+    it('refuses a symlinked promo dir and writes nothing outside', () => {
+        const repo = makeRepo();
+        const outside = tmpDir();
+        fs.symlinkSync(outside, path.join(repo, 'promo'), 'dir');
+        const r = apply(repo);
+        expect(r.status).toBe(2);
+        expect(r.stderr).toMatch(/refusing/);
+        expect(fs.readdirSync(outside)).toEqual([]);
+    });
+
+    it('reports files already written when a later write is refused', () => {
+        const repo = makeRepo();
+        fs.mkdirSync(path.join(repo, 'docs'));
+        fs.writeFileSync(path.join(repo, 'docs', 'index.html'), '<html><head></head><body>x</body></html>');
+        const outside = tmpDir();
+        fs.symlinkSync(outside, path.join(repo, 'promo'), 'dir');
+        const r = apply(repo);
+        expect(r.status).toBe(2);
+        expect(r.stdout).toContain('written before the error');
+        expect(r.stdout).toContain('docs/index.html');
+        expect(fs.readdirSync(outside)).toEqual([]);
+    });
+});

@@ -14,7 +14,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { writeAtomic } from '../lib/atomic-write';
+import { assertParentInside, ensureDirInside, writeAtomic } from '../lib/atomic-write';
 import { detectVisualDocs, findVisualAssets, visualAutomation } from '../lib/visual-docs';
 import {
     auditShowcase,
@@ -186,7 +186,18 @@ function printGaps(s: RepoScan) {
     for (const g of s.audit.gaps) console.log(`  ${g.severity.padEnd(5)} ${g.code.padEnd(24)} ${g.message}`);
 }
 
+/** Run apply; if a write is refused partway, list what this run already wrote before failing. */
 function apply(root: string, dryRun: boolean, productFlag?: string) {
+    const written: string[] = [];
+    try {
+        applyChanges(root, dryRun, productFlag, written);
+    } catch (e) {
+        if (written.length) console.log(['written before the error:', ...written.map(w => `  ${w}`)].join('\n'));
+        throw e;
+    }
+}
+
+function applyChanges(root: string, dryRun: boolean, productFlag: string | undefined, written: string[]) {
     const s = scan(root);
     // The table keeps the directory name; a local remote can lag a GitHub rename (ats-fill's still says auto-apply-plugin).
     const product = productFlag ?? repoName(root);
@@ -198,7 +209,12 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
         const next = injectExpandKit(html);
         if (next !== html) {
             changes.push(`${p}: added expand kit`);
-            if (!dryRun) writeAtomic(path.join(root, p), next);
+            if (!dryRun) {
+                const target = path.join(root, p);
+                assertParentInside(root, target);
+                writeAtomic(target, next);
+                written.push(p);
+            }
         }
     }
     if (s.featuresPath) {
@@ -228,8 +244,9 @@ function apply(root: string, dryRun: boolean, productFlag?: string) {
         if (after !== before) {
             changes.push(`${SPOTS_MANIFEST}: ${before ? 'updated' : 'created'} (${next.features.length} features)`);
             if (!dryRun) {
-                fs.mkdirSync(path.join(root, 'promo'), { recursive: true });
-                writeAtomic(path.join(root, SPOTS_MANIFEST), JSON.stringify(next, null, 2) + '\n');
+                const promoDir = ensureDirInside(root, 'promo');
+                writeAtomic(path.join(promoDir, path.basename(SPOTS_MANIFEST)), JSON.stringify(next, null, 2) + '\n');
+                written.push(SPOTS_MANIFEST);
             }
         }
     } else {
