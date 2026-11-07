@@ -60,10 +60,43 @@ export function ensureDirInside(root: string, rel: string): string {
     return realDir;
 }
 
-/** Throw unless `file`'s parent directory resolves inside `root`. */
-export function assertParentInside(root: string, file: string): void {
-    const relParent = path.relative(fs.realpathSync(root), fs.realpathSync(path.dirname(file)));
+/**
+ * Throw unless `file`'s parent directory resolves inside `root`.
+ * Returns that resolved parent so callers can write into the directory that was checked.
+ */
+export function assertParentInside(root: string, file: string): string {
+    const realParent = fs.realpathSync(path.dirname(file));
+    const relParent = path.relative(fs.realpathSync(root), realParent);
     if (relParent === '..' || relParent.startsWith('..' + path.sep) || path.isAbsolute(relParent)) {
         throw new Error(`refusing to write: ${path.relative(root, file)} resolves outside the repo`);
+    }
+    return realParent;
+}
+
+/**
+ * Read `<root>/<rel>` as text, refusing a symlink, a non-file, or anything whose real path
+ * is outside `root`. A missing file throws ENOENT, as readFileSync does.
+ */
+export function readFileInside(root: string, rel: string): string {
+    const file = path.join(root, rel);
+    const st = fs.lstatSync(file);
+    if (st.isSymbolicLink() || !st.isFile()) {
+        throw new Error(`refusing to read: ${rel} is not a plain file`);
+    }
+    const realFile = fs.realpathSync(file);
+    const relFile = path.relative(fs.realpathSync(root), realFile);
+    if (relFile === '' || relFile === '..' || relFile.startsWith('..' + path.sep) || path.isAbsolute(relFile)) {
+        throw new Error(`refusing to read: ${rel} resolves outside the repo`);
+    }
+    // Open the resolved path without following links, and read only if it is the file that was checked.
+    const fd = fs.openSync(realFile, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+    try {
+        const opened = fs.fstatSync(fd);
+        if (!opened.isFile() || opened.ino !== st.ino || opened.dev !== st.dev) {
+            throw new Error(`refusing to read: ${rel} changed while it was being checked`);
+        }
+        return fs.readFileSync(fd, 'utf8');
+    } finally {
+        fs.closeSync(fd);
     }
 }

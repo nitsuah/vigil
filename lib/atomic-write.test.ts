@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { assertParentInside, ensureDirInside, writeAtomic } from './atomic-write';
+import { assertParentInside, ensureDirInside, readFileInside, writeAtomic } from './atomic-write';
 
 const dirs: string[] = [];
 const tmpDir = () => {
@@ -93,5 +93,53 @@ describe('ensureDirInside', () => {
         const d = tmpDir();
         const out = ensureDirInside(d, 'a/b/promo');
         expect(out).toBe(path.join(fs.realpathSync(d), 'a', 'b', 'promo'));
+    });
+});
+
+describe('assertParentInside resolved parent', () => {
+    it('returns the real parent so a write lands where the check went', () => {
+        const d = tmpDir();
+        fs.mkdirSync(path.join(d, 'real'));
+        fs.symlinkSync(path.join(d, 'real'), path.join(d, 'link'), 'dir');
+        const target = path.join(d, 'link', 'index.html');
+        const realParent = assertParentInside(d, target);
+        expect(realParent).toBe(fs.realpathSync(path.join(d, 'real')));
+        writeAtomic(path.join(realParent, path.basename(target)), 'x');
+        expect(fs.readFileSync(path.join(d, 'real', 'index.html'), 'utf8')).toBe('x');
+    });
+});
+
+describe('readFileInside', () => {
+    it('reads a plain file', () => {
+        const d = tmpDir();
+        fs.writeFileSync(path.join(d, 'a.json'), '{"a":1}');
+        expect(readFileInside(d, 'a.json')).toBe('{"a":1}');
+    });
+
+    it('throws ENOENT for a missing file', () => {
+        const d = tmpDir();
+        expect(() => readFileInside(d, 'missing.json')).toThrow(/ENOENT/);
+    });
+
+    it('refuses a symlinked file', () => {
+        const d = tmpDir();
+        const outside = tmpDir();
+        fs.writeFileSync(path.join(outside, 'secret.json'), '{}');
+        fs.symlinkSync(path.join(outside, 'secret.json'), path.join(d, 'a.json'), 'file');
+        expect(() => readFileInside(d, 'a.json')).toThrow(/refusing/);
+    });
+
+    it('refuses a directory', () => {
+        const d = tmpDir();
+        fs.mkdirSync(path.join(d, 'a.json'));
+        expect(() => readFileInside(d, 'a.json')).toThrow(/refusing/);
+    });
+
+    it('refuses a file below a symlinked directory that leaves the root', () => {
+        const d = tmpDir();
+        const outside = tmpDir();
+        fs.writeFileSync(path.join(outside, 'a.json'), '{}');
+        fs.symlinkSync(outside, path.join(d, 'promo'), 'dir');
+        expect(() => readFileInside(d, 'promo/a.json')).toThrow(/refusing/);
     });
 });
