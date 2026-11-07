@@ -14,7 +14,7 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { assertParentInside, ensureDirInside, writeAtomic } from '../lib/atomic-write';
+import { assertParentInside, ensureDirInside, readFileInside, writeAtomic } from '../lib/atomic-write';
 import { detectVisualDocs, findVisualAssets, visualAutomation } from '../lib/visual-docs';
 import {
     auditShowcase,
@@ -52,7 +52,11 @@ function listFiles(root: string): string[] {
 }
 
 const read = (root: string, rel: string): string | null => {
-    try { return fs.readFileSync(path.join(root, rel), 'utf8'); } catch { return null; }
+    try { return readFileInside(root, rel); } catch (e) {
+        // Files under promo/ feed the manifest, so a symlink or outside path there stops the run.
+        if (rel.startsWith('promo/') && (e as NodeJS.ErrnoException).code === undefined) throw e;
+        return null;
+    }
 };
 
 /**
@@ -211,8 +215,8 @@ function applyChanges(root: string, dryRun: boolean, productFlag: string | undef
             changes.push(`${p}: added expand kit`);
             if (!dryRun) {
                 const target = path.join(root, p);
-                assertParentInside(root, target);
-                writeAtomic(target, next);
+                const realParent = assertParentInside(root, target);
+                writeAtomic(path.join(realParent, path.basename(target)), next);
                 written.push(p);
             }
         }

@@ -54,4 +54,18 @@ describe('showcase apply output dir', () => {
         expect(r.stdout).toContain('docs/index.html');
         expect(fs.readdirSync(outside)).toEqual([]);
     });
+
+    it('refuses a symlinked manifest and leaves its target alone', () => {
+        const repo = makeRepo();
+        const outside = tmpDir();
+        const target = path.join(outside, 'spots.json');
+        fs.writeFileSync(target, '{"product":"x","features":[],"spots":[]}');
+        fs.mkdirSync(path.join(repo, 'promo'));
+        fs.symlinkSync(target, path.join(repo, 'promo', 'spots.json'), 'file');
+        const r = apply(repo);
+        expect(r.status).toBe(2);
+        expect(r.stderr).toMatch(/refusing/);
+        expect(fs.readFileSync(target, 'utf8')).toBe('{"product":"x","features":[],"spots":[]}');
+        expect(fs.lstatSync(path.join(repo, 'promo', 'spots.json')).isSymbolicLink()).toBe(true);
+    });
 });
