@@ -48,7 +48,7 @@
     "@eslint/js": "^9.39.4",
     "@netlify/functions": "^6.0.3",
     "@netlify/plugin-nextjs": "^5.16.6",
-    "@playwright/test": "^1.64.1",
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
