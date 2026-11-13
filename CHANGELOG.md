@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Changed:** dependencies refreshed (2026-11-13): the Dependabot minor/patch group (#441), then `next` and `eslint-config-next` 16.4.6 plus in-range minor/patch lockfile updates (`@anthropic-ai/sdk` 1.8, `openai` 7.56, `lucide-react` 1.72, `@playwright/test` 1.65, Tailwind 4.3.5 and others). `npm audit` reports 0 vulnerabilities. Major bumps (ESLint 10, TypeScript 7, jsdom 31) are deferred.
 - **Changed:** `.nvmrc` is now `22`, matching `engines.node` (22.x), CI and the Dockerfile. Netlify builds read `.nvmrc`, so the production server handler was still being built and run on Node 20, which is end-of-life.
 - **Changed:** `netlify.toml` gains a production-only `ignore` command, so a push to `main` deploys only when something outside docs, tests, CI config or promo assets changed. Each production deploy costs 15 Netlify credits, and docs/test-only merges no longer spend them. Deploy previews are unaffected, and a missing `CACHED_COMMIT_REF` makes the check fail open so the build still runs.
 - `visual_docs` is now scored. Healthy means CI regenerates the screenshots and diagrams and the README embeds them. Each row (screenshots, diagrams, videos, Pages) shows its own grade. A row offers the recipe PR (which now includes `docs/VISUAL_DOCS_HOWTO.md`) when CI alone can fix it; otherwise it shows a `/promo` handoff with the repo path and inputs.
