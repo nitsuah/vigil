@@ -69,8 +69,16 @@ function finiteOrNull(n: number | null | undefined): number | null {
     return n != null && Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Outcome of a detailed sync. `partialSteps` counts the non-fatal steps
+ * (best practices, community standards, health score) that failed; the sync
+ * itself still completes. Only a count: no error text or repo names.
+ */
+export type SyncRepoResult = { partialSteps: number };
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any) {
+export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any): Promise<SyncRepoResult> {
+    let partialSteps = 0;
     await ensureSchema(db);
 
     const owner = repo.fullName.split('/')[0];
@@ -626,6 +634,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         }
     } catch (e) {
         console.warn(`Failed to check best practices for ${repo.fullName}`, e);
+        partialSteps++;
     }
 
     // Community Standards Detection
@@ -645,6 +654,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         }
     } catch (e) {
         console.warn(`Failed to check community standards for ${repo.fullName}`, e);
+        partialSteps++;
     }
 
     // Calculate and update health score
@@ -695,7 +705,10 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         logger.info(`✓ Health score for ${repo.name}: ${healthScore.total}/100`);
     } catch (e) {
         console.warn(`Failed to calculate health score for ${repo.fullName}`, e);
+        partialSteps++;
     }
+
+    return { partialSteps };
 }
 
 // Wrapper function to sync a single repo by name

@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Repository sync now reports `partial` for the detailed-health phase and overall completion when a non-fatal step (best practices, community standards, health score) fails for a repo, instead of `success` (#437). `syncRepo()` returns a `partialSteps` count; the repo-level failed count is unchanged and no error text is added to telemetry.
 - Unit tests no longer call the live Gemini API: `tests/gemini-health.test.ts` exercises the health-check logic (now `scripts/gemini-health-check.mjs`) through a fake client, and CI's unit-test step no longer receives `GEMINI_API_KEY`. The 10 s live probe was flaking main CI on slow or rate-limited responses; the live check is still `npm run test-gemini-health` in the Netlify build.
 - **Fixed:** a refused front-matter fence that sits behind a UTF-8 BOM is now dropped like any other (`lib/parsers/front-matter.ts`), and the parser tests assert that YAML/JSON bodies exclude their fence.
 - **Fixed:** `extractBadges` uses bounded character classes and caps its input at 100,000 characters, so a malformed README can no longer cause super-linear regex backtracking.

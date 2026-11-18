@@ -248,6 +248,10 @@ export async function POST(request: Request): Promise<NextResponse> {
             let detailsFinished = 0;
             let detailsFailed = 0;
             const detailsFailedRepos = new Set<string>();
+            // Repos whose detailed sync finished but with a non-fatal step failed
+            // (best practices / community standards / health score). Kept apart
+            // from detailsFailed so unique repo-failure counts stay accurate.
+            let detailsPartial = 0;
             const markFinished = () => reportProgress({ completedRepos: ++detailsFinished });
 
             // Helper to sync details with delay and exponential backoff retry
@@ -263,7 +267,8 @@ export async function POST(request: Request): Promise<NextResponse> {
                 for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
                     try {
                         await reportProgress({ currentRepo: repoMeta.fullName });
-                        await syncRepo(repoMeta, client, db);
+                        const result = await syncRepo(repoMeta, client, db);
+                        if (result && result.partialSteps > 0) detailsPartial++;
                         logger.info(`✓ Detailed sync completed for ${repoMeta.name}${attempt > 0 ? ` (attempt ${attempt + 1})` : ''}`);
                         
                         // Delay after successful sync (except for first repo)
@@ -333,7 +338,7 @@ export async function POST(request: Request): Promise<NextResponse> {
                 })());
             }
             await Promise.all(workers);
-            observe.finish('detailed_health', rateLimitedUntil !== null || detailsFailed > 0 ? 'partial' : 'success', {
+            observe.finish('detailed_health', rateLimitedUntil !== null || detailsFailed > 0 || detailsPartial > 0 ? 'partial' : 'success', {
                 counts: {
                     total: reposToSync.length,
                     completed: detailsFinished,
@@ -479,7 +484,7 @@ export async function POST(request: Request): Promise<NextResponse> {
                 return;
             }
             await reportProgress({ phase: 'complete', currentRepo: 'Complete' });
-            observe.finish('completion', errorCount > 0 || detailsFailed > 0 || defaultSkipped > 0 ? 'partial' : 'success', {
+            observe.finish('completion', errorCount > 0 || detailsFailed > 0 || detailsPartial > 0 || defaultSkipped > 0 ? 'partial' : 'success', {
                 counts: {
                     total: totalRepos,
                     failed: failedRepoNames.size,
