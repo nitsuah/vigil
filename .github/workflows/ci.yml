@@ -32,7 +32,6 @@ jobs:
         run: npm test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_ID: ${{ secrets.GITHUB_ID || 'ci-dummy-github-id' }}
           GITHUB_SECRET: ${{ secrets.GITHUB_SECRET || 'ci-dummy-github-secret' }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'dummy_nextauth_secret' }}
