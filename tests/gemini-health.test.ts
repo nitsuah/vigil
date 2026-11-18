@@ -1,44 +1,68 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { getConfiguredModel } from '../lib/gemini-model-discovery';
 import { getAvailableProviders, getPrimaryProvider } from '../lib/ai-providers';
+import { runGeminiHealthCheck } from '../scripts/gemini-health-check.mjs';
 
-const execAsync = promisify(exec);
+// The live probe is `npm run test-gemini-health` (run by the Netlify build).
+// Unit tests use a fake client so CI never calls the Gemini API.
+function fakeClient(generateContent: () => Promise<unknown>) {
+  const getGenerativeModel = vi.fn(() => ({ generateContent: vi.fn(generateContent) }));
+  return { client: { getGenerativeModel } as never, getGenerativeModel };
+}
 
-describe('Gemini API Health', () => {
-  it('should have a working Gemini model configured', async ({ skip }) => {
-    // Env is loaded via tests/setup-env.ts; skip if missing instead of failing hard in CI
-    if (!process.env.GEMINI_API_KEY) {
-      console.warn('Skipping Gemini API Health test: GEMINI_API_KEY not found in environment');
-      skip();
-      return;
-    }
-    const model = getConfiguredModel();
+describe('Gemini API Health check', () => {
+  const model = getConfiguredModel();
 
-    try {
-      const { stdout, stderr } = await execAsync('node scripts/test-gemini-health.mjs', {
-        env: { ...process.env, GEMINI_MODEL_NAME: model },
-        timeout: 10000,
-      });
-      if ((stdout + stderr).includes('429 Too Many Requests')) {
-        console.warn('Skipping Gemini API Health test: quota exceeded (429)');
-        skip();
-        return;
-      }
-      expect(stdout).toContain('Gemini API healthy');
-      expect(stdout).toContain(model);
-    } catch (error: unknown) {
-      const combined = ((error as { stdout?: string; stderr?: string }).stdout ?? '') +
-        ((error as { stdout?: string; stderr?: string }).stderr ?? '');
-      if (combined.includes('429 Too Many Requests')) {
-        console.warn('Skipping Gemini API Health test: quota exceeded (429)');
-        skip();
-        return;
-      }
-      throw error;
-    }
-  }, 15000);
+  it('reports healthy when the configured model answers "ok"', async () => {
+    const { client, getGenerativeModel } = fakeClient(async () => ({
+      response: { text: () => ' OK \n' },
+    }));
+
+    const result = await runGeminiHealthCheck({ model, client });
+
+    expect(getGenerativeModel).toHaveBeenCalledWith({ model });
+    expect(result.healthy).toBe(true);
+    expect(result.lines.join('\n')).toContain('Gemini API healthy');
+    expect(result.lines.join('\n')).toContain(model);
+    expect(result.errorLines).toEqual([]);
+  });
+
+  it('awaits a promised response and still counts unexpected text as healthy', async () => {
+    const { client } = fakeClient(async () => ({
+      response: Promise.resolve({ text: () => 'hello there' }),
+    }));
+
+    const result = await runGeminiHealthCheck({ model, client });
+
+    expect(result.healthy).toBe(true);
+    expect(result.lines.join('\n')).toContain('unexpected output: "hello there"');
+  });
+
+  it('reports broken with a model-discovery hint on a 404', async () => {
+    const { client } = fakeClient(async () => {
+      throw new Error('[404 Not Found] models/gone is not found for API version v1beta');
+    });
+
+    const result = await runGeminiHealthCheck({ model: 'models/gone', client });
+
+    expect(result.healthy).toBe(false);
+    const errors = result.errorLines.join('\n');
+    expect(errors).toContain('Gemini API BROKEN with model "models/gone"');
+    expect(errors).toContain('MODEL NOT FOUND');
+  });
+
+  it('reports broken without the 404 hint on other errors such as quota', async () => {
+    const { client } = fakeClient(async () => {
+      throw new Error('[429 Too Many Requests] quota exceeded');
+    });
+
+    const result = await runGeminiHealthCheck({ model, client });
+
+    expect(result.healthy).toBe(false);
+    const errors = result.errorLines.join('\n');
+    expect(errors).toContain('429 Too Many Requests');
+    expect(errors).not.toContain('MODEL NOT FOUND');
+  });
 });
 
 describe('AI provider routing', () => {
