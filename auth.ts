@@ -15,15 +15,14 @@ function isLocalhostHttpUrl(url: string | undefined): boolean {
     }
 }
 
-// Validate required environment variables
-if (!process.env.GITHUB_ID) {
-    throw new Error('Missing required environment variable: GITHUB_ID');
-}
-if (!process.env.GITHUB_SECRET) {
-    throw new Error('Missing required environment variable: GITHUB_SECRET');
-}
-if (!process.env.NEXTAUTH_SECRET) {
-    throw new Error('Missing required environment variable: NEXTAUTH_SECRET');
+// Validate required environment variables. Report them instead of throwing at
+// import: proxy.ts imports this module, so a throw here took down every route
+// (and `next build`, which has no runtime secrets on Cloudflare Workers Builds)
+// rather than only sign-in. Auth.js still refuses to sign anyone in without them.
+const REQUIRED_AUTH_ENV = ['GITHUB_ID', 'GITHUB_SECRET', 'NEXTAUTH_SECRET'] as const;
+const missingAuthEnv = REQUIRED_AUTH_ENV.filter((name) => !process.env[name]);
+if (missingAuthEnv.length && process.env.NEXT_PHASE !== 'phase-production-build') {
+    logger.error('Missing required auth environment variables; sign-in will fail:', missingAuthEnv);
 }
 
 logger.info('Initializing NextAuth with:', {

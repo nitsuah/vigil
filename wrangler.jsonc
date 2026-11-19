@@ -1,0 +1,16 @@
+// Cloudflare Workers deploy (Workers Builds, Git-connected, main only).
+// Netlify keeps using netlify.toml until vigil.nitsuah.io is switched over.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gh-vigil",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true }
+}
