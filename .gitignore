@@ -61,3 +61,8 @@ brag-output*/
 # Build/test artifacts
 *.log
 .coverage
+
+# Cloudflare (OpenNext)
+.open-next/
+.wrangler/
+.dev.vars
