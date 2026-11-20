@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 vi.mock('@/auth', () => ({ auth: vi.fn().mockResolvedValue(null) }));
 
 import { NextRequest } from 'next/server';
-import { proxy } from '@/proxy';
+import { proxy, config } from '@/proxy';
 
 const req = (path: string, headers: Record<string, string> = {}) =>
   new NextRequest(`http://localhost${path}`, { headers });
@@ -44,5 +44,15 @@ describe('proxy — machine clients on MCP routes', () => {
     expect(isRedirectToLogin(await proxy(req('/pmo', auth)))).toBe(true);
     expect(isRedirectToLogin(await proxy(req('/api/pmo/tasks', auth)))).toBe(true);
     expect(isRedirectToLogin(await proxy(req('/api/mcp/extra', auth)))).toBe(true);
+  });
+});
+
+describe('proxy — matcher', () => {
+  it('excludes icon.svg and og-1200x630.jpg, includes /pmo and /api/mcp', () => {
+    const re = new RegExp('^' + config.matcher[0] + '$');
+    expect(re.test('/icon.svg')).toBe(false);
+    expect(re.test('/og-1200x630.jpg')).toBe(false);
+    expect(re.test('/pmo')).toBe(true);
+    expect(re.test('/api/mcp')).toBe(true);
   });
 });
