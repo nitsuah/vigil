@@ -52,6 +52,9 @@ describe('proxy — matcher', () => {
     const re = new RegExp('^' + config.matcher[0] + '$');
     expect(re.test('/icon.svg')).toBe(false);
     expect(re.test('/og-1200x630.jpg')).toBe(false);
+    // Dots are literal: look-alike paths still go through the login check.
+    expect(re.test('/iconXsvg')).toBe(true);
+    expect(re.test('/faviconXico')).toBe(true);
     expect(re.test('/pmo')).toBe(true);
     expect(re.test('/api/mcp')).toBe(true);
   });
