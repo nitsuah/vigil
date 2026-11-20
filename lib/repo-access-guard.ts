@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getNeonClient, ensureSchema } from '@/lib/db';
-import { canAccessRepo, type RepoAccessCheck } from '@/lib/repo-access';
+import { canAccessRepo, hasRepoGrant, type RepoAccessCheck } from '@/lib/repo-access';
 
 interface SessionLike {
     userId?: string;
@@ -37,4 +37,46 @@ export async function denyIfNoRepoAccess(
         }
     }
     return null;
+}
+
+export interface WritableRepo {
+    id: string;
+    name: string;
+    full_name: string;
+}
+
+/**
+ * Write-side counterpart of denyIfNoRepoAccess. `repos` rows are shared by
+ * every user, so changing one needs a repo_access grant (the caller's own
+ * token resolved that repo), not just read access. Resolves the short name to
+ * exactly one grant-backed row and returns it so the caller updates by id.
+ * 404 when nothing is writable, 409 when the short name is ambiguous.
+ */
+export async function resolveWritableRepo(
+    repoName: string,
+    session: SessionLike | null
+): Promise<{ repo: WritableRepo; response?: undefined } | { repo?: undefined; response: NextResponse }> {
+    const db = getNeonClient();
+    await ensureSchema(db);
+
+    const candidates = (await db`
+        SELECT id, name, full_name FROM repos WHERE name = ${repoName}
+    `) as unknown as WritableRepo[];
+
+    const writable: WritableRepo[] = [];
+    for (const row of candidates) {
+        if (await hasRepoGrant(db, row.id, session?.userId)) writable.push(row);
+    }
+    if (writable.length === 0) {
+        return { response: NextResponse.json({ error: 'Repo not found' }, { status: 404 }) };
+    }
+    if (writable.length > 1) {
+        return {
+            response: NextResponse.json(
+                { error: `Repository name ${repoName} is ambiguous; sync it again to disambiguate` },
+                { status: 409 }
+            ),
+        };
+    }
+    return { repo: writable[0] };
 }
