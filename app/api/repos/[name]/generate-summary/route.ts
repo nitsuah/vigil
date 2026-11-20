@@ -5,7 +5,7 @@ import { GitHubClient } from '@/lib/github';
 import { getNeonClient } from '@/lib/db';
 import { generateRepoSummary } from '@/lib/ai';
 import logger from '@/lib/log';
-import { denyIfNoRepoAccess } from '@/lib/repo-access-guard';
+import { resolveWritableRepo } from '@/lib/repo-access-guard';
 
 export async function POST(
     request: NextRequest,
@@ -19,16 +19,11 @@ export async function POST(
         }
 
         const repoName = params.name;
-        const denied = await denyIfNoRepoAccess(repoName, session);
-        if (denied) return denied;
+        const resolved = await resolveWritableRepo(repoName, session);
+        if (resolved.response) return resolved.response;
         const db = getNeonClient();
 
-        // Get repo owner
-        const repoRows = await db`SELECT full_name FROM repos WHERE name = ${repoName} LIMIT 1`;
-        if (repoRows.length === 0) {
-            return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
-        }
-        const fullName = repoRows[0].full_name;
+        const fullName = resolved.repo.full_name;
         const owner = fullName.split('/')[0];
 
         // Initialize GitHub client
@@ -63,7 +58,7 @@ export async function POST(
         await db`
             UPDATE repos 
             SET ai_summary = ${summary}
-            WHERE name = ${repoName}
+            WHERE id = ${resolved.repo.id}
         `;
 
         return NextResponse.json({ success: true, summary });

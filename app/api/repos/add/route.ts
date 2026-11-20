@@ -74,18 +74,18 @@ export async function POST(request: NextRequest) {
         await grantRepoAccess(db, repoMeta.fullName, session.userId);
 
         // Ensure repo is visible and update repo type if provided
-        // Use repoMeta.name (from GitHub API) to ensure case-sensitive match
+        // Match on the owner-qualified full name: short names collide across owners.
         if (repoType && repoType !== 'unknown') {
             await db`
                 UPDATE repos 
                 SET repo_type = ${repoType}, is_hidden = FALSE
-                WHERE name = ${repoMeta.name}
+                WHERE full_name = ${repoMeta.fullName}
             `;
         } else {
             await db`
                 UPDATE repos 
                 SET is_hidden = FALSE
-                WHERE name = ${repoMeta.name}
+                WHERE full_name = ${repoMeta.fullName}
             `;
         }
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getNeonClient } from '@/lib/db';
 import logger from '@/lib/log';
-import { denyIfNoRepoAccess } from '@/lib/repo-access-guard';
+import { resolveWritableRepo } from '@/lib/repo-access-guard';
 
 export async function POST(
     request: NextRequest,
@@ -17,14 +17,14 @@ export async function POST(
         }
 
         const repoName = params.name;
-        const denied = await denyIfNoRepoAccess(repoName, session);
-        if (denied) return denied;
+        const resolved = await resolveWritableRepo(repoName, session);
+        if (resolved.response) return resolved.response;
         const db = getNeonClient();
 
         await db`
             UPDATE repos 
             SET is_hidden = TRUE 
-            WHERE name = ${repoName}
+            WHERE id = ${resolved.repo.id}
         `;
 
         return NextResponse.json({ success: true });

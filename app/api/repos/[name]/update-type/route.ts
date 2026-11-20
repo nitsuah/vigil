@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/lib/log';
 import { auth } from '@/auth';
 import { getNeonClient } from '@/lib/db';
-import { denyIfNoRepoAccess } from '@/lib/repo-access-guard';
+import { resolveWritableRepo } from '@/lib/repo-access-guard';
 
 export async function PATCH(
     request: NextRequest,
@@ -16,8 +16,6 @@ export async function PATCH(
 
         const params = await props.params;
         const repoName = params.name;
-        const denied = await denyIfNoRepoAccess(repoName, session);
-        if (denied) return denied;
         const { type } = await request.json();
 
         if (!repoName) {
@@ -33,12 +31,14 @@ export async function PATCH(
             return NextResponse.json({ error: 'Invalid repo type' }, { status: 400 });
         }
 
+        const resolved = await resolveWritableRepo(repoName, session);
+        if (resolved.response) return resolved.response;
         const db = getNeonClient();
-        
+
         await db`
             UPDATE repos 
             SET repo_type = ${type}, updated_at = NOW()
-            WHERE name = ${repoName}
+            WHERE id = ${resolved.repo.id}
         `;
 
         return NextResponse.json({ success: true, type });

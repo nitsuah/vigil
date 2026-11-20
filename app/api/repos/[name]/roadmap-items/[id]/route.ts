@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/lib/log';
 import { auth } from '@/auth';
 import { getNeonClient } from '@/lib/db';
-import { denyIfNoRepoAccess } from '@/lib/repo-access-guard';
+import { resolveWritableRepo } from '@/lib/repo-access-guard';
 
 // Links a roadmap item to a tracked PR and/or an Agent Task Queue entry, so
 // DEV-flow handoff state is visible in the per-repo roadmap progress view.
@@ -17,11 +17,11 @@ export async function PATCH(
         }
 
         const { name: repoName, id } = await props.params;
-        const denied = await denyIfNoRepoAccess(repoName, session);
-        if (denied) return denied;
         if (!repoName || !id) {
             return NextResponse.json({ error: 'Repo name and roadmap item id required' }, { status: 400 });
         }
+        const resolved = await resolveWritableRepo(repoName, session);
+        if (resolved.response) return resolved.response;
 
         const { linkedPrNumber, agentTaskId } = await request.json();
 
@@ -47,21 +47,21 @@ export async function PATCH(
             rows = await db`
                 UPDATE roadmap_items
                 SET linked_pr_number = ${linkedPrNumber}, agent_task_id = ${agentTaskId}, updated_at = NOW()
-                WHERE id = ${id} AND repo_id = (SELECT id FROM repos WHERE name = ${repoName})
+                WHERE id = ${id} AND repo_id = ${resolved.repo.id}
                 RETURNING id, linked_pr_number, agent_task_id
             `;
         } else if (setLinkedPr) {
             rows = await db`
                 UPDATE roadmap_items
                 SET linked_pr_number = ${linkedPrNumber}, updated_at = NOW()
-                WHERE id = ${id} AND repo_id = (SELECT id FROM repos WHERE name = ${repoName})
+                WHERE id = ${id} AND repo_id = ${resolved.repo.id}
                 RETURNING id, linked_pr_number, agent_task_id
             `;
         } else {
             rows = await db`
                 UPDATE roadmap_items
                 SET agent_task_id = ${agentTaskId}, updated_at = NOW()
-                WHERE id = ${id} AND repo_id = (SELECT id FROM repos WHERE name = ${repoName})
+                WHERE id = ${id} AND repo_id = ${resolved.repo.id}
                 RETURNING id, linked_pr_number, agent_task_id
             `;
         }
