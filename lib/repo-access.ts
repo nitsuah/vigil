@@ -47,6 +47,10 @@ export const GRANT_REVALIDATE_AFTER_MS = 15 * 60_000;
 /** Upper bound on GitHub lookups a single listing request performs. */
 const MAX_REVALIDATIONS_PER_CALL = 10;
 const REVALIDATE_TIMEOUT_MS = 3_000;
+/** Minimum gap between revalidation passes for one user. */
+export const REVALIDATE_COOLDOWN_MS = 5 * 60_000;
+const MAX_COOLDOWN_ENTRIES = 5_000;
+const lastRevalidation = new Map<string, number>();
 
 const cutoff = (ms: number, now: number = Date.now()): string => new Date(now - ms).toISOString();
 
@@ -102,12 +106,34 @@ export async function hasRepoGrant(
     return revalidateGrant(db, repoId, githubUserId, accessToken);
 }
 
-type FetchLike = (url: string, init?: RequestInit) => Promise<{ status: number; headers: { get(name: string): string | null } }>;
+type FetchLike = (
+    url: string,
+    init?: RequestInit
+) => Promise<{ status: number; headers: { get(name: string): string | null }; text?: () => Promise<string> }>;
+
+/** Wording GitHub uses when a repo is simply not visible to the token. */
+const NO_ACCESS_BODY = /\b(not found|no access)\b/i;
+/** Throttling, abuse and SSO/SAML responses say nothing about repo access. */
+const INCONCLUSIVE_BODY = /rate limit|abuse|secondary|saml|sso|enforce|temporarily|try again/i;
+
+/** True only for a response that clearly means "this token cannot see the repo". */
+async function clearlyNoAccess(res: Awaited<ReturnType<FetchLike>>): Promise<boolean> {
+    if (res.headers.get('retry-after') !== null || res.headers.get('x-ratelimit-remaining') === '0') return false;
+    if (res.status === 404) return true;
+    if (res.status !== 403 || !res.text) return false;
+    try {
+        const body = (await res.text()).slice(0, 2000);
+        return NO_ACCESS_BODY.test(body) && !INCONCLUSIVE_BODY.test(body);
+    } catch {
+        return false;
+    }
+}
 
 /**
  * Re-checks one existing grant against GitHub with the caller's token.
- * Returns true if the grant is (now) valid. 200 renews it; 404/403 (other than
- * rate limiting) deletes it; any other outcome leaves it untouched, so it
+ * Returns true if the grant is (now) valid. 200 renews it; a 404, or a 403 whose
+ * body plainly says not found / no access (never rate-limit, abuse or SAML
+ * responses, nor anything carrying retry-after), deletes it; any other outcome leaves it untouched, so it
  * keeps lapsing rather than being extended on an inconclusive answer.
  */
 export async function revalidateGrant(
@@ -137,8 +163,7 @@ export async function revalidateGrant(
             `;
             return true;
         }
-        const rateLimited = res.headers.get('x-ratelimit-remaining') === '0';
-        if (res.status === 404 || (res.status === 403 && !rateLimited)) {
+        if (await clearlyNoAccess(res)) {
             await db`DELETE FROM repo_access WHERE repo_id = ${repoId} AND github_user_id = ${githubUserId}`;
         }
     } catch {
@@ -156,9 +181,19 @@ export async function revalidateDueGrants(
     db: RepoAccessDb,
     githubUserId: string | undefined,
     accessToken: string | undefined,
-    fetchImpl?: FetchLike
+    fetchImpl?: FetchLike,
+    now: number = Date.now()
 ): Promise<void> {
     if (!githubUserId || !accessToken) return;
+    // Per-user cooldown (per instance): listing requests are frequent and a
+    // re-check pass should not run on every one of them.
+    const last = lastRevalidation.get(githubUserId);
+    if (last !== undefined && now - last < REVALIDATE_COOLDOWN_MS) return;
+    if (lastRevalidation.size >= MAX_COOLDOWN_ENTRIES) {
+        const oldest = lastRevalidation.keys().next();
+        if (!oldest.done) lastRevalidation.delete(oldest.value);
+    }
+    lastRevalidation.set(githubUserId, now);
     const due = (await db`
         SELECT repo_id FROM repo_access
         WHERE github_user_id = ${githubUserId}

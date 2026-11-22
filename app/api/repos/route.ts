@@ -1,4 +1,4 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse, NextRequest, after } from 'next/server';
 import logger from '@/lib/log';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import { auth } from '@/auth';
@@ -49,8 +49,15 @@ export async function GET(request: NextRequest) {
         // was introduced fail closed until their next sync.
         // When showHidden is true, include hidden/archived repos too.
         const githubUserId = session.userId ?? '';
-        // Keep this user's grants current (bounded, oldest first) before listing.
-        await revalidateDueGrants(db, session.userId, session.accessToken);
+        // Keep this user's grants current (bounded, oldest first) after the
+        // response is sent, so listing is never slowed by GitHub lookups.
+        const revalidate = () => revalidateDueGrants(db, session.userId, session.accessToken).catch(() => undefined);
+        try {
+            after(revalidate);
+        } catch {
+            // No request scope (e.g. unit tests): run in the background.
+            void revalidate();
+        }
         const grantCutoff = new Date(Date.now() - GRANT_TTL_MS).toISOString();
         const repos = await db`
             SELECT * FROM repos

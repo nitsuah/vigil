@@ -11,6 +11,7 @@ import {
     hasRepoGrant,
     revalidateGrant,
     revalidateDueGrants,
+    REVALIDATE_COOLDOWN_MS,
     type RepoAccessDb,
 } from '@/lib/repo-access';
 
@@ -133,9 +134,10 @@ describe('grantRepoAccess', () => {
 });
 
 describe('grant expiry and revalidation', () => {
-    const res = (status: number, headers: Record<string, string> = {}) => ({
+    const res = (status: number, headers: Record<string, string> = {}, body = '') => ({
         status,
         headers: { get: (n: string) => headers[n.toLowerCase()] ?? null },
+        text: async () => body,
     });
 
     it('requires a recent verification time when checking a grant', async () => {
@@ -167,10 +169,36 @@ describe('grant expiry and revalidation', () => {
             calls.push(q);
             return q.includes('SELECT r.full_name') ? [{ full_name: 'o/private' }] : [];
         }) as unknown as RepoAccessDb;
-        for (const status of [404, 403]) {
+        calls.length = 0;
+        expect(await revalidateGrant(db, 'r1', 'gh-1', 'tok', vi.fn().mockResolvedValue(res(404)))).toBe(false);
+        expect(calls.some((q) => q.includes('DELETE FROM repo_access'))).toBe(true);
+    });
+
+    it('deletes on a 403 only when the body plainly says not found / no access', async () => {
+        const calls: string[] = [];
+        const db = (async (strings: TemplateStringsArray) => {
+            const q = strings.join(' ');
+            calls.push(q);
+            return q.includes('SELECT r.full_name') ? [{ full_name: 'o/private' }] : [];
+        }) as unknown as RepoAccessDb;
+        const run = (r: ReturnType<typeof res>) => revalidateGrant(db, 'r1', 'gh-1', 'tok', vi.fn().mockResolvedValue(r));
+
+        calls.length = 0;
+        await run(res(403, {}, '{"message":"Not Found"}'));
+        expect(calls.some((q) => q.includes('DELETE'))).toBe(true);
+
+        for (const r of [
+            res(403, {}, '{"message":"API rate limit exceeded"}'),
+            res(403, {}, '{"message":"You have exceeded a secondary rate limit"}'),
+            res(403, {}, '{"message":"Resource protected by organization SAML enforcement"}'),
+            res(403, {}, '{"message":"abuse detection mechanism"}'),
+            res(403, { 'retry-after': '30' }, '{"message":"Not Found"}'),
+            res(404, { 'retry-after': '30' }),
+            res(403, {}, ''),
+        ]) {
             calls.length = 0;
-            expect(await revalidateGrant(db, 'r1', 'gh-1', 'tok', vi.fn().mockResolvedValue(res(status)))).toBe(false);
-            expect(calls.some((q) => q.includes('DELETE FROM repo_access'))).toBe(true);
+            await run(r);
+            expect(calls.some((q) => q.includes('DELETE'))).toBe(false);
         }
     });
 
@@ -210,6 +238,22 @@ describe('grant expiry and revalidation', () => {
         }) as unknown as RepoAccessDb;
         const fetchImpl = vi.fn().mockResolvedValue(res(200));
         await revalidateDueGrants(db, 'gh-1', 'tok', fetchImpl);
+        expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+
+    it('runs a revalidation pass at most once per cooldown per user', async () => {
+        const db = (async (strings: TemplateStringsArray) => {
+            const q = strings.join(' ');
+            if (q.includes('SELECT repo_id FROM repo_access')) return [{ repo_id: 'a' }];
+            if (q.includes('SELECT r.full_name')) return [{ full_name: 'o/p' }];
+            return [];
+        }) as unknown as RepoAccessDb;
+        const fetchImpl = vi.fn().mockResolvedValue(res(200));
+        const t0 = 1_000_000_000_000;
+        await revalidateDueGrants(db, 'gh-cool', 'tok', fetchImpl, t0);
+        await revalidateDueGrants(db, 'gh-cool', 'tok', fetchImpl, t0 + 1000);
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+        await revalidateDueGrants(db, 'gh-cool', 'tok', fetchImpl, t0 + REVALIDATE_COOLDOWN_MS + 1);
         expect(fetchImpl).toHaveBeenCalledTimes(2);
     });
 });
