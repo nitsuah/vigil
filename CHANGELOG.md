@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/api/mcp` rate limiting now keys on the platform-provided client address (`x-nf-client-connection-ip`, override with `MCP_CLIENT_IP_HEADER`), authenticates before counting successful requests, throttles failed authentication separately, and bounds its in-memory table.
 - `/api/mcp` rate limiting now keys on the platform-provided client address (`x-nf-client-connection-ip`, override with `MCP_CLIENT_IP_HEADER`, which must be a platform-set header; `cf-connecting-ip` is the fallback, and callers with neither share a stricter bucket), authenticates before counting successful requests, throttles failed authentication separately, and bounds its in-memory table.
 - Markdown previews only load images from an allowlist of hosts (`lib/safe-image.ts`); other images render as their alt text. An `img-src` Content-Security-Policy header (netlify.toml) enforces the same list.
+- Markdown previews only load images from an allowlist of hosts (`lib/safe-image.ts`); other images (including badges from hosts not on the list) now render as their alt text. An `img-src` Content-Security-Policy header (netlify.toml) enforces the same list; the policy must be mirrored in the Cloudflare config if the Cloudflare Workers move (#452) lands.
 
 - Changing shared repo settings (hide, unhide, type, summary, roadmap links) now requires a repo grant and targets the single granted repo by id; adding a repo updates settings by its full name.
 
