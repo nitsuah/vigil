@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/api/mcp` rate limiting now keys on the platform-provided client address (`x-nf-client-connection-ip`, override with `MCP_CLIENT_IP_HEADER`), authenticates before counting successful requests, throttles failed authentication separately, and bounds its in-memory table.
 - `/api/mcp` rate limiting now keys on the platform-provided client address (`x-nf-client-connection-ip`, override with `MCP_CLIENT_IP_HEADER`, which must be a platform-set header; `cf-connecting-ip` is the fallback, and callers with neither share a stricter bucket), authenticates before counting successful requests, throttles failed authentication separately, and bounds its in-memory table.
 - Saved chat threads are keyed on the signed-in account's stable GitHub id instead of email; a session that is still loading or has no stable id keeps threads in memory only. Existing email-keyed threads migrate once.
+- Saved chat threads are keyed on the signed-in account's stable GitHub id instead of email; a session that is still loading or has no stable id keeps threads in memory only. Existing email-keyed threads migrate once, bound to the first account id that claims the email.
 
 - Changing shared repo settings (hide, unhide, type, summary, roadmap links) now requires a repo grant and targets the single granted repo by id; adding a repo updates settings by its full name.
 

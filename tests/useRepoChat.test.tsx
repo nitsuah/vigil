@@ -162,6 +162,21 @@ describe('useRepoChat', () => {
         expect(JSON.parse(window.localStorage.getItem(idKey)!)).toEqual({ 'repo-a': thread });
     });
 
+    it('migrates email-keyed threads only for the first account id that claims the email', () => {
+        const emailKey = `vigil.repo-chat.v1.${encodeURIComponent('shared@example.com')}`;
+        const thread = [{ id: 'm1', role: 'user', content: 'first owner', createdAt: new Date().toISOString() }];
+        window.localStorage.setItem(emailKey, JSON.stringify({ 'repo-a': thread }));
+
+        renderHook(() => useRepoChat('111', 'shared@example.com'));
+        // Threads are written back under the email key again (e.g. an old tab), but the claim is already bound.
+        window.localStorage.setItem(emailKey, JSON.stringify({ 'repo-a': thread }));
+        const second = renderHook(() => useRepoChat('222', 'shared@example.com'));
+
+        expect(second.result.current.getThread('repo-a')).toEqual([]);
+        expect(window.localStorage.getItem(emailKey)).not.toBeNull();
+        expect(window.localStorage.getItem('vigil.repo-chat.v1.migrated.shared%40example.com')).toBe('111');
+    });
+
     it('does not load threads of a different stable id', () => {
         const thread = [{ id: 'm1', role: 'user', content: 'theirs', createdAt: new Date().toISOString() }];
         window.localStorage.setItem('vigil.repo-chat.v1.111', JSON.stringify({ 'repo-a': thread }));
