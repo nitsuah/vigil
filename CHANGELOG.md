@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Badge detection in README content now uses a linear-time scanner with input and tag-length caps (`lib/badge-scan.ts`) instead of backtracking regular expressions.
+
 - Changing shared repo settings (hide, unhide, type, summary, roadmap links) now requires a repo grant and targets the single granted repo by id; adding a repo updates settings by its full name.
 
 - **Fixed (critical):** the roadmap, tasks, features and metrics parsers no longer let a repository document run JavaScript on the server through a `---js` front-matter fence. Front matter is now parsed as YAML/JSON only (`lib/parsers/front-matter.ts`); other languages are treated as no front matter.

@@ -1,3 +1,4 @@
+import { extractBadgeCandidates, MAX_BADGE_URL_CHARS } from '@/lib/badge-scan';
 import { Octokit } from '@octokit/rest';
 import { ACTIONS_PR_PRACTICE, actionsPrHandoff, detectJourneys, detectVisualDocs, JOURNEYS_PRACTICE, needsActionsPrPermission, VISUAL_DOCS_PRACTICE, VISUAL_WORKFLOW } from '@/lib/visual-docs';
 
@@ -604,15 +605,6 @@ export async function checkBestPractices(
     if (readmeContent) {
         // Check for common deployment badges
         // Robust detection of CI/CD and deploy badges via URL + alt-text keywords with scoring
-        const badgeMdRegex = /!\[[^\]]*\]\(([^)]+)\)/gi; // Markdown image
-        const badgeLinkMdRegex = /\[!\[[^\]]*\]\(([^)]+)\)\]\(([^)]+)\)/gi; // Linked badge
-        // HTML image: find the tag first (one linear pass), then read src/alt from that tag only, so attribute
-        // patterns can never backtrack across the rest of the README.
-        const imgTagRegex = /<img\s[^>]*>/gi;
-        const imgSrcRegex = /\bsrc=["']([^"']+)["']/i;
-        const imgAltRegex = /\balt=["']([^"']+)["']/i;
-        const MAX_BADGE_SCAN_CHARS = 200_000;
-        
         const urlPatterns: RegExp[] = [
             /github\.com\/.+?\/actions\/workflows\/.+?\.yml\/badge\.svg/i, // GitHub Actions workflow badge
             /api\.netlify\.com\/api\/v1\/badges\/[a-f0-9-]+\/deploy-status(?:\?branch=[^\s"')]+)?/i, // Netlify deploy badge
@@ -629,6 +621,7 @@ export async function checkBestPractices(
         const evidences: Evidence[] = [];
 
         function score(url: string, alt?: string): Evidence {
+            if (url.length > MAX_BADGE_URL_CHARS) return { url: url.slice(0, 64), alt, confidence: 0, kind: 'unknown' };
             let confidence = 0;
             const highConfidenceMatch = urlPatterns.some(p => p.test(url));
             const lowConfidenceMatch = lowConfidencePatterns.some(p => p.test(url));
@@ -644,22 +637,11 @@ export async function checkBestPractices(
             return { url, alt, confidence, kind };
         }
 
-    // Extract Markdown badges
-    for (const match of readmeContent.matchAll(badgeMdRegex)) {
-        const src = match[1] || '';
-        evidences.push(score(src));
-    }
-    // Extract linked badges
-    for (const match of readmeContent.matchAll(badgeLinkMdRegex)) {
-        const src = match[1] || '';
-        evidences.push(score(src));
-    }
-    // Extract HTML badges
-    for (const tag of readmeContent.slice(0, MAX_BADGE_SCAN_CHARS).matchAll(imgTagRegex)) {
-        const src = tag[0].match(imgSrcRegex)?.[1];
-        if (!src) continue;
-        evidences.push(score(src, tag[0].match(imgAltRegex)?.[1]));
-    }
+    // Extract Markdown, linked and HTML badges with the linear scanner (capped input).
+    const candidates = extractBadgeCandidates(readmeContent);
+    for (const src of candidates.markdown) evidences.push(score(src));
+    for (const src of candidates.linked) evidences.push(score(src));
+    for (const img of candidates.html) evidences.push(score(img.src, img.alt));
     const top = evidences.sort((a, b) => b.confidence - a.confidence)[0];
     const hasDeploy = evidences.some(e => e.kind === 'deploy' && e.confidence >= 0.6) ||
         (top && top.confidence >= 0.8 && /deploy|netlify|vercel|render|pages/i.test((top.alt || '') + top.url));
