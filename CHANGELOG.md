@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/api/mcp` rate limiting now keys on the platform-provided client address (`x-nf-client-connection-ip`, override with `MCP_CLIENT_IP_HEADER`), authenticates before counting successful requests, throttles failed authentication separately, and bounds its in-memory table.
 - `/api/mcp` rate limiting now keys on the platform-provided client address (`x-nf-client-connection-ip`, override with `MCP_CLIENT_IP_HEADER`, which must be a platform-set header; `cf-connecting-ip` is the fallback, and callers with neither share a stricter bucket), authenticates before counting successful requests, throttles failed authentication separately, and bounds its in-memory table.
 - `/api/seed-defaults` now requires a signed-in session (no longer exempt from the login check) and no longer returns upstream error text.
+- `/api/seed-defaults` now requires a signed-in session (no longer exempt from the login check) and no longer returns upstream error text; each user may trigger a run once every five minutes.
 
 - Changing shared repo settings (hide, unhide, type, summary, roadmap links) now requires a repo grant and targets the single granted repo by id; adding a repo updates settings by its full name.
 
