@@ -19,7 +19,8 @@ vi.mock('@/lib/db', () => ({
 }));
 
 // Per-repo access is covered in repo-access-guard.test.ts.
-vi.mock('@/lib/repo-access-guard', () => ({ denyIfNoRepoAccess: vi.fn().mockResolvedValue(null) }));
+const resolveWritableRepo = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/repo-access-guard', () => ({ resolveWritableRepo }));
 vi.mock('@/lib/github', () => ({
   GitHubClient: vi.fn(),
 }));
@@ -46,6 +47,7 @@ describe('Generate Summary API', () => {
   
   beforeEach(() => {
     vi.clearAllMocks();
+    resolveWritableRepo.mockResolvedValue({ repo: { id: 'r1', name: 'repo', full_name: 'owner/repo' } });
   });
   
   it('should reject unauthorized requests', async () => {
@@ -69,7 +71,9 @@ describe('Generate Summary API', () => {
       expires: new Date(Date.now() + 86400000).toISOString(),
     });
     
-    // Mock db as a function that returns empty array (no repos found)
+    resolveWritableRepo.mockResolvedValue({
+      response: new Response(JSON.stringify({ error: 'Repo not found' }), { status: 404 }),
+    });
     const mockDb = vi.fn().mockResolvedValue([]);
     mockGetNeonClient.mockReturnValue(mockDb as never);
     
