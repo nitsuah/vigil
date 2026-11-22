@@ -501,3 +501,18 @@ export function auditShowcase(input: ShowcaseAuditInput): ShowcaseAudit {
     gaps.sort((a, b) => order[a.severity] - order[b.severity]);
     return { elements, coverage: { features: total, withVisual, exempt }, brandAutomation, gaps };
 }
+
+/**
+ * Leading git arguments for read-only inspection of a checkout the operator
+ * pointed us at. Git's ownership check stays on: a checkout owned by another
+ * user is only inspected when SHOWCASE_TRUST_REPO=1 is set, and then only for
+ * that exact directory (never `*`). Pager, fsmonitor and signature
+ * verification are switched off so a checkout's own config cannot launch
+ * helper programs.
+ */
+export function gitInspectArgs(root: string, env: Record<string, string | undefined> = process.env): string[] {
+    const args = ['--no-pager', '-c', 'core.fsmonitor=false', '-c', 'log.showSignature=false'];
+    if (env.SHOWCASE_TRUST_REPO === '1') args.push('-c', `safe.directory=${root}`);
+    args.push('-C', root);
+    return args;
+}
