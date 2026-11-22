@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import logger from '@/lib/log';
+import { RateLimiter, RATE_LIMIT, AUTH_FAILURE_LIMIT, SHARED_RATE_LIMIT, SHARED_AUTH_FAILURE_LIMIT, UNKNOWN_CLIENT, trustedClientIp } from '@/lib/mcp-rate-limit';
 import { resolveScopes, hasScopes, type Scope } from '@/lib/mcp-auth';
 import { REPO_TIER_IDS, isRepoTier } from '@/lib/repo-tier';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
@@ -44,24 +45,14 @@ const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'] a
 const FALLBACK_PROTOCOL_VERSION = '2024-11-05';
 
 // ---------------------------------------------------------------------------
-// Rate limiting (in-memory; resets on cold start)
+// Rate limiting (in-memory per instance; see lib/mcp-rate-limit.ts)
 // ---------------------------------------------------------------------------
 
-const RATE_LIMIT = 60;
-const RATE_WINDOW_MS = 60_000;
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now >= entry.resetAt) {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT) return false;
-  entry.count++;
-  return true;
-}
+const rateLimiter = new RateLimiter(RATE_LIMIT);
+const authFailureLimiter = new RateLimiter(AUTH_FAILURE_LIMIT);
+// Callers without a trustworthy client address all land here, under tighter caps.
+const sharedRateLimiter = new RateLimiter(SHARED_RATE_LIMIT);
+const sharedAuthFailureLimiter = new RateLimiter(SHARED_AUTH_FAILURE_LIMIT);
 
 // ---------------------------------------------------------------------------
 // Auth (scopes live in lib/mcp-auth.ts; every tool must be listed here)
@@ -802,7 +793,7 @@ export async function GET(req?: NextRequest) {
     description:     'Vigil repo intelligence as MCP tools — portfolio health, task tracking, security posture, and roadmap status',
     tools:           TOOLS.map(t => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
     auth:            'Authorization: Bearer <MCP_API_KEY env var, or a scoped key from MCP_SCOPED_KEYS>',
-    rateLimit:       `${RATE_LIMIT} requests / minute per IP`,
+    rateLimit:       `${RATE_LIMIT} requests / minute per client address`,
     endpoint:        'POST /api/mcp',
     context_endpoint: 'GET /api/context (no auth — default repos only; Bearer with repo:read — ?repo=<name>; Bearer with portfolio:read — full portfolio; a valid key lacking the scope gets 403)',
   });
@@ -810,18 +801,20 @@ export async function GET(req?: NextRequest) {
 
 /** POST /api/mcp — JSON-RPC 2.0 handler */
 export async function POST(req: NextRequest) {
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
-    req.headers.get('x-real-ip') ??
-    'unknown';
+  const ip = trustedClientIp(req.headers, (m) => logger.warn(m));
+  const shared = ip === UNKNOWN_CLIENT;
 
-  if (!checkRateLimit(ip)) {
-    return rpcError(null, -32029, 'Rate limit exceeded (60 req/min)', 429);
-  }
-
+  // Authenticate first so bad credentials are throttled on their own bucket
+  // and cannot spend a legitimate client's allowance.
   const granted = resolveScopes(req.headers.get('authorization'));
   if (!granted) {
+    if (!(shared ? sharedAuthFailureLimiter : authFailureLimiter).hit(ip)) {
+      return rpcError(null, -32029, 'Rate limit exceeded', 429);
+    }
     return rpcError(null, -32001, 'Unauthorized — set Authorization: Bearer <MCP_API_KEY>', 401);
+  }
+  if (!(shared ? sharedRateLimiter : rateLimiter).hit(ip)) {
+    return rpcError(null, -32029, `Rate limit exceeded (${shared ? SHARED_RATE_LIMIT : RATE_LIMIT} req/min)`, 429);
   }
 
   // Streamable HTTP: a present-but-unsupported MCP-Protocol-Version is a 400;

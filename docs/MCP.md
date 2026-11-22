@@ -8,7 +8,7 @@ Connect Claude Code (or any MCP client) to vigil so an agent session can ask
 - **Endpoint:** `POST https://vigil.nitsuah.io/api/mcp` (local dev: `http://localhost:3000/api/mcp`)
 - **Transport:** MCP Streamable HTTP, JSON responses only (no SSE stream). Protocol versions 2024-11-05, 2025-03-26, 2025-06-18.
 - **Auth:** `Authorization: Bearer <MCP_API_KEY>`, one shared portfolio-admin key.
-- **Rate limit:** 60 requests/minute per IP.
+- **Rate limit:** 60 requests/minute per client address (platform-set header; callers without one share a stricter 20/minute bucket).
 - **Discovery:** `GET /api/mcp` returns the tool list. Send the bearer header: unauthenticated browser requests are redirected to `/login` like the rest of the app, and other clients get a JSON `401`.
 - **Errors:** missing or invalid tool arguments return JSON-RPC `-32602`. A call that runs but fails (e.g. an unknown repo) returns a result with `isError: true` and `{"error": "..."}` in its text.
 
@@ -30,7 +30,7 @@ For a client that needs less, give it a scoped key instead of the admin key. Set
 [{ "name": "ci-bot", "key": "<random>", "scopes": ["repo:read"] }]
 ```
 
-Scopes come only from this server-side config, never from the token. Malformed JSON, short keys and unknown scopes are ignored (fail closed). Rotate by editing the array and redeploying. A valid key without the scope a tool needs gets HTTP 403 (JSON-RPC `-32003`); a missing or invalid key gets 401. Rate limit: 60 req/min per IP (in-memory).
+Scopes come only from this server-side config, never from the token. Malformed JSON, short keys and unknown scopes are ignored (fail closed). Rotate by editing the array and redeploying. A valid key without the scope a tool needs gets HTTP 403 (JSON-RPC `-32003`); a missing or invalid key gets 401. Rate limit: 60 req/min per client address (in-memory).
 
 ### ACL matrix
 
