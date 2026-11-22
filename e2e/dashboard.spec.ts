@@ -3,7 +3,7 @@
  *
  * Auth notes:
  *  - proxy.ts middleware allows: /, /login, /api/auth/*, /api/health, /api/version,
- *    /api/github-rate-limit, /api/repos*, /api/repo-details*, /api/seed-defaults
+ *    /api/github-rate-limit, /api/repos*, /api/repo-details*
  *  - All other routes (including /api/mcp, /api/context) redirect to /login
  *    for unauthenticated users. Those are tested as redirect behaviour here; their JSON
  *    contracts are covered by the Vitest unit test suite (tests/mcp.test.ts).

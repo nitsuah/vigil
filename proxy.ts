@@ -16,7 +16,6 @@ export async function proxy(request: NextRequest) {
     pathname === '/api/github-rate-limit' ||
     pathname.startsWith('/api/repos') ||
     pathname.startsWith('/api/repo-details') ||
-    pathname === '/api/seed-defaults' ||
     pathname === '/api/version'
   ) {
     return NextResponse.next();

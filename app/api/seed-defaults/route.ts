@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@/auth';
 import { getNeonClient } from '@/lib/db';
 import { GitHubClient } from '@/lib/github';
 import { syncRepo } from '@/lib/sync';
@@ -6,6 +7,11 @@ import { DEFAULT_REPOS } from '@/lib/default-repos';
 import logger from '@/lib/log';
 
 export async function POST() {
+    const session = await auth();
+    if (!session?.user) {
+        return NextResponse.json({ error: 'Unauthorized - Please sign in' }, { status: 401 });
+    }
+
     try {
         // Try to use GITHUB_TOKEN if available, otherwise use unauthenticated API
         const githubToken = process.env.GITHUB_TOKEN;
@@ -28,7 +34,7 @@ export async function POST() {
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                 logger.warn(`Failed to sync ${defaultRepo.fullName}:`, errorMessage);
-                errors.push(`${defaultRepo.fullName}: ${errorMessage}`);
+                errors.push(defaultRepo.fullName);
             }
         }
 
@@ -41,7 +47,6 @@ export async function POST() {
         });
     } catch (error: unknown) {
         logger.warn('Error seeding default repos:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to seed default repos' }, { status: 500 });
     }
 }
