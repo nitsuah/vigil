@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Badge detection in README content now uses a linear-time scanner with input and tag-length caps (`lib/badge-scan.ts`) instead of backtracking regular expressions.
 - Anonymous context and repo-detail reads now match default repos by full name (owner-qualified), and agent task reads and receipts are scoped to the signed-in user's stable GitHub id instead of email. Sessions created before the stable id was captured must sign in again to use agent tasks; legacy receipts are claimed by matching email the first time their owner lists receipts.
+- `/api/mcp` rate limiting now keys on the platform-provided client address (`x-nf-client-connection-ip`, override with `MCP_CLIENT_IP_HEADER`), authenticates before counting successful requests, throttles failed authentication separately, and bounds its in-memory table.
 
 - Changing shared repo settings (hide, unhide, type, summary, roadmap links) now requires a repo grant and targets the single granted repo by id; adding a repo updates settings by its full name.
 

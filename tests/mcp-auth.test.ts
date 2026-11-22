@@ -26,10 +26,11 @@ import { POST, TOOL_SCOPES, GET as mcpGet } from '@/app/api/mcp/route';
 import { GET as contextGet } from '@/app/api/context/route';
 import { resolveScopes, hasScopes } from '@/lib/mcp-auth';
 
+let nextIp = 0;
 const rpc = (token: string | null, body: unknown): ReturnType<typeof POST> =>
   POST(new Request('http://localhost/api/mcp', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { 'Content-Type': 'application/json', 'x-nf-client-connection-ip': `10.1.${Math.floor(nextIp / 250)}.${nextIp++ % 250}`, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify(body),
   }) as never);
 
