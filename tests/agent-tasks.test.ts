@@ -157,6 +157,42 @@ describe('POST /api/agent/tasks', () => {
     expect((await GET(makeGetRequest(`?id=${taskId}`))).status).toBe(200);
   });
 
+  it('claims legacy receipts (NULL owner id) by matching email before listing receipts', async () => {
+    mockAuth.mockResolvedValue({
+      user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
+      expires: '9999-01-01',
+    } as never);
+    const queries: Array<{ text: string; values: unknown[] }> = [];
+    mockGetNeonClient.mockReturnValue(
+      vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+        queries.push({ text: strings.join('?'), values });
+        return [];
+      }) as unknown as ReturnType<typeof getNeonClient>
+    );
+
+    const res = await GET(makeGetRequest('?receipts=true'));
+    expect(res.status).toBe(200);
+    const claim = queries.find((q) => q.text.includes('UPDATE agent_task_receipts'));
+    expect(claim).toBeDefined();
+    expect(claim!.text).toContain('submitted_by_id IS NULL');
+    expect(claim!.values).toEqual(['1001', 'test@example.com']);
+    expect(queries.findIndex((q) => q === claim)).toBeLessThan(queries.findIndex((q) => q.text.includes('SELECT task_id')));
+  });
+
+  it('does not attempt a claim when the session has no email', async () => {
+    mockAuth.mockResolvedValue({ user: { name: 'x', email: null }, userId: '1002', expires: '9999-01-01' } as never);
+    const queries: string[] = [];
+    mockGetNeonClient.mockReturnValue(
+      vi.fn(async (strings: TemplateStringsArray) => {
+        queries.push(strings.join('?'));
+        return [];
+      }) as unknown as ReturnType<typeof getNeonClient>
+    );
+    await GET(makeGetRequest('?receipts=true'));
+    expect(queries.some((q) => q.includes('UPDATE agent_task_receipts'))).toBe(false);
+  });
+
   it('should accept a valid task with required fields and default priority', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },

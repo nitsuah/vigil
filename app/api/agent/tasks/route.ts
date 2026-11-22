@@ -390,6 +390,15 @@ export async function GET(req: NextRequest) {
     try {
       const db = getNeonClient();
       await ensureSchema(db);
+      // Receipts written before ownership was keyed on the stable id have no
+      // submitted_by_id. Claim the caller's own legacy rows (matching email,
+      // never overwriting an existing id) so they stay visible to them.
+      if (session.user.email) {
+        await db`
+          UPDATE agent_task_receipts SET submitted_by_id = ${callerId}
+          WHERE submitted_by_id IS NULL AND submitted_by_email = ${session.user.email}
+        `;
+      }
       const rows = await db`
         SELECT task_id, type, priority, status, result, error, motor_pool_session_id,
                submitted_by_email, created_at, queued_at, started_at, completed_at
