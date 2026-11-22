@@ -204,14 +204,14 @@ const persistReceipt = async (task: TaskQueueItem): Promise<ReceiptPersistResult
       db`
         INSERT INTO agent_task_receipts (
           task_id, type, priority, status, payload, meta, result, error,
-          motor_pool_session_id, submitted_by_email,
+          motor_pool_session_id, submitted_by_email, submitted_by_id,
           created_at, queued_at, started_at, completed_at
         )
         VALUES (
           ${task.id}, ${task.type}, ${task.priority}, ${task.status},
           ${JSON.stringify(task.payload ?? {})}, ${task.meta ? JSON.stringify(task.meta) : null},
           ${task.result ? JSON.stringify(task.result) : null}, ${task.error ?? null},
-          ${motorPoolSessionId}, ${task.submittedBy?.email ?? null},
+          ${motorPoolSessionId}, ${task.submittedBy?.email ?? null}, ${task.submittedBy?.userId ?? null},
           ${task.createdAt}, ${task.queuedAt}, ${task.startedAt ?? null}, ${task.completedAt ?? null}
         )
       `,
@@ -317,6 +317,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  if (!session.userId) {
+    return NextResponse.json({ error: 'Unauthorized - sign in again' }, { status: 401 });
+  }
 
   try {
     const body: unknown = await req.json();
@@ -331,8 +334,8 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
     // result.data is always defined here because result.success is true
     const { type, payload, priority, meta } = result.data!;
-    // Use stable userId (GitHub numeric ID) as primary identifier
-    const submittedById = session.userId ?? session.user.email ?? null;
+    // Ownership is the stable userId (GitHub numeric ID), never the optional email.
+    const submittedById = session.userId;
     const task: TaskQueueItem = {
       id: randomUUID(),
       type,
@@ -366,14 +369,16 @@ export async function GET(req: NextRequest) {
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const callerEmail = session.user.email;
+  const callerId = session.userId;
+  if (!callerId) {
+    return NextResponse.json({ error: 'Unauthorized - sign in again' }, { status: 401 });
+  }
 
   const taskId = req.nextUrl.searchParams.get('id');
   if (taskId) {
     pruneExpiredTasks();
     const task = taskStore.get(taskId);
-    if (!task || task.submittedBy?.email !== callerEmail) {
+    if (!task || task.submittedBy?.userId !== callerId) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
@@ -389,7 +394,7 @@ export async function GET(req: NextRequest) {
         SELECT task_id, type, priority, status, result, error, motor_pool_session_id,
                submitted_by_email, created_at, queued_at, started_at, completed_at
         FROM agent_task_receipts
-        WHERE submitted_by_email = ${callerEmail}
+        WHERE submitted_by_id = ${callerId}
         ORDER BY created_at DESC
         LIMIT 100
       `;
@@ -402,7 +407,7 @@ export async function GET(req: NextRequest) {
 
   pruneExpiredTasks();
   const tasks = Array.from(taskStore.values())
-    .filter((task) => task.submittedBy?.email === callerEmail)
+    .filter((task) => task.submittedBy?.userId === callerId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(toPublicTask);
 

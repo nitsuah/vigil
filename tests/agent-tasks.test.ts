@@ -132,9 +132,35 @@ describe('POST /api/agent/tasks', () => {
     expect(data.error).toBe('Unauthorized');
   });
 
+  it('should reject a session without a stable user id', async () => {
+    mockAuth.mockResolvedValue({
+      user: { name: 'testuser', email: 'test@example.com' },
+      expires: '9999-01-01',
+    } as never);
+
+    expect((await POST(makeRequest({ type: 'test', payload: {} }))).status).toBe(401);
+    expect((await GET(makeGetRequest())).status).toBe(401);
+  });
+
+  it('should not show a task to another user who shares or lacks an email', async () => {
+    const owner = { user: { name: 'a', email: null }, userId: '2001', expires: '9999-01-01' };
+    mockAuth.mockResolvedValue(owner as never);
+    const created = await (await POST(makeRequest({ type: 'test', payload: {} }))).json();
+    const taskId = created.task.id as string;
+
+    mockAuth.mockResolvedValue({ user: { name: 'b', email: null }, userId: '2002', expires: '9999-01-01' } as never);
+    expect((await GET(makeGetRequest(`?id=${taskId}`))).status).toBe(404);
+    const list = await (await GET(makeGetRequest())).json();
+    expect(list.tasks.map((t: { id: string }) => t.id)).not.toContain(taskId);
+
+    mockAuth.mockResolvedValue(owner as never);
+    expect((await GET(makeGetRequest(`?id=${taskId}`))).status).toBe(200);
+  });
+
   it('should accept a valid task with required fields and default priority', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -154,6 +180,7 @@ describe('POST /api/agent/tasks', () => {
   it('should accept a valid task with explicit priority and meta', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -174,6 +201,7 @@ describe('POST /api/agent/tasks', () => {
   it('should return 400 when body is not a JSON object', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -193,6 +221,7 @@ describe('POST /api/agent/tasks', () => {
   it('should return 400 when type is missing', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -208,6 +237,7 @@ describe('POST /api/agent/tasks', () => {
   it('should return 400 when payload is not an object', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -223,6 +253,7 @@ describe('POST /api/agent/tasks', () => {
   it('should return 400 when priority is invalid', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -238,6 +269,7 @@ describe('POST /api/agent/tasks', () => {
   it('should return 400 when meta is not an object', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -253,6 +285,7 @@ describe('POST /api/agent/tasks', () => {
   it('should return 400 for malformed JSON without leaking error details', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -272,6 +305,7 @@ describe('POST /api/agent/tasks', () => {
   it('should execute queued task and expose completed result via GET by id', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -290,6 +324,7 @@ describe('POST /api/agent/tasks', () => {
   it('should expose queue summary and tasks list via GET', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -309,6 +344,7 @@ describe('POST /api/agent/tasks', () => {
   it('should return 404 when querying unknown task id', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -332,6 +368,7 @@ describe('POST /api/agent/tasks', () => {
   it('should mark the task as completed with receiptPersisted: true when the receipt write succeeds', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -351,6 +388,7 @@ describe('POST /api/agent/tasks', () => {
   it('should not crash the route or fail the task when persistReceipt fails, and should surface + log the failure', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 
@@ -390,6 +428,7 @@ describe('POST /api/agent/tasks', () => {
   it('should surface a receipt-persistence failure for a failed task too, without masking the task error', async () => {
     mockAuth.mockResolvedValue({
       user: { name: 'testuser', email: 'test@example.com' },
+      userId: '1001',
       expires: new Date(Date.now() + 86400000).toISOString(),
     } as never);
 

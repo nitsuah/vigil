@@ -209,6 +209,20 @@ describe('/api/context bearer scopes', () => {
     expect((await ctx('wrong', '?repo=private-repo')).status).toBe(404);
     expect((await ctx(null, '?repo=private-repo')).status).toBe(404);
   });
+  it('guest access matches the default repos by full name, not short name', async () => {
+    dbRows = [{ id: 'r9', name: 'vigil', full_name: 'someone-else/vigil', is_hidden: false }];
+    expect((await ctx(null, '?repo=vigil')).status).toBe(404);
+    dbRows = [{ id: 'r9', name: 'vigil', full_name: 'nitsuah/vigil', is_hidden: false }];
+    expect((await ctx(null, '?repo=vigil')).status).toBe(200);
+  });
+  it('guest portfolio excludes a same-named repo under another owner', async () => {
+    dbRows = [
+      { id: 'r9', name: 'vigil', full_name: 'someone-else/vigil', is_hidden: false },
+      { id: 'r8', name: 'vigil', full_name: 'nitsuah/vigil', is_hidden: false },
+    ];
+    const body = await (await ctx(null)).json();
+    expect(JSON.stringify(body)).not.toContain('someone-else/vigil');
+  });
   it('preserves unknown security-control state in single-repo context', async () => {
     dbRows = [{
       ...PRIVATE_REPO,

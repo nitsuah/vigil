@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import { auth } from '@/auth';
-import { DEFAULT_REPOS } from '@/lib/default-repos';
-import { canAccessRepo } from '@/lib/repo-access';
+import { canAccessRepo, isDefaultRepo } from '@/lib/repo-access';
 import { normalizeRepoRow, normalizeMetricRow } from '@/lib/numeric';
 import logger from '@/lib/log';
 import type { SecurityConfig, SecurityDisplayStatus } from '@/types/repo';
@@ -26,29 +25,34 @@ export async function GET(
         const db = getNeonClient();
         await ensureSchema(db);
 
-        // Round trip 1: get the repo row so we can auth-check and get repo.id.
-        const repoRows = await db`SELECT * FROM repos WHERE name = ${repoName} LIMIT 1`;
+        // Round trip 1: get the repo row(s) so we can auth-check and get repo.id.
+        // `name` is not unique across owners, so pick the row this caller may
+        // actually see (default repos only for anonymous callers).
+        const candidateRows = await db`SELECT * FROM repos WHERE name = ${repoName} ORDER BY full_name LIMIT 25`;
 
-        if (repoRows.length === 0) {
+        let selected: (typeof candidateRows)[number] | undefined;
+        for (const row of candidateRows) {
+            const visible = session
+                ? await canAccessRepo(db, row as { id: string; full_name?: string; private_repo?: boolean; visibility_verified?: boolean }, session.userId)
+                : isDefaultRepo(row.full_name);
+            if (visible) {
+                selected = row;
+                break;
+            }
+        }
+
+        if (!selected) {
+            // Nothing visible: 404 for unknown or private-to-others repos (so
+            // existence isn't confirmed); anonymous callers get 401 when the
+            // name matches a non-default repo.
+            if (!session && candidateRows.length > 0) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
             return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
         }
 
         // NUMERIC columns arrive as strings; give the client real numbers.
-        const repo = normalizeRepoRow(repoRows[0]);
-
-        // If not authenticated, only allow access to default repos
-        if (!session) {
-            const defaultRepoNames = DEFAULT_REPOS.map(r => r.name);
-            if (!defaultRepoNames.includes(repo.name)) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-        } else if (!(await canAccessRepo(db, repo as { id: string; full_name?: string; private_repo?: boolean; visibility_verified?: boolean }, session.userId))) {
-            // Signed in, but this repo is private and not theirs (CWE-639):
-            // `repos` has no per-row owner, so being authenticated at all
-            // isn't proof of access to *this* repo. 404 (not 403) so its
-            // existence isn't confirmed to a caller who can't see it.
-            return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
-        }
+        const repo = normalizeRepoRow(selected);
 
         // Round trip 2: fetch all seven detail tables in a single HTTP transaction
         // so the dashboard panel resolves in one round trip instead of seven.
