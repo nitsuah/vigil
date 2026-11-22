@@ -4,6 +4,7 @@ import { canAccessRepo, hasRepoGrant, type RepoAccessCheck } from '@/lib/repo-ac
 
 interface SessionLike {
     userId?: string;
+    accessToken?: string;
 }
 
 /**
@@ -32,7 +33,7 @@ export async function denyIfNoRepoAccess(
     `) as unknown as RepoAccessCheck[];
 
     for (const repo of rows) {
-        if (!(await canAccessRepo(db, repo, session?.userId))) {
+        if (!(await canAccessRepo(db, repo, session?.userId, session?.accessToken))) {
             return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
         }
     }
@@ -65,7 +66,7 @@ export async function resolveWritableRepo(
 
     const writable: WritableRepo[] = [];
     for (const row of candidates) {
-        if (await hasRepoGrant(db, row.id, session?.userId)) writable.push(row);
+        if (await hasRepoGrant(db, row.id, session?.userId, session?.accessToken)) writable.push(row);
     }
     if (writable.length === 0) {
         return { response: NextResponse.json({ error: 'Repo not found' }, { status: 404 }) };

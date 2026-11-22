@@ -272,6 +272,9 @@ CREATE TABLE IF NOT EXISTS repo_access (
   repo_id UUID NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
   github_user_id TEXT NOT NULL,
   granted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  -- Last time GitHub confirmed this user's token reaches the repo; grants lapse
+  -- after GRANT_TTL_MS unless renewed (lib/repo-access.ts).
+  verified_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   PRIMARY KEY (repo_id, github_user_id)
 );
 

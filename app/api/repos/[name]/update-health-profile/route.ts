@@ -36,7 +36,7 @@ export async function PATCH(
     const candidates = await db`SELECT * FROM repos WHERE name = ${repoName}`;
     const writable = [];
     for (const row of candidates) {
-      if (await hasRepoGrant(db, row.id, session.userId)) writable.push(row);
+      if (await hasRepoGrant(db, row.id, session.userId, session.accessToken)) writable.push(row);
     }
     if (writable.length === 0) {
       // 404 (not 403) so a private repo's existence isn't confirmed.
