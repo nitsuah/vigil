@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { useRepoChat } from '@/hooks/useRepoChat';
+import { useRepoChat, EPHEMERAL_CHAT_IDENTITY } from '@/hooks/useRepoChat';
 
 /**
  * Regression coverage for the identity-change race: a `sendMessage` request
@@ -136,5 +136,36 @@ describe('useRepoChat', () => {
         expect(result.current.getThread('repo-a')).toEqual(currentThread);
         // Left alone rather than merged -- the new key already has data.
         expect(window.localStorage.getItem(legacyKey)).not.toBeNull();
+    });
+
+    it('keeps ephemeral identities in memory: nothing is restored from or written to storage', () => {
+        const thread = [{ id: 'm1', role: 'user', content: 'someone else', createdAt: new Date().toISOString() }];
+        window.localStorage.setItem('vigil.repo-chat.v1.anon', JSON.stringify({ 'repo-a': thread }));
+        const before = Object.keys(window.localStorage).sort();
+
+        const { result } = renderHook(() => useRepoChat(EPHEMERAL_CHAT_IDENTITY));
+
+        expect(result.current.getThread('repo-a')).toEqual([]);
+        expect(Object.keys(window.localStorage).sort()).toEqual(before);
+    });
+
+    it('migrates email-keyed threads to the stable id once', () => {
+        const emailKey = `vigil.repo-chat.v1.${encodeURIComponent('user@example.com')}`;
+        const idKey = 'vigil.repo-chat.v1.12345';
+        const thread = [{ id: 'm1', role: 'user', content: 'mine', createdAt: new Date().toISOString() }];
+        window.localStorage.setItem(emailKey, JSON.stringify({ 'repo-a': thread }));
+
+        const { result } = renderHook(() => useRepoChat('12345', 'user@example.com'));
+
+        expect(result.current.getThread('repo-a')).toEqual(thread);
+        expect(window.localStorage.getItem(emailKey)).toBeNull();
+        expect(JSON.parse(window.localStorage.getItem(idKey)!)).toEqual({ 'repo-a': thread });
+    });
+
+    it('does not load threads of a different stable id', () => {
+        const thread = [{ id: 'm1', role: 'user', content: 'theirs', createdAt: new Date().toISOString() }];
+        window.localStorage.setItem('vigil.repo-chat.v1.111', JSON.stringify({ 'repo-a': thread }));
+        const { result } = renderHook(() => useRepoChat('222'));
+        expect(result.current.getThread('repo-a')).toEqual([]);
     });
 });
