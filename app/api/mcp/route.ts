@@ -25,7 +25,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import logger from '@/lib/log';
-import { RateLimiter, RATE_LIMIT, AUTH_FAILURE_LIMIT, trustedClientIp } from '@/lib/mcp-rate-limit';
+import { RateLimiter, RATE_LIMIT, AUTH_FAILURE_LIMIT, SHARED_RATE_LIMIT, SHARED_AUTH_FAILURE_LIMIT, UNKNOWN_CLIENT, trustedClientIp } from '@/lib/mcp-rate-limit';
 import { resolveScopes, hasScopes, type Scope } from '@/lib/mcp-auth';
 import { REPO_TIER_IDS, isRepoTier } from '@/lib/repo-tier';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
@@ -50,6 +50,9 @@ const FALLBACK_PROTOCOL_VERSION = '2024-11-05';
 
 const rateLimiter = new RateLimiter(RATE_LIMIT);
 const authFailureLimiter = new RateLimiter(AUTH_FAILURE_LIMIT);
+// Callers without a trustworthy client address all land here, under tighter caps.
+const sharedRateLimiter = new RateLimiter(SHARED_RATE_LIMIT);
+const sharedAuthFailureLimiter = new RateLimiter(SHARED_AUTH_FAILURE_LIMIT);
 
 // ---------------------------------------------------------------------------
 // Auth (scopes live in lib/mcp-auth.ts; every tool must be listed here)
@@ -798,19 +801,20 @@ export async function GET(req?: NextRequest) {
 
 /** POST /api/mcp — JSON-RPC 2.0 handler */
 export async function POST(req: NextRequest) {
-  const ip = trustedClientIp(req.headers);
+  const ip = trustedClientIp(req.headers, (m) => logger.warn(m));
+  const shared = ip === UNKNOWN_CLIENT;
 
   // Authenticate first so bad credentials are throttled on their own bucket
   // and cannot spend a legitimate client's allowance.
   const granted = resolveScopes(req.headers.get('authorization'));
   if (!granted) {
-    if (!authFailureLimiter.hit(ip)) {
+    if (!(shared ? sharedAuthFailureLimiter : authFailureLimiter).hit(ip)) {
       return rpcError(null, -32029, 'Rate limit exceeded', 429);
     }
     return rpcError(null, -32001, 'Unauthorized — set Authorization: Bearer <MCP_API_KEY>', 401);
   }
-  if (!rateLimiter.hit(ip)) {
-    return rpcError(null, -32029, `Rate limit exceeded (${RATE_LIMIT} req/min)`, 429);
+  if (!(shared ? sharedRateLimiter : rateLimiter).hit(ip)) {
+    return rpcError(null, -32029, `Rate limit exceeded (${shared ? SHARED_RATE_LIMIT : RATE_LIMIT} req/min)`, 429);
   }
 
   // Streamable HTTP: a present-but-unsupported MCP-Protocol-Version is a 400;

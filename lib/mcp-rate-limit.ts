@@ -67,9 +67,30 @@ export class RateLimiter {
   }
 }
 
-/** Client address as reported by the hosting platform, or 'unknown'. */
-export function trustedClientIp(headers: Headers): string {
+export const UNKNOWN_CLIENT = 'unknown';
+/** Stricter limits for the shared bucket used when no trustworthy client address is available. */
+export const SHARED_RATE_LIMIT = 20;
+export const SHARED_AUTH_FAILURE_LIMIT = 5;
+
+let warnedNoClientIp = false;
+
+/**
+ * Client address as reported by the hosting platform, or UNKNOWN_CLIENT.
+ *
+ * Looks at one platform-set header (default Netlify's `x-nf-client-connection-ip`),
+ * then `cf-connecting-ip` (Cloudflare). MCP_CLIENT_IP_HEADER MUST name a header
+ * that the platform itself sets and overwrites on every request; pointing it at
+ * a header a client can send (for example `x-forwarded-for` on a host that
+ * passes it through) reintroduces spoofable rate-limit keys. Callers that get
+ * UNKNOWN_CLIENT share one stricter bucket, and a warning is logged once.
+ */
+export function trustedClientIp(headers: Headers, warn: (message: string) => void = () => {}): string {
   const name = (process.env.MCP_CLIENT_IP_HEADER || 'x-nf-client-connection-ip').toLowerCase();
-  const value = headers.get(name)?.trim();
-  return value ? value.slice(0, 64) : 'unknown';
+  const value = (headers.get(name) ?? headers.get('cf-connecting-ip'))?.trim();
+  if (value) return value.slice(0, 64);
+  if (!warnedNoClientIp) {
+    warnedNoClientIp = true;
+    warn('No platform client-IP header on /api/mcp request; using the shared strict rate-limit bucket');
+  }
+  return UNKNOWN_CLIENT;
 }

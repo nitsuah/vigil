@@ -42,6 +42,14 @@ describe('trustedClientIp', () => {
     expect(trustedClientIp(h)).toBe('9.9.9.9');
     expect(trustedClientIp(new Headers({ 'x-forwarded-for': '1.2.3.4' }))).toBe('unknown');
   });
+
+  it('falls back to cf-connecting-ip and warns once when nothing is available', () => {
+    expect(trustedClientIp(new Headers({ 'cf-connecting-ip': '7.7.7.7' }))).toBe('7.7.7.7');
+    const warn = vi.fn();
+    expect(trustedClientIp(new Headers(), warn)).toBe('unknown');
+    expect(trustedClientIp(new Headers(), warn)).toBe('unknown');
+    expect(warn.mock.calls.length).toBeLessThanOrEqual(1);
+  });
 });
 
 describe('POST /api/mcp rate limiting', () => {
@@ -62,6 +70,15 @@ describe('POST /api/mcp rate limiting', () => {
     }
     expect(statuses.slice(0, 10).every((s) => s === 401)).toBe(true);
     expect(statuses.slice(10).every((s) => s === 429)).toBe(true);
+  });
+
+  it('applies stricter caps to callers without a trustworthy address', async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      statuses.push((await call({ Authorization: 'Bearer wrong', 'x-forwarded-for': `1.1.1.${i}` })).status);
+    }
+    expect(statuses.slice(0, 5).every((s) => s === 401)).toBe(true);
+    expect(statuses.slice(5).every((s) => s === 429)).toBe(true);
   });
 
   it('does not let failed attempts consume a valid key allowance', async () => {

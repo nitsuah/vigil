@@ -21,10 +21,11 @@ import { GET, POST } from '@/app/api/mcp/route';
 
 const AUTH = { Authorization: 'Bearer test-key-123' };
 
+let nextIp = 0;
 function post(body: unknown, headers: Record<string, string> = {}) {
   return new Request('http://localhost/api/mcp', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...AUTH, ...headers },
+    headers: { 'Content-Type': 'application/json', 'x-nf-client-connection-ip': `10.2.${Math.floor(nextIp / 250)}.${nextIp++ % 250}`, ...AUTH, ...headers },
     body: JSON.stringify(body),
   }) as never;
 }
