@@ -81,7 +81,7 @@ describe('GET /api/repo-details/[name]', () => {
 
     it('returns 401 when unauthenticated and repo is not a default', async () => {
         mockAuth.mockResolvedValue(null);
-        const db = makeDb([{ ...fakeRepo, name: 'private-repo' }]);
+        const db = makeDb([{ ...fakeRepo, name: 'private-repo', full_name: 'o/private-repo' }]);
         mockGetNeonClient.mockReturnValue(db as never);
 
         const res = await GET(makeRequest('private-repo'), { params: Promise.resolve({ name: 'private-repo' }) });
@@ -197,5 +197,25 @@ describe('GET /api/repo-details/[name]', () => {
             secretScanningEnabled: 'unknown',
             secretScanningAlertCount: 2,
         });
+    });
+
+    it('picks the visible row when a same-named private repo shares the short name', async () => {
+        mockAuth.mockResolvedValue(null);
+        const privateRow = { ...fakeRepo, id: 'priv-1', full_name: 'other/vigil', private_repo: true };
+        const db = makeDb([privateRow, { ...fakeRepo, id: 'pub-1' }]);
+        mockGetNeonClient.mockReturnValue(db as never);
+
+        const res = await GET(makeRequest('vigil'), { params: Promise.resolve({ name: 'vigil' }) });
+        expect(res.status).toBe(200);
+        expect(JSON.stringify((await res.json()).repo ?? {})).not.toContain('priv-1');
+    });
+
+    it('rejects an anonymous caller when only a same-named non-default repo exists', async () => {
+        mockAuth.mockResolvedValue(null);
+        const db = makeDb([{ ...fakeRepo, full_name: 'other/vigil' }]);
+        mockGetNeonClient.mockReturnValue(db as never);
+
+        const res = await GET(makeRequest('vigil'), { params: Promise.resolve({ name: 'vigil' }) });
+        expect(res.status).toBe(401);
     });
 });

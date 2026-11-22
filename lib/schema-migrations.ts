@@ -185,6 +185,8 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
       started_at TIMESTAMP WITH TIME ZONE,
       completed_at TIMESTAMP WITH TIME ZONE
     )`,
+    `ALTER TABLE agent_task_receipts ADD COLUMN IF NOT EXISTS submitted_by_id TEXT`,
+    `CREATE INDEX IF NOT EXISTS idx_agent_task_receipts_submitted_by_id ON agent_task_receipts(submitted_by_id)`,
     `CREATE INDEX IF NOT EXISTS idx_agent_task_receipts_created ON agent_task_receipts(created_at)`,
     `CREATE INDEX IF NOT EXISTS idx_agent_task_receipts_type ON agent_task_receipts(type)`,
 

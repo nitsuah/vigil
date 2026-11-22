@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import { auth } from '@/auth';
 import { DEFAULT_REPOS } from '@/lib/default-repos';
-import { canAccessRepo, getAccessibleRepoIds } from '@/lib/repo-access';
+import { canAccessRepo, getAccessibleRepoIds, isDefaultRepo } from '@/lib/repo-access';
 import logger from '@/lib/log';
 import { resolveScopes, hasScopes } from '@/lib/mcp-auth';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     const session   = bearerOk ? null : await auth();
     const authed    = bearerOk || !!session;
 
-    const defaultNames = DEFAULT_REPOS.map((r: { name: string }) => r.name);
+    const defaultFullNames = DEFAULT_REPOS.map((r: { fullName: string }) => r.fullName);
     const db = getNeonClient();
     await ensureSchema(db);
 
@@ -72,12 +72,22 @@ export async function GET(req: NextRequest) {
     // Single-repo context
     // -----------------------------------------------------------------------
     if (repoName) {
-      const repoRows = (await db`
-        SELECT * FROM repos
-        WHERE (name = ${repoName} OR full_name = ${repoName})
-          AND is_hidden = false
-        LIMIT 1
-      `) as Row[];
+      // Guests resolve only among the default repos by full name, so a
+      // same-named repo under another owner can never be selected for them.
+      const repoRows = (authed
+        ? await db`
+            SELECT * FROM repos
+            WHERE (name = ${repoName} OR full_name = ${repoName})
+              AND is_hidden = false
+            LIMIT 1
+          `
+        : await db`
+            SELECT * FROM repos
+            WHERE (name = ${repoName} OR full_name = ${repoName})
+              AND full_name = ANY(${defaultFullNames})
+              AND is_hidden = false
+            LIMIT 1
+          `) as Row[];
 
       // A session (unlike the bearer key, which is the portfolio admin) is not
       // itself proof of access to this repo (CWE-639).
@@ -88,7 +98,7 @@ export async function GET(req: NextRequest) {
       if (
         repoRows.length === 0 ||
         denied ||
-        (!authed && !defaultNames.includes(repoRows[0].name))
+        (!authed && !isDefaultRepo(String(repoRows[0].full_name ?? '')))
       ) {
         return NextResponse.json({ error: `Repository "${repoName}" not found` }, { status: 404 });
       }
@@ -200,7 +210,7 @@ export async function GET(req: NextRequest) {
       ? allRows
       : accessibleIds
         ? allRows.filter(r => accessibleIds.has((r as unknown as { id: string }).id))
-        : allRows.filter(r => defaultNames.includes(r.name));
+        : allRows.filter(r => isDefaultRepo(String((r as unknown as { full_name?: string }).full_name ?? '')));
 
     // Open work across the same repos this caller can see.
     const visibleIds = new Set(repos.map(r => (r as unknown as { id: string }).id));
