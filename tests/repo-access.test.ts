@@ -8,6 +8,9 @@ import {
     grantRepoAccess,
     getAccessibleRepoIds,
     isDefaultRepo,
+    hasRepoGrant,
+    revalidateGrant,
+    revalidateDueGrants,
     type RepoAccessDb,
 } from '@/lib/repo-access';
 
@@ -83,7 +86,7 @@ describe('canAccessRepo', () => {
             'gh-999'
         );
         expect(allowed).toBe(true);
-        expect(calls[0].values).toEqual(['r1', 'gh-999']);
+        expect(calls[0].values).toEqual(['r1', 'gh-999', expect.any(String)]);
     });
 
     it("denies a private repo with no repo_access row for this user (someone else's repo)", async () => {
@@ -126,5 +129,87 @@ describe('grantRepoAccess', () => {
         expect(spy).toHaveBeenCalledTimes(1);
         expect(calls[0].text).toContain('INSERT INTO repo_access');
         expect(calls[0].values).toEqual(['gh-999', 'owner/repo']);
+    });
+});
+
+describe('grant expiry and revalidation', () => {
+    const res = (status: number, headers: Record<string, string> = {}) => ({
+        status,
+        headers: { get: (n: string) => headers[n.toLowerCase()] ?? null },
+    });
+
+    it('requires a recent verification time when checking a grant', async () => {
+        const { db, calls } = makeDb([]);
+        expect(await hasRepoGrant(db, 'r1', 'gh-1')).toBe(false);
+        expect(calls[0].text).toContain('verified_at >');
+        expect(calls).toHaveLength(1);
+    });
+
+    it('a lapsed grant is renewed when GitHub still shows the repo to the caller', async () => {
+        const calls: string[] = [];
+        const db = (async (strings: TemplateStringsArray) => {
+            const q = strings.join(' ');
+            calls.push(q);
+            if (q.includes('SELECT 1 FROM repo_access')) return [];
+            if (q.includes('SELECT r.full_name')) return [{ full_name: 'o/private' }];
+            return [];
+        }) as unknown as RepoAccessDb;
+        const fetchImpl = vi.fn().mockResolvedValue(res(200));
+        expect(await revalidateGrant(db, 'r1', 'gh-1', 'tok', fetchImpl)).toBe(true);
+        expect(fetchImpl.mock.calls[0][0]).toBe('https://api.github.com/repos/o/private');
+        expect(calls.some((q) => q.includes('UPDATE repo_access SET verified_at'))).toBe(true);
+    });
+
+    it('deletes the grant when GitHub no longer shows the repo', async () => {
+        const calls: string[] = [];
+        const db = (async (strings: TemplateStringsArray) => {
+            const q = strings.join(' ');
+            calls.push(q);
+            return q.includes('SELECT r.full_name') ? [{ full_name: 'o/private' }] : [];
+        }) as unknown as RepoAccessDb;
+        for (const status of [404, 403]) {
+            calls.length = 0;
+            expect(await revalidateGrant(db, 'r1', 'gh-1', 'tok', vi.fn().mockResolvedValue(res(status)))).toBe(false);
+            expect(calls.some((q) => q.includes('DELETE FROM repo_access'))).toBe(true);
+        }
+    });
+
+    it('leaves the grant alone on rate limiting, server errors and network failures', async () => {
+        const calls: string[] = [];
+        const db = (async (strings: TemplateStringsArray) => {
+            const q = strings.join(' ');
+            calls.push(q);
+            return q.includes('SELECT r.full_name') ? [{ full_name: 'o/private' }] : [];
+        }) as unknown as RepoAccessDb;
+        for (const f of [
+            vi.fn().mockResolvedValue(res(403, { 'x-ratelimit-remaining': '0' })),
+            vi.fn().mockResolvedValue(res(500)),
+            vi.fn().mockResolvedValue(res(401)),
+            vi.fn().mockRejectedValue(new Error('timeout')),
+        ]) {
+            expect(await revalidateGrant(db, 'r1', 'gh-1', 'tok', f)).toBe(false);
+        }
+        expect(calls.some((q) => q.includes('DELETE') || q.includes('UPDATE'))).toBe(false);
+    });
+
+    it('does not call GitHub without a token', async () => {
+        const { db, spy } = makeDb([]);
+        await revalidateDueGrants(db, 'gh-1', undefined);
+        expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('re-checks only due grants, a bounded number per call', async () => {
+        const db = (async (strings: TemplateStringsArray) => {
+            const q = strings.join(' ');
+            if (q.includes('SELECT repo_id FROM repo_access')) {
+                expect(q).toContain('LIMIT');
+                return [{ repo_id: 'a' }, { repo_id: 'b' }];
+            }
+            if (q.includes('SELECT r.full_name')) return [{ full_name: 'o/p' }];
+            return [];
+        }) as unknown as RepoAccessDb;
+        const fetchImpl = vi.fn().mockResolvedValue(res(200));
+        await revalidateDueGrants(db, 'gh-1', 'tok', fetchImpl);
+        expect(fetchImpl).toHaveBeenCalledTimes(2);
     });
 });

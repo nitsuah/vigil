@@ -46,7 +46,7 @@ describe('PATCH update-tier', () => {
         hasRepoGrant.mockResolvedValue(true);
         const res = await call({ tier: 'T2' });
         expect(res.status).toBe(200);
-        expect(hasRepoGrant).toHaveBeenCalledWith(expect.anything(), 'r1', '42');
+        expect(hasRepoGrant).toHaveBeenCalledWith(expect.anything(), 'r1', '42', undefined);
         expect(updates).toEqual([['T2', 'r1']]);
         expect((await res.json()).tier).toBe('T2');
     });
