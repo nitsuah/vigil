@@ -33,7 +33,7 @@ export async function GET(
         let selected: (typeof candidateRows)[number] | undefined;
         for (const row of candidateRows) {
             const visible = session
-                ? await canAccessRepo(db, row as { id: string; full_name?: string; private_repo?: boolean; visibility_verified?: boolean }, session.userId)
+                ? await canAccessRepo(db, row as { id: string; full_name?: string; private_repo?: boolean; visibility_verified?: boolean }, session.userId, session.accessToken)
                 : isDefaultRepo(row.full_name);
             if (visible) {
                 selected = row;

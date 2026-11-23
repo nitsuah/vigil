@@ -47,7 +47,7 @@ export async function GET(
     if (!repo) {
       return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
     }
-    if (session?.user && !(await canAccessRepo(db, repo, session.userId))) {
+    if (session?.user && !(await canAccessRepo(db, repo, session.userId, session.accessToken))) {
       return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
     }
 

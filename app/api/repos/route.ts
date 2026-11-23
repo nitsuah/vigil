@@ -1,9 +1,10 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse, NextRequest, after } from 'next/server';
 import logger from '@/lib/log';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import { auth } from '@/auth';
 import { DEFAULT_REPOS } from '@/lib/default-repos';
 import { normalizeRepoRow } from '@/lib/numeric';
+import { GRANT_TTL_MS, revalidateDueGrants } from '@/lib/repo-access';
 
 export async function GET(request: NextRequest) {
     try {
@@ -48,13 +49,23 @@ export async function GET(request: NextRequest) {
         // was introduced fail closed until their next sync.
         // When showHidden is true, include hidden/archived repos too.
         const githubUserId = session.userId ?? '';
+        // Keep this user's grants current (bounded, oldest first) after the
+        // response is sent, so listing is never slowed by GitHub lookups.
+        const revalidate = () => revalidateDueGrants(db, session.userId, session.accessToken).catch(() => undefined);
+        try {
+            after(revalidate);
+        } catch {
+            // No request scope (e.g. unit tests): run in the background.
+            void revalidate();
+        }
+        const grantCutoff = new Date(Date.now() - GRANT_TTL_MS).toISOString();
         const repos = await db`
             SELECT * FROM repos
             WHERE (${showHidden}::boolean IS TRUE OR ((is_hidden = FALSE OR is_hidden IS NULL) AND (is_archived = FALSE OR is_archived IS NULL)))
             AND (
                 full_name = ANY(${defaultRepoNames})
                 OR (visibility_verified IS TRUE AND private_repo IS NOT TRUE)
-                OR id IN (SELECT repo_id FROM repo_access WHERE github_user_id = ${githubUserId})
+                OR id IN (SELECT repo_id FROM repo_access WHERE github_user_id = ${githubUserId} AND verified_at > ${grantCutoff}::timestamptz)
             )
             ORDER BY
                 is_hidden ASC, -- Show visible first, then hidden
