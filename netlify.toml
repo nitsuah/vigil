@@ -42,3 +42,6 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    # Images may only load from this origin and the hosts rendered markdown is
+    # allowed to show (keep in sync with ALLOWED_IMAGE_HOSTS in lib/safe-image.ts).
+    Content-Security-Policy = "img-src 'self' data: blob: https://img.shields.io https://github.com https://raw.githubusercontent.com https://*.githubusercontent.com https://api.netlify.com https://codecov.io"
