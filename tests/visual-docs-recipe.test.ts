@@ -189,4 +189,36 @@ describe('Visual Docs Recipe PR Workflow', () => {
       expect(setup.journeys).toBeNull();
     });
   });
+
+  describe('diagrams-only repos (no UI)', () => {
+    it('gates the screenshot step on a visual-docs Playwright config', async () => {
+      const content = await fs.readFile(
+        path.join(templatesDir, '.github', 'workflows', 'visual-docs.yml'),
+        'utf-8',
+      );
+      expect(content).toContain("if: hashFiles('playwright.visual-docs.config.ts') != ''");
+    });
+
+    it('gates the diagram step on .mmd sources', async () => {
+      const content = await fs.readFile(
+        path.join(templatesDir, '.github', 'workflows', 'visual-docs.yml'),
+        'utf-8',
+      );
+      expect(content).toContain("if: hashFiles('docs/diagrams/*.mmd') != ''");
+    });
+
+    it('the visual_docs fix PR adds no Playwright config or screenshot files', async () => {
+      const route = await fs.readFile(
+        path.join(process.cwd(), 'app', 'api', 'repos', '[name]', 'fix-best-practice', 'route.ts'),
+        'utf-8',
+      );
+      const start = route.indexOf("case 'visual_docs'");
+      const end = route.indexOf("case 'deploy_badge'");
+      expect(start).toBeGreaterThan(-1);
+      expect(end).toBeGreaterThan(start);
+      const block = route.slice(start, end);
+      expect(block).not.toContain('playwright');
+      expect(block).not.toContain('docs/screenshots');
+    });
+  });
 });
