@@ -5,28 +5,15 @@ import { GitHubClient } from '@/lib/github';
 import { syncRepo } from '@/lib/sync';
 import { DEFAULT_REPOS } from '@/lib/default-repos';
 import logger from '@/lib/log';
+import { RateLimiter } from '@/lib/mcp-rate-limit';
 
-/** Minimum gap between seeding runs per signed-in user (the run spends the server GitHub token). */
+/**
+ * One seeding run per signed-in user per five minutes (the run spends the server GitHub token).
+ * Per instance, like the /api/mcp limiter: it bounds a single caller's burst; the
+ * route also requires a session, so it is not the only control.
+ */
 const SEED_COOLDOWN_MS = 5 * 60_000;
-const MAX_TRACKED_USERS = 1_000;
-const lastSeedRun = new Map<string, number>();
-
-/** Claims a run slot for `key`; returns the seconds to wait when still cooling down, else 0. */
-function claimSeedSlot(key: string, now: number = Date.now()): number {
-    for (const [k, t] of lastSeedRun) {
-        if (now - t >= SEED_COOLDOWN_MS) lastSeedRun.delete(k);
-    }
-    const last = lastSeedRun.get(key);
-    if (last !== undefined && now - last < SEED_COOLDOWN_MS) {
-        return Math.ceil((SEED_COOLDOWN_MS - (now - last)) / 1000);
-    }
-    if (lastSeedRun.size >= MAX_TRACKED_USERS) {
-        const oldest = lastSeedRun.keys().next();
-        if (!oldest.done) lastSeedRun.delete(oldest.value);
-    }
-    lastSeedRun.set(key, now);
-    return 0;
-}
+const seedLimiter = new RateLimiter(1, SEED_COOLDOWN_MS, 1_000);
 
 export async function POST() {
     const session = await auth();
@@ -34,11 +21,16 @@ export async function POST() {
         return NextResponse.json({ error: 'Unauthorized - Please sign in' }, { status: 401 });
     }
 
-    const retryAfter = claimSeedSlot(session.userId ?? session.user.email ?? session.user.name ?? 'unknown');
-    if (retryAfter > 0) {
+    const key = session.userId ?? session.user.email;
+    if (!key) {
+        // No stable identity to throttle on: refuse rather than share one bucket.
+        return NextResponse.json({ error: 'Unauthorized - Please sign in' }, { status: 401 });
+    }
+    // hit() checks and records in one synchronous call, so concurrent requests cannot both pass.
+    if (!seedLimiter.hit(key)) {
         return NextResponse.json(
             { error: 'Seeding was run recently; try again later' },
-            { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+            { status: 429, headers: { 'Retry-After': String(SEED_COOLDOWN_MS / 1000) } }
         );
     }
 

@@ -29,6 +29,13 @@ describe('POST /api/seed-defaults', () => {
         expect(syncRepo).not.toHaveBeenCalled();
     });
 
+    it('401s a session with no stable identity instead of sharing a bucket', async () => {
+        mockAuth.mockResolvedValue({ user: { name: 'u' } });
+        const res = await POST();
+        expect(res.status).toBe(401);
+        expect(syncRepo).not.toHaveBeenCalled();
+    });
+
     it('syncs for a signed-in user and omits error text', async () => {
         mockAuth.mockResolvedValue({ user: { name: 'u' }, userId: 'user-ok' });
         syncRepo.mockRejectedValue(new Error('secret upstream detail'));
