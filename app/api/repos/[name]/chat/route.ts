@@ -207,7 +207,7 @@ export async function POST(
         // name. 404 (not 403) so a private repo's existence isn't confirmed
         // to a caller who can't see it -- same response as a genuinely
         // missing repo above.
-        if (!(await canAccessRepo(db, repo, session.userId))) {
+        if (!(await canAccessRepo(db, repo, session.userId, session.accessToken))) {
             return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
         }
 
