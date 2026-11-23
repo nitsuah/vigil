@@ -36,7 +36,7 @@ describe('PATCH update-health-profile', () => {
         hasRepoGrant.mockResolvedValue(true);
         const res = await call('starter');
         expect(res.status).toBe(200);
-        expect(hasRepoGrant).toHaveBeenCalledWith(expect.anything(), 'r1', '88273576');
+        expect(hasRepoGrant).toHaveBeenCalledWith(expect.anything(), 'r1', '88273576', undefined);
         expect((await res.json()).profile).toBe('starter');
     });
 

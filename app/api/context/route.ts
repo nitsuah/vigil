@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
       // itself proof of access to this repo (CWE-639).
       const denied =
         repoRows.length > 0 && session &&
-        !(await canAccessRepo(db, repoRows[0] as unknown as { id: string }, session.userId));
+        !(await canAccessRepo(db, repoRows[0] as unknown as { id: string }, session.userId, session.accessToken));
 
       if (
         repoRows.length === 0 ||

@@ -606,12 +606,12 @@ export async function checkBestPractices(
         // Check for common deployment badges
         // Robust detection of CI/CD and deploy badges via URL + alt-text keywords with scoring
         const urlPatterns: RegExp[] = [
-            /github\.com\/.+?\/actions\/workflows\/.+?\.yml\/badge\.svg/i, // GitHub Actions workflow badge
+            /github\.com\/[^/]+\/[^/]+\/actions\/workflows\/[^/]+\.yml\/badge\.svg/i, // GitHub Actions workflow badge
             /api\.netlify\.com\/api\/v1\/badges\/[a-f0-9-]+\/deploy-status(?:\?branch=[^\s"')]+)?/i, // Netlify deploy badge
             /img\.shields\.io\/badge\/Deployed%20on-Vercel(?:-black)?/i, // Vercel deployed-on badge
-            /gitlab\.com\/.+?\/badges\/.+?\/pipeline\.svg/i, // GitLab pipeline
-            /circleci\.com\/gh\/.+?\.svg/i, // CircleCI
-            /travis-ci\.(com|org)\/.+?\.svg/i // Travis
+            /gitlab\.com\/(?:[^/]+\/)+badges\/(?:[^/]+\/)+pipeline\.svg/i, // GitLab pipeline
+            /circleci\.com\/gh\/[^\s]+\.svg/i, // CircleCI
+            /travis-ci\.(?:com|org)\/[^\s]+\.svg/i // Travis
         ];
         const lowConfidencePatterns: RegExp[] = [
             /img\.shields\.io\/.*(deploy|deployment|vercel|netlify|render|pages)/i, // generic shields - low confidence

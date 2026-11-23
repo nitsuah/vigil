@@ -263,6 +263,9 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
       PRIMARY KEY (repo_id, github_user_id)
     )`,
 
+    // Grants lapse unless re-verified against GitHub (lib/repo-access.ts).
+    `ALTER TABLE repo_access ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()`,
+
     // repo_relationships: durable, directed cross-repo edges ("agent-board
     // calls bb-mcp") with the context and evidence behind them. Endpoints are
     // lower-cased owner/repo TEXT, not repo FKs, so an edge can point at an

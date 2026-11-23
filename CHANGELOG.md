@@ -11,12 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- CI/deploy badge URL patterns (GitHub Actions, GitLab, CircleCI, Travis) are now linear, segment-based expressions instead of lazy wildcards.
+
 - Badge detection in README content now uses a linear-time scanner with input and tag-length caps (`lib/badge-scan.ts`) instead of backtracking regular expressions.
 - Anonymous context and repo-detail reads now match default repos by full name (owner-qualified), and agent task reads and receipts are scoped to the signed-in user's stable GitHub id instead of email. Sessions created before the stable id was captured must sign in again to use agent tasks; legacy receipts are claimed by matching email the first time their owner lists receipts.
 - `/api/mcp` rate limiting now keys on the platform-provided client address (`x-nf-client-connection-ip`, override with `MCP_CLIENT_IP_HEADER`), authenticates before counting successful requests, throttles failed authentication separately, and bounds its in-memory table.
 - `/api/mcp` rate limiting now keys on the platform-provided client address (`x-nf-client-connection-ip`, override with `MCP_CLIENT_IP_HEADER`, which must be a platform-set header; `cf-connecting-ip` is the fallback, and callers with neither share a stricter bucket), authenticates before counting successful requests, throttles failed authentication separately, and bounds its in-memory table.
 - `/api/seed-defaults` now requires a signed-in session (no longer exempt from the login check) and no longer returns upstream error text.
 - `/api/seed-defaults` now requires a signed-in session (no longer exempt from the login check) and no longer returns upstream error text; each user may trigger a run once every five minutes.
+- Repo grants now lapse after an hour unless re-verified against GitHub with the user's own token: due grants are re-checked (a bounded number, oldest first) when the dashboard lists repos, renewed on success and removed when GitHub no longer shows the repo.
+- Repo grants now lapse after an hour unless re-verified against GitHub with the user's own token: due grants are re-checked (a bounded number, oldest first) when the dashboard lists repos, renewed on success and removed only when GitHub answers not found (rate limits, abuse, SAML and retry-after responses are inconclusive). The pass runs after the response is sent, at most once every five minutes per user.
 
 - Changing shared repo settings (hide, unhide, type, summary, roadmap links) now requires a repo grant and targets the single granted repo by id; adding a repo updates settings by its full name.
 

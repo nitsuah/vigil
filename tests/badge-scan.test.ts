@@ -52,4 +52,24 @@ describe('deploy badge detection on hostile input', () => {
         await checkBestPractices('o', 'r', octokit, [], `![a](github.com/${'/'.repeat(190_000)})`);
         expect(Date.now() - t).toBeLessThan(2000);
     });
+
+    it('recognises CI badge URLs and stays fast on pathological ones', async () => {
+        const urls = [
+            'https://github.com/o/r/actions/workflows/ci.yml/badge.svg',
+            'https://gitlab.com/g/sub/r/badges/main/pipeline.svg',
+            'https://circleci.com/gh/o/r.svg',
+            'https://travis-ci.com/o/r.svg',
+        ];
+        for (const url of urls) {
+            const res = await checkBestPractices('o', 'r', octokit, [], `![ci](${url})`);
+            expect(res.practices.find((p) => p.type === 'deploy_badge')?.status, url).not.toBe('missing');
+        }
+        const t = Date.now();
+        const hostile = ['https://github.com/', 'https://gitlab.com/', 'https://circleci.com/gh/', 'https://travis-ci.com/']
+            .map((h) => h + 'a/'.repeat(1000))
+            .map((u) => `![x](${u})`)
+            .join(' ');
+        await checkBestPractices('o', 'r', octokit, [], hostile);
+        expect(Date.now() - t).toBeLessThan(2000);
+    });
 });
