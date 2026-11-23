@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw, Route } from 'lucide-react';
 import type { PmoJourneysRow } from '@/app/api/pmo/journeys/route';
 import { JourneysStatusBadge } from '@/components/repo-details/JourneysStatusBadge';
@@ -8,7 +8,7 @@ import { JourneysStatusBadge } from '@/components/repo-details/JourneysStatusBad
 type LoadState =
     | { kind: 'loading' }
     | { kind: 'error' }
-    | { kind: 'ready'; repos: PmoJourneysRow[] };
+    | { kind: 'ready'; repos: PmoJourneysRow[]; skipped: number };
 
 /** Red first, then stale and unreadable, then the rest. */
 function rank(row: PmoJourneysRow): number {
@@ -18,15 +18,18 @@ function rank(row: PmoJourneysRow): number {
 
 export function JourneysRollup({ refreshKey }: { refreshKey?: number }) {
     const [state, setState] = useState<LoadState>({ kind: 'loading' });
+    const requestSeq = useRef(0);
 
     const load = useCallback(async (signal?: AbortSignal) => {
+        // Only the latest request may write state (retry vs. refresh races).
+        const id = ++requestSeq.current;
         try {
             const res = await fetch('/api/pmo/journeys', { signal });
             if (!res.ok) throw new Error(String(res.status));
-            const body = await res.json() as { repos: PmoJourneysRow[] };
-            setState({ kind: 'ready', repos: body.repos });
+            const body = await res.json() as { repos: PmoJourneysRow[]; skipped?: number };
+            if (id === requestSeq.current) setState({ kind: 'ready', repos: body.repos, skipped: body.skipped ?? 0 });
         } catch (err) {
-            if ((err as Error).name !== 'AbortError') setState({ kind: 'error' });
+            if ((err as Error).name !== 'AbortError' && id === requestSeq.current) setState({ kind: 'error' });
         }
     }, []);
 
@@ -38,6 +41,8 @@ export function JourneysRollup({ refreshKey }: { refreshKey?: number }) {
 
     const repos = state.kind === 'ready' ? [...state.repos].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name)) : [];
     const red = repos.filter((r) => r.health?.status === 'red');
+    const allGreen = repos.every((r) => r.health?.status === 'green');
+    const skipped = state.kind === 'ready' ? state.skipped : 0;
 
     if (state.kind === 'ready' && repos.length === 0) return null;
 
@@ -48,10 +53,12 @@ export function JourneysRollup({ refreshKey }: { refreshKey?: number }) {
                     <Route className="h-3.5 w-3.5" aria-hidden="true" /> Nightly Journeys
                 </h2>
                 {state.kind === 'ready' && (
-                    <span className={`flex items-center gap-1 text-xs ${red.length ? 'text-red-300' : 'text-emerald-300'}`}>
+                    <span className={`flex items-center gap-1 text-xs ${red.length ? 'text-red-300' : allGreen ? 'text-emerald-300' : 'text-amber-300'}`}>
                         {red.length
                             ? <><AlertTriangle className="h-3 w-3" aria-hidden="true" />{red.length} red</>
-                            : <><CheckCircle2 className="h-3 w-3" aria-hidden="true" />All green</>}
+                            : allGreen
+                                ? <><CheckCircle2 className="h-3 w-3" aria-hidden="true" />All green</>
+                                : <><AlertTriangle className="h-3 w-3" aria-hidden="true" />None red, some need a look</>}
                     </span>
                 )}
             </div>
@@ -75,7 +82,7 @@ export function JourneysRollup({ refreshKey }: { refreshKey?: number }) {
                                 {r.health ? (
                                     <>
                                         {r.health.status !== 'none' && <span className="tabular-nums">{r.health.passed}/{r.health.total}</span>}
-                                        <span className="tabular-nums">{r.health.openJourneyIssues} journey · {r.health.openReviewIssues} review</span>
+                                        <span className="tabular-nums">{r.health.openJourneyIssues}{r.health.issueCountsCapped ? '+' : ''} journey · {r.health.openReviewIssues}{r.health.issueCountsCapped ? '+' : ''} review</span>
                                         <JourneysStatusBadge status={r.health.status} />
                                     </>
                                 ) : (
@@ -85,6 +92,11 @@ export function JourneysRollup({ refreshKey }: { refreshKey?: number }) {
                         </li>
                     ))}
                 </ul>
+            )}
+            {skipped > 0 && (
+                <p className="text-xs text-amber-300">
+                    {skipped} more repo{skipped !== 1 ? 's' : ''} with nightlies not checked (per-request GitHub read limit); the rollup is incomplete.
+                </p>
             )}
         </section>
     );

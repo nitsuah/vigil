@@ -19,6 +19,8 @@ export interface JourneysHealth {
     coverage: { covered: number; total: number } | null;
     openJourneyIssues: number;
     openReviewIssues: number;
+    /** True when an issue count hit the one-page cap, so it is a lower bound. */
+    issueCountsCapped: boolean;
 }
 
 interface RunRecord {
@@ -34,6 +36,11 @@ interface RunRecord {
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0);
 
 /** Only link to GitHub run pages; the file is bot-written but still data. */
+/** Valid calendar date (YYYY-MM-DD...) or null; anything else is not trusted as a run date. */
+function safeDate(v: unknown): string | null {
+    return typeof v === 'string' && Number.isFinite(new Date(v).getTime()) ? v : null;
+}
+
 function safeRunUrl(v: unknown): string | null {
     return typeof v === 'string' && /^https:\/\/github\.com\//.test(v) ? v : null;
 }
@@ -53,7 +60,7 @@ export function parseMetricsJsonl(text: string): RunRecord[] {
         }
         const cov = raw.coverage as { covered?: unknown; total?: unknown } | null | undefined;
         runs.push({
-            date: typeof raw.date === 'string' ? raw.date : null,
+            date: safeDate(raw.date),
             run: safeRunUrl(raw.run),
             total: num(raw.total),
             passed: num(raw.passed),
@@ -70,12 +77,13 @@ export function parseMetricsJsonl(text: string): RunRecord[] {
 /** Fold the last run and the open bot-issue counts into one health record. */
 export function summarizeJourneys(
     runs: RunRecord[],
-    counts: { journey: number; review: number },
+    counts: { journey: number; review: number; capped?: boolean },
     now: Date = new Date()
 ): JourneysHealth {
     const last = runs.length ? runs[runs.length - 1] : null;
     let status: JourneysStatus = 'none';
     if (last) {
+        // A run with no valid date can't be shown to be recent, so it is never green.
         const ageDays = last.date ? (now.getTime() - new Date(last.date).getTime()) / 864e5 : Infinity;
         // A red run is red however old; staleness only downgrades a green one.
         status = last.failed > 0 ? 'red' : ageDays > STALE_AFTER_DAYS ? 'stale' : 'green';
@@ -91,6 +99,7 @@ export function summarizeJourneys(
         coverage: last?.coverage ?? null,
         openJourneyIssues: counts.journey,
         openReviewIssues: counts.review,
+        issueCountsCapped: counts.capped ?? false,
     };
 }
 
@@ -112,13 +121,38 @@ async function readMonth(octokit: Octokit, owner: string, repo: string, month: s
     }
 }
 
-async function openCount(octokit: Octokit, owner: string, repo: string, label: string): Promise<number> {
+/** Issues returned per page; a full page means there may be more. */
+const ISSUES_PAGE = 100;
+
+/** Runs from the newest metrics file before `before` (YYYY-MM), or []. */
+async function readLatestEarlier(octokit: Octokit, owner: string, repo: string, before: string): Promise<RunRecord[]> {
+    let names: string[];
+    try {
+        const { data } = await octokit.repos.getContent({ owner, repo, path: 'metrics', ref: JOURNEYS_BRANCH });
+        names = Array.isArray(data) ? data.map((f) => f.name) : [];
+    } catch (err) {
+        if ((err as { status?: number }).status === 404) return [];
+        throw err;
+    }
+    const months = names
+        .map((n) => /^(\d{4}-\d{2})\.jsonl$/.exec(n)?.[1])
+        .filter((m): m is string => !!m && m < before)
+        .sort()
+        .reverse();
+    for (const m of months) {
+        const runs = await readMonth(octokit, owner, repo, m);
+        if (runs.length) return runs;
+    }
+    return [];
+}
+
+async function openCount(octokit: Octokit, owner: string, repo: string, label: string): Promise<{ count: number; capped: boolean }> {
     // Open issues only; PRs share the issues endpoint, so drop them. One page
-    // is enough for a badge: 100 open bot issues is already a red flag.
+    // is enough for a badge: a full page is reported as a lower bound ("100+").
     const { data } = await octokit.issues.listForRepo({
-        owner, repo, labels: label, state: 'open', per_page: 100,
+        owner, repo, labels: label, state: 'open', per_page: ISSUES_PAGE,
     });
-    return data.filter((i) => !i.pull_request).length;
+    return { count: data.filter((i) => !i.pull_request).length, capped: data.length >= ISSUES_PAGE };
 }
 
 /**
@@ -132,11 +166,17 @@ export async function fetchJourneysHealth(
     repo: string,
     now: Date = new Date()
 ): Promise<JourneysHealth> {
-    const [thisMonth, prevMonth, journey, review] = await Promise.all([
+    const [thisMonth, journey, review] = await Promise.all([
         readMonth(octokit, owner, repo, monthKey(now)),
-        readMonth(octokit, owner, repo, monthKey(now, 1)),
         openCount(octokit, owner, repo, 'bot:journey'),
         openCount(octokit, owner, repo, 'bot:review'),
     ]);
-    return summarizeJourneys([...prevMonth, ...thisMonth], { journey, review }, now);
+    // Most nights this month's file is enough; otherwise fall back to the
+    // newest earlier file so an old red run is not reported as "no runs".
+    const runs = thisMonth.length ? thisMonth : await readLatestEarlier(octokit, owner, repo, monthKey(now));
+    return summarizeJourneys(runs, {
+        journey: journey.count,
+        review: review.count,
+        capped: journey.capped || review.capped,
+    }, now);
 }

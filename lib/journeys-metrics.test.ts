@@ -27,6 +27,10 @@ describe('summarizeJourneys', () => {
         const runs = parseMetricsJsonl(line({ date: '2026-10-01', total: 3, passed: 2, failed: 1 }));
         expect(summarizeJourneys(runs, counts, NOW).status).toBe('red');
     });
+    it('never calls a run with an invalid date green', () => {
+        const runs = parseMetricsJsonl(line({ date: 'not-a-date', total: 1, passed: 1, failed: 0 }));
+        expect(summarizeJourneys(runs, counts, NOW).status).toBe('stale');
+    });
     it('is green for a recent clean run and stale for an old one', () => {
         expect(summarizeJourneys(parseMetricsJsonl(line({ date: '2026-11-23', total: 3, passed: 3, failed: 0, flaky: 1 })), counts, NOW))
             .toMatchObject({ status: 'green', flaky: 1 });
@@ -42,6 +46,11 @@ function fakeOctokit(files: Record<string, string>, issues: Record<string, numbe
     return {
         repos: {
             getContent: async ({ path }: { path: string }) => {
+                if (path === 'metrics') {
+                    const names = Object.keys(files).map((f) => f.replace('metrics/', ''));
+                    if (!names.length) throw Object.assign(new Error('nf'), { status: 404 });
+                    return { data: names.map((name) => ({ name })) };
+                }
                 if (!(path in files)) throw Object.assign(new Error('nf'), { status: 404 });
                 return { data: { type: 'file', content: Buffer.from(files[path]).toString('base64') } };
             },
@@ -63,6 +72,17 @@ describe('fetchJourneysHealth', () => {
         );
         const h = await fetchJourneysHealth(o, 'a', 'b', NOW);
         expect(h).toMatchObject({ status: 'stale', openJourneyIssues: 3, openReviewIssues: 0 });
+    });
+    it('falls back to the newest earlier file so an old red run stays red', async () => {
+        const o = fakeOctokit({
+            'metrics/2026-08.jsonl': line({ date: '2026-08-30', total: 2, passed: 2, failed: 0 }),
+            'metrics/2026-09.jsonl': line({ date: '2026-09-12', total: 2, passed: 1, failed: 1 }),
+        }, {});
+        expect((await fetchJourneysHealth(o, 'a', 'b', NOW)).status).toBe('red');
+    });
+    it('flags a full issue page as a lower bound', async () => {
+        const h = await fetchJourneysHealth(fakeOctokit({}, { 'bot:journey': 100 }), 'a', 'b', NOW);
+        expect(h.issueCountsCapped).toBe(true);
     });
     it('is none when no metrics exist and propagates GitHub errors', async () => {
         expect((await fetchJourneysHealth(fakeOctokit({}, {}), 'a', 'b', NOW)).status).toBe('none');

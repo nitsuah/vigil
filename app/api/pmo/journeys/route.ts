@@ -14,8 +14,15 @@ export interface PmoJourneysRow {
     health: JourneysHealth | null;
 }
 
-/** Repos read at once; each costs four GitHub requests. */
+/** Repos read at once. */
 const CONCURRENCY = 4;
+/**
+ * Most repos read per request. Each costs three GitHub requests (four when it
+ * has no metrics this month); Workers Free allows 50 subrequests per
+ * invocation, shared with the database and auth calls. Repos beyond the cap are
+ * reported as `skipped`, never as unreadable.
+ */
+const MAX_REPOS = 10;
 
 async function mapLimited<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
     const out: R[] = new Array(items.length);
@@ -52,7 +59,9 @@ export async function GET() {
             ORDER BY r.full_name
         `) as Array<{ id: string; name: string; full_name: string }>;
         const accessible = await getAccessibleRepoIds(db, session.userId);
-        const repos = candidates.filter((r) => accessible.has(r.id));
+        const allowed = candidates.filter((r) => accessible.has(r.id));
+        const repos = allowed.slice(0, MAX_REPOS);
+        const skipped = allowed.length - repos.length;
 
         const octokit = createOctokitClient(session.accessToken);
         const rows = await mapLimited(repos, CONCURRENCY, async (r): Promise<PmoJourneysRow> => {
@@ -64,7 +73,7 @@ export async function GET() {
                 return { name: r.name, full_name: r.full_name, health: null };
             }
         });
-        return NextResponse.json({ repos: rows });
+        return NextResponse.json({ repos: rows, skipped });
     } catch (error) {
         logger.warn('[pmo/journeys] Failed to build journeys rollup:', error);
         return NextResponse.json({ error: 'Failed to load journeys rollup' }, { status: 500 });

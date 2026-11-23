@@ -32,10 +32,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
     );
 }
 
-function IssueCount({ count, href }: { count: number; href: string | undefined }) {
+function IssueCount({ count, capped, href }: { count: number; capped: boolean; href: string | undefined }) {
+    const text = capped ? `${count}+` : String(count);
     return href
-        ? <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">{count}</a>
-        : <>{count}</>;
+        ? <a href={href} target="_blank" rel="noopener noreferrer" className="hover:underline">{text}</a>
+        : <>{text}</>;
 }
 
 export function JourneysSection({ repoName, repoUrl, practiceStatus, isAuthenticated }: JourneysSectionProps) {
@@ -111,8 +112,8 @@ export function JourneysSection({ repoName, repoUrl, practiceStatus, isAuthentic
                     ))}
                 {hasNightly && state.kind === 'ready' && (
                     <>
-                        <Row label="Open bot:journey issues"><IssueCount count={state.health.openJourneyIssues} href={issuesHref(repoUrl, 'bot:journey')} /></Row>
-                        <Row label="Open bot:review issues"><IssueCount count={state.health.openReviewIssues} href={issuesHref(repoUrl, 'bot:review')} /></Row>
+                        <Row label="Open bot:journey issues"><IssueCount count={state.health.openJourneyIssues} capped={state.health.issueCountsCapped} href={issuesHref(repoUrl, 'bot:journey')} /></Row>
+                        <Row label="Open bot:review issues"><IssueCount count={state.health.openReviewIssues} capped={state.health.issueCountsCapped} href={issuesHref(repoUrl, 'bot:review')} /></Row>
                     </>
                 )}
             </div>
