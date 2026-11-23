@@ -11,7 +11,7 @@ import { useRepos, useRepoDetails, useRepoExpansion, useRepoPolling } from '@/ho
 import { useRepoActions } from '@/hooks/useRepoActions';
 import { MobileRepoCard } from '@/components/dashboard/MobileRepoCard';
 import { useRepoFilters } from '@/hooks/useRepoFilters';
-import { useRepoChat } from '@/hooks/useRepoChat';
+import { useRepoChat, EPHEMERAL_CHAT_IDENTITY } from '@/hooks/useRepoChat';
 import { RepoChatPanel } from '@/components/chat/RepoChatPanel';
 import { SettingsModal } from '@/components/SettingsModal';
 import { resolveDocTargetPath } from '@/lib/doc-target-paths';
@@ -22,7 +22,7 @@ import type { Repo } from '@/types/repo';
 import type { RepoTier } from '@/lib/repo-tier';
 
 export default function Dashboard() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [showHidden, setShowHidden] = useState(false);
   const { repos, setRepos, loading, refetch } = useRepos(showHidden);
   const { repoDetails, loadingDetails, fetchRepoDetails } = useRepoDetails();
@@ -58,7 +58,12 @@ export default function Dashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // One chat thread ("friend") per repo, persisted across sessions.
-  const { getThread, sendMessage, clearThread, dismissProposal, sendingRepo, error: chatError } = useRepoChat(session?.user?.email);
+  const { getThread, sendMessage, clearThread, dismissProposal, sendingRepo, error: chatError } = useRepoChat(
+    // Keyed on the stable account id. While the session loads, or when it has no id,
+    // threads stay in memory only (never the shared signed-out namespace).
+    sessionStatus === 'loading' ? EPHEMERAL_CHAT_IDENTITY : session ? (session.userId ?? EPHEMERAL_CHAT_IDENTITY) : null,
+    session?.user?.email,
+  );
 
   const {
     addingRepo,
