@@ -2,7 +2,11 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const h = vi.hoisted(() => ({ session: null as unknown, rows: [] as unknown[], access: vi.fn(), health: vi.fn() }));
 vi.mock('@/auth', () => ({ auth: async () => h.session }));
-vi.mock('@/lib/db', () => ({ getNeonClient: () => async () => h.rows, ensureSchema: async () => undefined }));
+vi.mock('@/lib/db', () => ({
+    // Tagged-template call: (strings, name, limit, offset) -> one page of rows.
+    getNeonClient: () => async (_s: unknown, _name: string, limit: number, offset: number) => h.rows.slice(offset, offset + limit),
+    ensureSchema: async () => undefined,
+}));
 vi.mock('@/lib/repo-access', () => ({ canAccessRepo: (...a: unknown[]) => h.access(...a), hasRepoGrant: vi.fn(), isDefaultRepo: vi.fn() }));
 vi.mock('@/lib/githubClient', () => ({ createOctokitClient: () => ({}) }));
 vi.mock('@/lib/journeys-metrics', () => ({ fetchJourneysHealth: (...a: unknown[]) => h.health(...a) }));
@@ -24,6 +28,13 @@ describe('GET /api/repos/[name]/journeys', () => {
         const res = await call();
         expect(res.status).toBe(200);
         expect(h.health.mock.calls[0].slice(1, 3)).toEqual(['z-owner', 'app']);
+    });
+
+    it('keeps looking past the first page of inaccessible matches', async () => {
+        h.rows = Array.from({ length: 26 }, (_, i) => ({ id: String(i), full_name: `o${String(i).padStart(2, '0')}/app` }));
+        h.access.mockImplementation(async (_db: unknown, row: { id: string }) => row.id === '25');
+        expect((await call()).status).toBe(200);
+        expect(h.health.mock.calls[0][1]).toBe('o25');
     });
 
     it('404s when no same-named repo is visible, without calling GitHub', async () => {

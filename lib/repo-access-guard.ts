@@ -53,13 +53,19 @@ export async function resolveReadableRepo(
 ): Promise<{ fullName: string; response?: undefined } | { fullName?: undefined; response: NextResponse }> {
     const db = getNeonClient();
     await ensureSchema(db);
-    const rows = (await db`
-        SELECT id, full_name, private_repo, visibility_verified FROM repos WHERE name = ${repoName} ORDER BY full_name LIMIT 25
-    `) as unknown as RepoAccessCheck[];
-    for (const row of rows) {
-        if (await canAccessRepo(db, row, session?.userId, session?.accessToken)) {
-            return { fullName: row.full_name as string };
+    // Page through same-named rows until one is visible, so a long run of
+    // inaccessible matches can't hide a readable one.
+    const PAGE = 25;
+    for (let offset = 0; ; offset += PAGE) {
+        const rows = (await db`
+            SELECT id, full_name, private_repo, visibility_verified FROM repos WHERE name = ${repoName} ORDER BY full_name LIMIT ${PAGE} OFFSET ${offset}
+        `) as unknown as RepoAccessCheck[];
+        for (const row of rows) {
+            if (await canAccessRepo(db, row, session?.userId, session?.accessToken)) {
+                return { fullName: row.full_name as string };
+            }
         }
+        if (rows.length < PAGE) break;
     }
     return { response: NextResponse.json({ error: 'Repo not found' }, { status: 404 }) };
 }
