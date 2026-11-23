@@ -21,6 +21,7 @@ import {
     classifyElements,
     detectShowcaseFiles,
     findPagesHtml,
+    gitInspectArgs,
     injectExpandKit,
     isBrandWorkflow,
     isScreenshotWorkflow,
@@ -65,7 +66,7 @@ const read = (root: string, rel: string): string | null => {
  */
 function repoName(root: string): string {
     try {
-        const url = execFileSync('git', ['-c', 'safe.directory=*', '-C', root, 'remote', 'get-url', 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+        const url = execFileSync('git', [...gitInspectArgs(root), 'remote', 'get-url', 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
         const name = repoNameFromRemote(url);
         if (name) return name;
     } catch { /* no git binary (the test image has none), not a checkout, or no origin */ }
@@ -82,7 +83,7 @@ function repoName(root: string): string {
 
 function gitDate(root: string, rel: string): string | null {
     try {
-        return execFileSync('git', ['-c', 'safe.directory=*', '-C', root, 'log', '-1', '--format=%cI', '--', rel], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
+        return execFileSync('git', [...gitInspectArgs(root), 'log', '-1', '--no-show-signature', '--format=%cI', '--', rel], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() || null;
     } catch { return null; }
 }
 
