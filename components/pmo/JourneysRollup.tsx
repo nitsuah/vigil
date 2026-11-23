@@ -82,7 +82,7 @@ export function JourneysRollup({ refreshKey }: { refreshKey?: number }) {
                                 {r.health ? (
                                     <>
                                         {r.health.status !== 'none' && <span className="tabular-nums">{r.health.passed}/{r.health.total}</span>}
-                                        <span className="tabular-nums">{r.health.openJourneyIssues}{r.health.issueCountsCapped ? '+' : ''} journey · {r.health.openReviewIssues}{r.health.issueCountsCapped ? '+' : ''} review</span>
+                                        <span className="tabular-nums">{r.health.openJourneyIssues}{r.health.journeyIssuesCapped ? '+' : ''} journey · {r.health.openReviewIssues}{r.health.reviewIssuesCapped ? '+' : ''} review</span>
                                         <JourneysStatusBadge status={r.health.status} />
                                     </>
                                 ) : (

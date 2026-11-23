@@ -94,7 +94,9 @@ describe('fetchJourneysHealth', () => {
     });
     it('flags a full issue page as a lower bound', async () => {
         const h = await fetchJourneysHealth(fakeOctokit({}, { 'bot:journey': 100 }), 'a', 'b', NOW);
-        expect(h.issueCountsCapped).toBe(true);
+        // Only the label that filled a page is a lower bound.
+        expect(h.journeyIssuesCapped).toBe(true);
+        expect(h.reviewIssuesCapped).toBe(false);
     });
     it('is none when no metrics exist and propagates GitHub errors', async () => {
         expect((await fetchJourneysHealth(fakeOctokit({}, {}), 'a', 'b', NOW)).status).toBe('none');

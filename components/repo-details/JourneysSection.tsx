@@ -112,8 +112,8 @@ export function JourneysSection({ repoName, repoUrl, practiceStatus, isAuthentic
                     ))}
                 {hasNightly && state.kind === 'ready' && (
                     <>
-                        <Row label="Open bot:journey issues"><IssueCount count={state.health.openJourneyIssues} capped={state.health.issueCountsCapped} href={issuesHref(repoUrl, 'bot:journey')} /></Row>
-                        <Row label="Open bot:review issues"><IssueCount count={state.health.openReviewIssues} capped={state.health.issueCountsCapped} href={issuesHref(repoUrl, 'bot:review')} /></Row>
+                        <Row label="Open bot:journey issues"><IssueCount count={state.health.openJourneyIssues} capped={state.health.journeyIssuesCapped} href={issuesHref(repoUrl, 'bot:journey')} /></Row>
+                        <Row label="Open bot:review issues"><IssueCount count={state.health.openReviewIssues} capped={state.health.reviewIssuesCapped} href={issuesHref(repoUrl, 'bot:review')} /></Row>
                     </>
                 )}
             </div>

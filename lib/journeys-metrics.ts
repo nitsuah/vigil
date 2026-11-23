@@ -19,8 +19,9 @@ export interface JourneysHealth {
     coverage: { covered: number; total: number } | null;
     openJourneyIssues: number;
     openReviewIssues: number;
-    /** True when an issue count hit the one-page cap, so it is a lower bound. */
-    issueCountsCapped: boolean;
+    /** True when that issue count hit the one-page cap, so it is a lower bound. */
+    journeyIssuesCapped: boolean;
+    reviewIssuesCapped: boolean;
 }
 
 interface RunRecord {
@@ -77,7 +78,7 @@ export function parseMetricsJsonl(text: string): RunRecord[] {
 /** Fold the last run and the open bot-issue counts into one health record. */
 export function summarizeJourneys(
     runs: RunRecord[],
-    counts: { journey: number; review: number; capped?: boolean },
+    counts: { journey: number; review: number; journeyCapped?: boolean; reviewCapped?: boolean },
     now: Date = new Date()
 ): JourneysHealth {
     const last = runs.length ? runs[runs.length - 1] : null;
@@ -99,7 +100,8 @@ export function summarizeJourneys(
         coverage: last?.coverage ?? null,
         openJourneyIssues: counts.journey,
         openReviewIssues: counts.review,
-        issueCountsCapped: counts.capped ?? false,
+        journeyIssuesCapped: counts.journeyCapped ?? false,
+        reviewIssuesCapped: counts.reviewCapped ?? false,
     };
 }
 
@@ -177,6 +179,7 @@ export async function fetchJourneysHealth(
     return summarizeJourneys(runs, {
         journey: journey.count,
         review: review.count,
-        capped: journey.capped || review.capped,
+        journeyCapped: journey.capped,
+        reviewCapped: review.capped,
     }, now);
 }
