@@ -50,6 +50,7 @@ Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and P
 - [ ] Diagrams-only recipe job for repos with no UI.
   - Priority: P1
   - Context: the recipe already renders `.mmd` without a Playwright config. Add an Excalidraw export step, and a diagrams-only fix PR that doesn't add screenshot plumbing to a CLI/MCP repo.
+  - Progress: tests lock in that the recipe and its fix PR add no screenshot plumbing; remaining: Excalidraw export step.
 - [ ] Follow-ups outside vigil.
   - Priority: P1
   - Context:
