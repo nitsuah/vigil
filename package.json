@@ -26,7 +26,7 @@
     "prepare": "husky || true",
     "postinstall": "node -e \"const fs=require('fs'),f='node_modules/gray-matter/lib/engines.js';try{let c=fs.readFileSync(f,'utf8');c=c.replace('yaml.safeLoad.bind(yaml)','(yaml.load||yaml.safeLoad).bind(yaml)').replace('yaml.safeDump.bind(yaml)','(yaml.dump||yaml.safeDump).bind(yaml)');fs.writeFileSync(f,c);}catch(e){}\"",
     "cf:build": "opennextjs-cloudflare build",
-    "cf:deploy": "opennextjs-cloudflare deploy",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"
   },
   "dependencies": {

@@ -65,4 +65,4 @@ brag-output*/
 # Cloudflare / OpenNext
 .open-next/
 .wrangler/
-.dev.vars
+.dev.vars*
