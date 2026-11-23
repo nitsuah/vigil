@@ -10,7 +10,7 @@ type LoadState =
     | { kind: 'error' }
     | { kind: 'ready'; repos: PmoJourneysRow[]; skipped: number };
 
-/** Red first, then stale and unreadable, then the rest. */
+/** Sort key: red (0), unreadable (1), stale (2), no runs (3), green (4). */
 function rank(row: PmoJourneysRow): number {
     const s = row.health?.status;
     return s === 'red' ? 0 : !s ? 1 : s === 'stale' ? 2 : s === 'none' ? 3 : 4;

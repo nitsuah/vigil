@@ -36,6 +36,11 @@ describe('summarizeJourneys', () => {
             .toMatchObject({ status: 'green', flaky: 1 });
         expect(summarizeJourneys(parseMetricsJsonl(line({ date: '2026-11-10', total: 3, passed: 3, failed: 0 })), counts, NOW).status).toBe('stale');
     });
+    it('reads date-only run dates as UTC at the 3-day boundary (any process TZ)', () => {
+        const at = (d: string) => summarizeJourneys(parseMetricsJsonl(line({ date: d, total: 1, passed: 1, failed: 0 })), counts, new Date('2026-11-23T00:00:00Z')).status;
+        expect(at('2026-11-20')).toBe('green'); // exactly 3.0 days: not past the limit
+        expect(at('2026-11-19')).toBe('stale');
+    });
     it('uses the last run only', () => {
         const runs = parseMetricsJsonl([line({ date: '2026-11-21', total: 3, passed: 2, failed: 1 }), line({ date: '2026-11-22', total: 3, passed: 3, failed: 0 })].join('\n'));
         expect(summarizeJourneys(runs, counts, NOW).status).toBe('green');
@@ -58,7 +63,9 @@ function fakeOctokit(files: Record<string, string>, issues: Record<string, numbe
         issues: {
             listForRepo: async ({ labels }: { labels: string }) => {
                 if (failIssues) throw Object.assign(new Error('boom'), { status: 500 });
-                return { data: [...Array(issues[labels] ?? 0)].map(() => ({})).concat([{ pull_request: {} }]) };
+                const n = issues[labels] ?? 0;
+                // A PR rides along only when there are issues, so counts stay exact.
+                return { data: [...Array(n)].map(() => ({})).concat(n > 0 ? [{ pull_request: {} }] : []) };
             },
         },
     } as unknown as Octokit;
@@ -79,6 +86,11 @@ describe('fetchJourneysHealth', () => {
             'metrics/2026-09.jsonl': line({ date: '2026-09-12', total: 2, passed: 1, failed: 1 }),
         }, {});
         expect((await fetchJourneysHealth(o, 'a', 'b', NOW)).status).toBe('red');
+    });
+    it('does not cap 99 issues plus a PR on the same page', async () => {
+        // 99 issues + 1 PR fills the page, but only 99 are issues; page-full means "maybe more".
+        const h = await fetchJourneysHealth(fakeOctokit({}, { 'bot:journey': 99 }), 'a', 'b', NOW);
+        expect(h.openJourneyIssues).toBe(99);
     });
     it('flags a full issue page as a lower bound', async () => {
         const h = await fetchJourneysHealth(fakeOctokit({}, { 'bot:journey': 100 }), 'a', 'b', NOW);

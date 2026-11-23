@@ -40,6 +40,30 @@ export async function denyIfNoRepoAccess(
     return null;
 }
 
+/**
+ * Read-side lookup for routes that must act on ONE repo row: the first row
+ * named `repoName` (by full_name) that this caller may actually see, so a
+ * short-name collision never sends the caller's token to a repo it can't read.
+ * 404 when none is visible (same as denyIfNoRepoAccess, so existence of a
+ * private repo isn't confirmed).
+ */
+export async function resolveReadableRepo(
+    repoName: string,
+    session: SessionLike | null
+): Promise<{ fullName: string; response?: undefined } | { fullName?: undefined; response: NextResponse }> {
+    const db = getNeonClient();
+    await ensureSchema(db);
+    const rows = (await db`
+        SELECT id, full_name, private_repo, visibility_verified FROM repos WHERE name = ${repoName} ORDER BY full_name LIMIT 25
+    `) as unknown as RepoAccessCheck[];
+    for (const row of rows) {
+        if (await canAccessRepo(db, row, session?.userId, session?.accessToken)) {
+            return { fullName: row.full_name as string };
+        }
+    }
+    return { response: NextResponse.json({ error: 'Repo not found' }, { status: 404 }) };
+}
+
 export interface WritableRepo {
     id: string;
     name: string;
