@@ -47,6 +47,12 @@ describe('proxy — machine clients on MCP routes', () => {
   });
 });
 
+describe('proxy — seed-defaults', () => {
+  it('redirects unauthenticated requests to /login', async () => {
+    expect(isRedirectToLogin(await proxy(req('/api/seed-defaults')))).toBe(true);
+  });
+});
+
 describe('proxy — matcher', () => {
   it('excludes icon.svg and og-1200x630.jpg, includes /pmo and /api/mcp', () => {
     const re = new RegExp('^' + config.matcher[0] + '$');
