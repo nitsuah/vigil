@@ -36,7 +36,7 @@ Two portfolio initiatives moved here from stash: (1) CI-generated diagrams and P
 - [ ] Journeys in vigil, beyond detection (see the 2026-10-09 journeys brief).
   - Priority: P1
   - Context:
-    - Read `bot/journeys` `metrics/<month>.jsonl` (last run, flaky count, `@feature` coverage) and the open `bot:journey` / `bot:review` counts. Show them on repo details, with a PMO rollup that flags red nightlies.
+    - [x] Done 2026-11-23: read `bot/journeys` `metrics/<month>.jsonl` (last run, flaky count, `@feature` coverage) and the open `bot:journey` / `bot:review` counts. Shown on repo details, with a PMO rollup that flags red nightlies (`lib/journeys-metrics.ts`).
     - An owner-only "Run journeys now" (`workflow_dispatch`).
     - An "Enable nightly journeys" scaffold PR: caller workflow, config, `journey.js`, `test:journeys`, `.gitignore`. Vigil creates the labels through the API.
     - Agent-queued `review`, `adopt|add`, `fix` runs with the SKILL.md mode as the prompt.

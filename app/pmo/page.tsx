@@ -10,6 +10,7 @@ import {
 import type { PmoRepoSummary, PmoPortfolio, PmoInProgressItem } from '@/app/api/pmo/overview/route';
 import { PmoChat } from '@/components/pmo/PmoChat';
 import { RepoWorkGrid } from '@/components/pmo/RepoWorkGrid';
+import { JourneysRollup } from '@/components/pmo/JourneysRollup';
 import { RelationshipMap } from '@/components/pmo/RelationshipMap';
 
 // ─── pipeline stage count cell ────────────────────────────────────────────────
@@ -205,6 +206,9 @@ export default function PmoDashboard(): React.JSX.Element | null {
                             </div>
                         </section>
                     )}
+
+                    {/* Nightly journeys health; flags repos whose nightly is red */}
+                    {repos.length > 0 && <JourneysRollup refreshKey={lastFetched?.getTime()} />}
 
                     {/* Repos and their open TASKS.md work, most urgent first */}
                     {repos.length > 0 && (

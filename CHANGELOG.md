@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Journeys health on repo details (last nightly run, flaky count, `@feature` coverage, open `bot:journey` / `bot:review` issues from the `bot/journeys` branch) and a PMO rollup that flags repos whose nightly journeys are red. Read server-side through the signed-in user's token (`/api/repos/[name]/journeys`, `/api/pmo/journeys`).
+
 - Security health badge ("Sec NN%") in the repo health row, scored with the same inputs as the Health Breakdown popup; "Sec —" when the repo has not been security-checked yet (vigil-340).
 
 - Link-preview tags completed for the live app and GitHub Pages showcase: canonical URL, `og:url`, and Twitter title/description/image on Pages; app home/login page-specific `alternates.canonical` (not inherited from the root layout) plus a shared 1200×630 Open Graph image (`public/og-1200x630.jpg`, `site/assets/og-1200x630.jpg`) center-cropped from the existing poster. Live app `metadataBase` / README / Pages “live demo” / `promo/spots.json` `live` point at `https://vigil.nitsuah.io` (custom domain live 2026-10-25).

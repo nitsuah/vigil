@@ -7,6 +7,7 @@ import { RepositoryStatsSectionStatic } from './repo-details/RepositoryStatsSect
 import { TestingSection } from './repo-details/TestingSection';
 import { MetricsSection } from './repo-details/MetricsSection';
 import { IssuesSection } from './repo-details/IssuesSection';
+import { JourneysSection } from './repo-details/JourneysSection';
 import { AISummarySection } from './repo-details/AISummarySection';
 import { DocumentationSection } from './repo-details/DocumentationSection';
 import { BestPracticesSection } from './repo-details/BestPracticesSection';
@@ -278,6 +279,14 @@ function ExpandableRowContent({
               metrics={metrics}
               isExpanded={row2Expanded}
               onToggleExpanded={() => setRow2Expanded(!row2Expanded)}
+            />
+
+            {/* Nightly journeys */}
+            <JourneysSection
+              repoName={repoName}
+              repoUrl={repoUrl}
+              isAuthenticated={isAuthenticated}
+              practiceStatus={bestPractices.find((p) => p.practice_type === 'journeys')?.status}
             />
 
             {/* Community Standards */}
