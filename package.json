@@ -24,7 +24,10 @@
     "test": "vitest --config config/vitest.config.mjs",
     "test:journeys": "playwright test -c playwright.journeys.config.ts",
     "prepare": "husky || true",
-    "postinstall": "node -e \"const fs=require('fs'),f='node_modules/gray-matter/lib/engines.js';try{let c=fs.readFileSync(f,'utf8');c=c.replace('yaml.safeLoad.bind(yaml)','(yaml.load||yaml.safeLoad).bind(yaml)').replace('yaml.safeDump.bind(yaml)','(yaml.dump||yaml.safeDump).bind(yaml)');fs.writeFileSync(f,c);}catch(e){}\""
+    "postinstall": "node -e \"const fs=require('fs'),f='node_modules/gray-matter/lib/engines.js';try{let c=fs.readFileSync(f,'utf8');c=c.replace('yaml.safeLoad.bind(yaml)','(yaml.load||yaml.safeLoad).bind(yaml)').replace('yaml.safeDump.bind(yaml)','(yaml.dump||yaml.safeDump).bind(yaml)');fs.writeFileSync(f,c);}catch(e){}\"",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.10.0",
@@ -48,6 +51,7 @@
     "@eslint/js": "^9.39.4",
     "@netlify/functions": "^6.0.3",
     "@netlify/plugin-nextjs": "^5.16.8",
+    "@opennextjs/cloudflare": "^1.20.18",
     "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.2",
@@ -69,7 +73,8 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.23.15",
     "typescript": "^6",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "wrangler": "^4.166.0"
   },
   "overrides": {
     "postcss": "8.5.23",

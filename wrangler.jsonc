@@ -1,0 +1,16 @@
+// Cloudflare Workers deploy for vigil.nitsuah.io (`npm run cf:deploy` after `wrangler login`).
+// netlify.toml is kept only as a rollback path.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gh-vigil",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": true }
+}

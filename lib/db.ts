@@ -15,6 +15,14 @@ export function getNeonClient() {
 
 let schemaEnsured = false;
 
+/** Runs one migration statement, ignoring duplicate column/table/object errors. */
+export function wrapBenignDuplicates(statement: string): string {
+    return (
+        `DO $vigil_mig$ BEGIN EXECUTE $vigil_stmt$${statement}$vigil_stmt$; ` +
+        'EXCEPTION WHEN duplicate_column OR duplicate_table OR duplicate_object THEN NULL; END $vigil_mig$'
+    );
+}
+
 // @neondatabase/serverless's HTTP driver has no built-in query timeout, and
 // its tagged-template call form (the one used throughout this codebase, e.g.
 // persistReceipt in app/api/agent/tasks/route.ts) exposes no abort/signal
@@ -53,6 +61,24 @@ export async function withQueryTimeout<T>(promise: Promise<T>, label: string): P
  */
 export async function ensureSchema(db: ReturnType<typeof getNeonClient>): Promise<void> {
     if (schemaEnsured) return;
+
+    // Fast path: send every migration in one HTTP round trip. Cloudflare
+    // Workers caps subrequests per invocation (50 on Workers Free), and one
+    // request per statement blew through that on the first request to each
+    // new isolate. Each statement runs in its own DO block that swallows the
+    // same benign duplicate errors as the loop below (the exception block is
+    // a savepoint, so only that statement is skipped). Any other failure
+    // falls back to the per-statement loop, which reports the real error.
+    try {
+        await withQueryTimeout(
+            db.transaction(SCHEMA_MIGRATIONS.map((statement) => db.query(wrapBenignDuplicates(statement)))),
+            'schema migration batch',
+        );
+        schemaEnsured = true;
+        return;
+    } catch (error) {
+        logger.warn('Batched schema migration failed; retrying statement by statement:', (error as Error).message);
+    }
 
     for (const statement of SCHEMA_MIGRATIONS) {
         try {
