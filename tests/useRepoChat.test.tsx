@@ -183,4 +183,44 @@ describe('useRepoChat', () => {
         const { result } = renderHook(() => useRepoChat('222'));
         expect(result.current.getThread('repo-a')).toEqual([]);
     });
+
+    it('uses the anonymous namespace when signed out (null identity) and never reads an account namespace', () => {
+        const mine = [{ id: 'm1', role: 'user', content: 'anon', createdAt: new Date().toISOString() }];
+        const theirs = [{ id: 'm2', role: 'user', content: 'account', createdAt: new Date().toISOString() }];
+        window.localStorage.setItem('vigil.repo-chat.v1.anon', JSON.stringify({ 'repo-a': mine }));
+        window.localStorage.setItem('vigil.repo-chat.v1.12345', JSON.stringify({ 'repo-b': theirs }));
+
+        const { result } = renderHook(() => useRepoChat(null, undefined));
+
+        expect(result.current.getThread('repo-a')).toEqual(mine);
+        expect(result.current.getThread('repo-b')).toEqual([]);
+        expect(result.current.error).toBeNull();
+    });
+
+    it('drops ephemeral messages when the session resolves to a stable id, and migrates email-keyed threads', async () => {
+        const emailKey = `vigil.repo-chat.v1.${encodeURIComponent('user@example.com')}`;
+        const saved = [{ id: 'm1', role: 'user', content: 'saved', createdAt: new Date().toISOString() }];
+        window.localStorage.setItem(emailKey, JSON.stringify({ 'repo-b': saved }));
+        const { result, rerender } = renderHook(
+            ({ identity, legacy }: { identity: string; legacy?: string }) => useRepoChat(identity, legacy),
+            { initialProps: { identity: EPHEMERAL_CHAT_IDENTITY } as { identity: string; legacy?: string } }
+        );
+
+        act(() => {
+            void result.current.sendMessage('repo-a', 'while loading');
+        });
+        act(() => {
+            resolveFetch(jsonResponse({ reply: 'ephemeral reply' }));
+        });
+        await waitFor(() => expect(result.current.getThread('repo-a').length).toBeGreaterThan(0));
+        const storedBefore = Object.keys(window.localStorage).sort();
+
+        rerender({ identity: '12345', legacy: 'user@example.com' });
+
+        expect(result.current.getThread('repo-a')).toEqual([]);
+        expect(result.current.getThread('repo-b')).toEqual(saved);
+        expect(storedBefore).not.toContain('vigil.repo-chat.v1.ephemeral');
+        expect(window.localStorage.getItem('vigil.repo-chat.v1.ephemeral')).toBeNull();
+        expect(JSON.parse(window.localStorage.getItem('vigil.repo-chat.v1.12345')!)).toEqual({ 'repo-b': saved });
+    });
 });
