@@ -120,7 +120,7 @@ export async function signedInContext(page: Page): Promise<void> {
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) throw new Error('NEXTAUTH_SECRET must be set for the visual-docs server and tests');
   const value = await encode({
-    token: { name: 'Demo Owner', email: 'demo@example.com', sub: 'demo-owner' },
+    token: { name: 'Demo Owner', email: 'demo@example.com', sub: 'demo-owner', githubId: '1000001' },
     secret,
     salt: 'authjs.session-token',
   });
