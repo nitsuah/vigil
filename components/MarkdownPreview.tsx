@@ -3,6 +3,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
+import { isAllowedImageSrc } from '@/lib/safe-image';
 
 /**
  * Secure markdown preview component using react-markdown.
@@ -84,9 +85,13 @@ export function MarkdownPreview({ content }: { content: string }) {
           td: ({ children }) => (
             <td className="border border-slate-600 px-3 py-2">{children}</td>
           ),
-          img: ({ src, alt }) => (
-            <img src={src} alt={alt} className="max-w-full rounded my-2" />
-          ),
+          img: ({ src, alt }) =>
+            isAllowedImageSrc(src) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={src} alt={alt} className="max-w-full rounded my-2" referrerPolicy="no-referrer" />
+            ) : (
+              <span className="text-slate-400 italic">{alt ? `[image: ${alt}]` : '[image]'}</span>
+            ),
         }}
       >
         {content}
