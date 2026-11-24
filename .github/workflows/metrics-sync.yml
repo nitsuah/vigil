@@ -1,0 +1,34 @@
+name: Metrics sync
+
+# Daily delivery-metrics snapshot (vigil#456): asks the deployed app to pull
+# issues and PRs for every tracked repo into gh_issues / gh_prs / weekly_rollups.
+# Needs the repo variable METRICS_SYNC_URL (the site origin) and the secret
+# METRICS_SYNC_SECRET (the same value the app reads); skipped until both exist.
+on:
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: metrics-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      METRICS_SYNC_URL: ${{ vars.METRICS_SYNC_URL }}
+      METRICS_SYNC_SECRET: ${{ secrets.METRICS_SYNC_SECRET }}
+    steps:
+      - name: Run the sync
+        run: |
+          if [ -z "$METRICS_SYNC_URL" ] || [ -z "$METRICS_SYNC_SECRET" ]; then
+            echo "METRICS_SYNC_URL or METRICS_SYNC_SECRET is not set; skipping."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 300 -X POST \
+            -H "Authorization: Bearer $METRICS_SYNC_SECRET" \
+            "${METRICS_SYNC_URL%/}/api/metrics/sync"

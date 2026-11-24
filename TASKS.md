@@ -6,6 +6,11 @@ updated: 2026-11-23
 
 ## In Progress
 
+- [ ] Delivery metrics tab (vigil#456): flow metrics, not a backlog snapshot.
+  - Priority: P1
+  - Context: slices #478 (rollup logic) and #479 (tables) merged. The GitHub mapping and daily sync (#480) is `lib/metrics-sync.ts` plus `POST /api/metrics/sync`, run daily by `.github/workflows/metrics-sync.yml`. Still open: scorecard and `/api/metrics/overview` (#481), the `/metrics` page (#482), the week-sotu digest (#483).
+  - Done 2026-11-24 (#480): sync maps issues and PRs from one `issues?since=` listing, upserts idempotently, rebuilds touched weeks, and keeps a per-repo cursor. The workflow needs the `METRICS_SYNC_URL` variable and `METRICS_SYNC_SECRET` secret before it does anything.
+
 ## Todo
 
 ### P0 - Critical

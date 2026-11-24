@@ -31,6 +31,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // The daily metrics sync (GitHub Actions) carries METRICS_SYNC_SECRET as a bearer
+  // token; the route validates it itself.
+  if (
+    pathname === '/api/metrics/sync' &&
+    request.method === 'POST' &&
+    request.headers.get('authorization')?.startsWith('Bearer ')
+  ) {
+    return NextResponse.next();
+  }
+
   // A machine client with a missing or empty key gets a JSON 401, not the login
   // page: MCP clients can't read HTML and report a baffling content-type error.
   // Browsers (Accept: text/html) still redirect.
