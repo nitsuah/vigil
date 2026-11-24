@@ -6,11 +6,6 @@ updated: 2026-11-23
 
 ## In Progress
 
-- [x] Repository sync stuck at "Step 1 of 2" on Cloudflare (vigil#305): sync is now client-driven and chunked.
-  - Priority: P1
-  - Context: the old route ran the sync in an un-awaited IIFE after returning 200; on Workers the isolate is torn down and `sync_progress` never left `metadata`. Workers Free also caps a request at 50 subrequests.
-  - Done 2026-11-24: `POST /api/sync-repos` only lists and queues (queue and cursor stored on the `sync_progress` row, additive columns); `POST /api/sync-repos/batch` runs 3 repos per metadata call and 1 per health call, awaited, and advances the row; the dashboard (`lib/sync-driver.ts`) drives the loop, retries a failed batch once then skips it, aborts on unmount and resumes after a reload. Legacy `metadata` rows answer 409 and are restartable. Chose option 1 (no Workers Paid, no Queues).
-
 - [ ] Delivery metrics tab (vigil#456): flow metrics, not a backlog snapshot.
   - Priority: P1
   - Context: slices #478 (rollup logic) and #479 (tables) merged. The GitHub mapping and daily sync (#480) is `lib/metrics-sync.ts` plus `POST /api/metrics/sync`, run daily by `.github/workflows/metrics-sync.yml`. Scorecard, overview API and the `/metrics` page shipped. The week-sotu digest (#483) is vigil's half here (`metrics` in `/api/context`) plus stash's `sotu.py`.
@@ -131,6 +126,7 @@ _None open. The rate-limiter identity item is under Done._
 
 _Condensed, one line per item. Full detail lives in FEATURES.md and CHANGELOG.md. The section must stay, because vigil's own TASKS parser expects Done / In Progress / Todo._
 
+- [x] Done 2026-11-24: Repository sync no longer sticks at "Step 1 of 2" on Cloudflare: it is client-driven and chunked (`/api/sync-repos` queues, `/api/sync-repos/batch` does awaited batches, the dashboard drives and resumes the loop) (#305).
 - [x] Done 2026-11-23: Post-deploy smoke fixed for the Cloudflare move: `/api/version` stamps the git HEAD on hand deploys, smoke polls vigil.nitsuah.io, `netlify.toml` marked rollback-only (#353). Connecting Workers Builds to the repo is a dashboard step, tracked on #353.
 - [x] Done 2026-10-28: Journeys review findings, 2026-10-09, all fixed: confirmed relationships under "Needs review" (#276, fixed in #333), relationship graph edges crossing node labels (#277, fixed in #323), Pages site not linking the live dashboard (#279, fixed in #328).
 - [x] Done 2026-10-24: Tasks card now leads with the highest-priority group (P0 → P3) and collapses the lower-priority groups (#275).

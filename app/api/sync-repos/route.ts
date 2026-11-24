@@ -57,6 +57,12 @@ export async function POST(request: Request): Promise<NextResponse> {
             return NextResponse.json({ error: 'Unauthorized - Please sign in' }, { status: 401 });
         }
 
+        // The batch route authorizes by this stable id; refuse to queue a run it could not drive.
+        if (!(session as { userId?: string }).userId) {
+            observe.finish('auth', 'failure', { errorClass: 'auth' });
+            return NextResponse.json({ error: 'Unauthorized - Please sign out and sign in again' }, { status: 401 });
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const accessToken = (session as any).accessToken;
         logger.info('Sync-repos: Token check', { hasToken: !!accessToken });

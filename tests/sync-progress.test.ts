@@ -8,6 +8,7 @@ import {
   getProgressWithPercentage,
   getSyncSession,
   advanceSyncSession,
+  failSyncSession,
   SyncProgress
 } from '../lib/sync-progress';
 
@@ -369,4 +370,17 @@ test('advanceSyncSession pins the starting phase and cursor, and reports a lost 
     sessionId: 's1', githubUserId: 'u', from: { phase: 'metadata', cursor: 3 },
     to: { phase: 'health', cursor: 0, completedRepos: 0 }, failedDelta: 0, currentRepo: '',
   })).toBe(false);
+});
+
+test('failSyncSession ends the run only from the phase and cursor the caller saw', async () => {
+  mockQuery.mockResolvedValueOnce([{ session_id: 's1' }]);
+  expect(await failSyncSession({ sessionId: 's1', githubUserId: 'u', from: { phase: 'health', cursor: 3 }, currentRepo: 'limit' })).toBe(true);
+  const [query, values] = mockQuery.mock.calls.at(-1)!;
+  expect(query).toContain("phase = 'error'");
+  expect(query).toContain('AND phase =');
+  expect(query).toContain('AND cursor =');
+  expect(values).toEqual(expect.arrayContaining(['s1', 'u', 'health', 3, 'limit']));
+
+  mockQuery.mockResolvedValueOnce([]);
+  expect(await failSyncSession({ sessionId: 's1', githubUserId: 'u', from: { phase: 'health', cursor: 3 }, currentRepo: 'x' })).toBe(false);
 });

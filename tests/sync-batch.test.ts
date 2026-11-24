@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     batchSizeFor, sliceBatch, planAdvance, parseQueue,
-    SUBREQUEST_BUDGET, COST_PER_REPO, MAX_BATCH, type QueueItem,
+    SUBREQUEST_BUDGET, COST_PER_REPO, MAX_BATCH, ROUTE_OVERHEAD, type QueueItem,
 } from '@/lib/sync-batch';
 
 const q = (n: number): QueueItem[] =>
@@ -15,6 +15,8 @@ describe('batch sizing', () => {
             expect(size).toBeLessThanOrEqual(MAX_BATCH);
             // Only a single heavy repo may exceed the budget; a multi-repo batch never does.
             if (size > 1) expect(size * COST_PER_REPO[phase]).toBeLessThanOrEqual(SUBREQUEST_BUDGET);
+            // Every batch, even a single heavy repo, must fit the cap once route overhead is added.
+            expect(size * COST_PER_REPO[phase] + ROUTE_OVERHEAD).toBeLessThanOrEqual(50);
         }
         expect(SUBREQUEST_BUDGET).toBeLessThan(50);
     });

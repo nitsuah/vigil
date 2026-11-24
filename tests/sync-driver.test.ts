@@ -9,15 +9,18 @@ const ok = (body: SyncProgressState) => new Response(JSON.stringify(body), { sta
 const status = (code: number, body: unknown = {}) => new Response(JSON.stringify(body), { status: code });
 
 function scripted(...responses: Array<Response | Error>) {
-    const calls: Array<{ skip: boolean }> = [];
+    const calls: Array<{ skip: boolean; cursor?: number; phase?: string }> = [];
+    const sent: Array<Record<string, unknown>> = [];
     const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
-        calls.push({ skip: JSON.parse(String(init?.body)).skip === true });
+        const b = JSON.parse(String(init?.body));
+        sent.push(b);
+        calls.push({ skip: b.skip === true, cursor: b.cursor, phase: b.phase });
         const next = responses.shift();
         if (!next) throw new Error('unexpected extra call');
         if (next instanceof Error) throw next;
         return next;
     }) as unknown as typeof fetch;
-    return { fetchImpl, calls };
+    return { fetchImpl, calls, sent };
 }
 
 describe('driveSync', () => {
@@ -40,7 +43,7 @@ describe('driveSync', () => {
         );
         const result = await driveSync({ sessionId: 's1', fetchImpl });
         expect(result.status).toBe('complete');
-        expect(calls).toEqual([{ skip: false }, { skip: false }]);
+        expect(calls.map((c) => c.skip)).toEqual([false, false]);
     });
 
     it('skips a batch that fails twice, records it, and keeps going', async () => {
@@ -53,6 +56,18 @@ describe('driveSync', () => {
         expect(calls.map((c) => c.skip)).toEqual([false, false, true, false]);
         expect(result.status).toBe('complete');
         expect(result.progress?.failedRepos).toBe(1);
+    });
+
+    it('names the batch it means, so a skip after a lost response cannot hit the wrong one', async () => {
+        const { fetchImpl, sent } = scripted(
+            ok(state({ phase: 'metadata', cursor: 3 })),
+            status(500), status(500), // batch at cursor 3 is lost twice
+            ok(state({ phase: 'complete', done: true })),
+        );
+        await driveSync({ sessionId: 's1', fetchImpl, start: { cursor: 0, phase: 'metadata' } });
+        expect(sent.map((b) => [b.cursor, b.phase, b.skip === true])).toEqual([
+            [0, 'metadata', false], [3, 'metadata', false], [3, 'metadata', false], [3, 'metadata', true],
+        ]);
     });
 
     it('gives up with a clear message when even the skip cannot reach the server', async () => {

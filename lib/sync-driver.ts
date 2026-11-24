@@ -24,6 +24,8 @@ export interface DriveResult {
 
 export interface DriveOptions {
     sessionId: string;
+    /** Where the run is, when known (a fresh run starts at metadata/0). */
+    start?: { cursor: number; phase: string };
     signal?: AbortSignal;
     onProgress?: (progress: SyncProgressState) => void;
     fetchImpl?: typeof fetch;
@@ -43,13 +45,16 @@ async function callBatch(
     fetchImpl: typeof fetch,
     sessionId: string,
     skip: boolean,
+    at: { cursor: number; phase: string } | null,
     signal?: AbortSignal,
 ): Promise<CallOutcome> {
     try {
         const res = await fetchImpl(BATCH_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(skip ? { sessionId, skip: true } : { sessionId }),
+            // Name the batch we mean: if a response was lost and the run moved on, the server
+            // does no work (and skips nothing) for a position we no longer hold.
+            body: JSON.stringify({ sessionId, ...(skip ? { skip: true } : {}), ...(at ?? {}) }),
             signal,
         });
         if (res.status === 401) return { kind: 'unauthorized' };
@@ -77,6 +82,7 @@ export async function driveSync(opts: DriveOptions): Promise<DriveResult> {
     const fetchImpl = opts.fetchImpl ?? fetch;
     const maxCalls = opts.maxCalls ?? 2000;
     let last: SyncProgressState | null = null;
+    let at: { cursor: number; phase: string } | null = opts.start ?? null;
     let calls = 0;
 
     const cancelled = (): DriveResult => ({ status: 'cancelled', progress: last });
@@ -84,14 +90,14 @@ export async function driveSync(opts: DriveOptions): Promise<DriveResult> {
     while (calls++ < maxCalls) {
         if (opts.signal?.aborted) return cancelled();
 
-        let outcome = await callBatch(fetchImpl, opts.sessionId, false, opts.signal);
+        let outcome = await callBatch(fetchImpl, opts.sessionId, false, at, opts.signal);
         if (opts.signal?.aborted) return cancelled();
         if (outcome.kind === 'transient') {
-            outcome = await callBatch(fetchImpl, opts.sessionId, false, opts.signal);
+            outcome = await callBatch(fetchImpl, opts.sessionId, false, at, opts.signal);
             if (opts.signal?.aborted) return cancelled();
         }
         if (outcome.kind === 'transient') {
-            outcome = await callBatch(fetchImpl, opts.sessionId, true, opts.signal);
+            outcome = await callBatch(fetchImpl, opts.sessionId, true, at, opts.signal);
             if (opts.signal?.aborted) return cancelled();
             if (outcome.kind === 'transient') {
                 return { status: 'failed', progress: last, message: 'The sync could not reach the server. Run it again to continue.' };
@@ -101,6 +107,7 @@ export async function driveSync(opts: DriveOptions): Promise<DriveResult> {
         if (outcome.kind === 'lost') return { status: 'lost', progress: last, message: outcome.message };
 
         last = outcome.progress;
+        if (typeof last.cursor === 'number') at = { cursor: last.cursor, phase: last.phase };
         opts.onProgress?.(last);
         if (last.phase === 'complete') return { status: 'complete', progress: last };
         if (last.phase === 'error') return { status: 'error', progress: last, message: last.currentRepo };

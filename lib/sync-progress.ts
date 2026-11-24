@@ -182,3 +182,26 @@ export async function advanceSyncSession(args: {
   `;
   return rows.length > 0;
 }
+
+/**
+ * End a run with an error, but only if it is still where the caller found it.
+ * A stale request (slow quota probe) must not turn a run that another request
+ * already finished into an error.
+ */
+export async function failSyncSession(args: {
+  sessionId: string;
+  githubUserId: string;
+  from: { phase: BatchPhase; cursor: number };
+  currentRepo: string;
+}): Promise<boolean> {
+  const db = getNeonClient();
+  const rows = await db`
+    UPDATE sync_progress SET phase = 'error', current_repo = ${args.currentRepo}, updated_at = NOW()
+    WHERE session_id = ${args.sessionId}
+      AND github_user_id = ${args.githubUserId}
+      AND phase = ${args.from.phase}
+      AND cursor = ${args.from.cursor}
+    RETURNING session_id
+  `;
+  return rows.length > 0;
+}

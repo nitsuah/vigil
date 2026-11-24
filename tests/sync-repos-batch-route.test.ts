@@ -5,7 +5,7 @@ const m = vi.hoisted(() => ({
     auth: vi.fn(),
     getSyncSession: vi.fn(),
     advanceSyncSession: vi.fn(),
-    updateSyncProgress: vi.fn(),
+    failSyncSession: vi.fn(),
     syncRepo: vi.fn(),
     syncRepoMetadata: vi.fn(),
     grantRepoAccess: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock('@/lib/sync-progress', async () => {
         ...actual,
         getSyncSession: m.getSyncSession,
         advanceSyncSession: m.advanceSyncSession,
-        updateSyncProgress: m.updateSyncProgress,
+        failSyncSession: m.failSyncSession,
     };
 });
 
@@ -61,7 +61,7 @@ beforeEach(() => {
     m.syncRepo.mockResolvedValue({ partialSteps: 0 });
     m.syncRepoMetadata.mockResolvedValue(undefined);
     m.grantRepoAccess.mockResolvedValue(undefined);
-    m.updateSyncProgress.mockResolvedValue(undefined);
+    m.failSyncSession.mockResolvedValue(true);
     m.transaction.mockResolvedValue([]);
 });
 
@@ -133,20 +133,43 @@ describe('POST /api/sync-repos/batch', () => {
         expect(m.transaction).toHaveBeenCalledTimes(1);
     });
 
-    it('records a failing repo and still advances past it', async () => {
+    it('a metadata failure still advances but is not counted: the health pass retries that repo', async () => {
         m.syncRepoMetadata.mockRejectedValueOnce(new Error('boom'));
         const body = await (await call({ sessionId: 's1' })).json();
-        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 1 }));
-        expect(body).toMatchObject({ cursor: 3, failedRepos: 1 });
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 0 }));
+        expect(body).toMatchObject({ cursor: 3, failedRepos: 0 });
         expect(m.syncRepoMetadata).toHaveBeenCalledTimes(3);
     });
 
-    it('skip advances without any GitHub or database work and counts the batch as failed', async () => {
+    it('a health-pass failure is counted once and the run advances past it', async () => {
+        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 1, completedRepos: 1 }));
+        m.syncRepo.mockRejectedValueOnce(new Error('boom'));
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 1 }));
+        expect(body).toMatchObject({ cursor: 2, failedRepos: 1 });
+    });
+
+    it('skip advances without any GitHub or database work and counts a health batch as failed', async () => {
+        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 2, completedRepos: 2 }));
         const body = await (await call({ sessionId: 's1', skip: true })).json();
         expect(m.getRepo).not.toHaveBeenCalled();
-        expect(m.syncRepoMetadata).not.toHaveBeenCalled();
-        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 3 }));
-        expect(body.failedRepos).toBe(3);
+        expect(m.syncRepo).not.toHaveBeenCalled();
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 1 }));
+        expect(body.failedRepos).toBe(1);
+    });
+
+    it('skipping a metadata batch is not counted: those repos are retried in the health pass', async () => {
+        await call({ sessionId: 's1', skip: true });
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 0, to: expect.objectContaining({ cursor: 3 }) }));
+    });
+
+    it('does nothing when the client names a batch the run has already moved past', async () => {
+        const body = await (await call({ sessionId: 's1', skip: true, cursor: 0, phase: 'health' })).json();
+        expect(body).toMatchObject({ stale: true, phase: 'metadata', cursor: 0 });
+        const body2 = await (await call({ sessionId: 's1', skip: true, cursor: 6, phase: 'metadata' })).json();
+        expect(body2.stale).toBe(true);
+        expect(m.advanceSyncSession).not.toHaveBeenCalled();
+        expect(m.getRepo).not.toHaveBeenCalled();
     });
 
     it('stops the run with a reset time when the quota is low, before doing work', async () => {
@@ -154,7 +177,7 @@ describe('POST /api/sync-repos/batch', () => {
         const body = await (await call({ sessionId: 's1' })).json();
         expect(body.phase).toBe('error');
         expect(body.currentRepo).toMatch(/rate limit reached after 0 of 4 repos · resets in 23 min/);
-        expect(m.updateSyncProgress).toHaveBeenCalledWith('s1', expect.objectContaining({ phase: 'error' }));
+        expect(m.failSyncSession).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 's1', githubUserId: '42', from: { phase: 'metadata', cursor: 0 } }));
         expect(m.syncRepoMetadata).not.toHaveBeenCalled();
     });
 
@@ -170,14 +193,47 @@ describe('POST /api/sync-repos/batch', () => {
     });
 
     it('does not count a default repo the user token cannot read as a failure', async () => {
-        m.getSyncSession.mockResolvedValue(session({ queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 0 }));
+        m.getSyncSession.mockResolvedValue(session({ phase: 'health', queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 1 }));
         m.getRepo.mockImplementation(async (_o: string, name: string) => {
             if (name === 'pub') throw new Error('Not Found');
             return { name, fullName: `o/${name}` };
         });
         await call({ sessionId: 's1' });
         expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 0 }));
-        expect(m.grantRepoAccess).toHaveBeenCalledTimes(1); // only the user's own repo
+    });
+
+    it('does count a default repo whose fetch worked but whose write failed', async () => {
+        m.getSyncSession.mockResolvedValue(session({ phase: 'health', queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 1 }));
+        m.syncRepo.mockRejectedValueOnce(new Error('db down'));
+        await call({ sessionId: 's1' });
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 1 }));
+    });
+
+    it('grants access only for the user\'s own repos, not default ones', async () => {
+        m.getSyncSession.mockResolvedValue(session({ queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 0 }));
+        await call({ sessionId: 's1' });
+        expect(m.grantRepoAccess).toHaveBeenCalledTimes(1);
+    });
+
+    it('a stale quota stop cannot overwrite a run another request finished', async () => {
+        m.getRateLimit.mockResolvedValue({ limit: 5000, remaining: 1, reset: Math.floor(Date.now() / 1000) + 600 });
+        m.failSyncSession.mockResolvedValue(false);
+        m.getSyncSession.mockResolvedValueOnce(session({ phase: 'health', cursor: 3 })).mockResolvedValueOnce(session({ phase: 'complete', cursor: 4, completedRepos: 4 }));
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(body).toMatchObject({ phase: 'complete', done: true, stale: true });
+    });
+
+    it('answers 404 when the run was superseded while the request was in flight', async () => {
+        m.advanceSyncSession.mockResolvedValue(false);
+        m.getSyncSession.mockResolvedValueOnce(session()).mockResolvedValueOnce(undefined);
+        expect((await call({ sessionId: 's1' })).status).toBe(404);
+    });
+
+    it('stamps last_sync_at before completing, and a failing stamp leaves the run retryable', async () => {
+        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 3, completedRepos: 3 }));
+        m.transaction.mockRejectedValueOnce(new Error('db'));
+        expect((await call({ sessionId: 's1' })).status).toBe(500);
+        expect(m.advanceSyncSession).not.toHaveBeenCalled();
     });
 
     it('reports where the run is when a second driver advanced it first', async () => {

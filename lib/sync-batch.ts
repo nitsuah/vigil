@@ -20,6 +20,9 @@ export const SUBREQUEST_BUDGET = 40;
 // Rough per-repo subrequest cost: getRepo + metadata upsert + access grant,
 // vs. the detailed health pass (about a dozen GitHub calls plus DB writes).
 export const COST_PER_REPO: Record<BatchPhase, number> = { metadata: 6, health: 35 };
+// Calls every batch request makes besides the repo work: schema check, run state
+// read and advance, quota probe, and the final timestamp write.
+export const ROUTE_OVERHEAD = 8;
 export const MAX_BATCH = 3;
 
 export function batchSizeFor(phase: BatchPhase): number {

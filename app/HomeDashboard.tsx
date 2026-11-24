@@ -116,6 +116,7 @@ export default function Dashboard() {
   // update or clear the newer bar. Aborting also stops the loop on unmount.
   const activeSyncSessionRef = useRef<string | null>(null);
   const syncAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
 
   // Pull the freshly synced data into the table (and any expanded rows).
   const reloadAfterSync = async () => {
@@ -125,7 +126,7 @@ export default function Dashboard() {
 
   // Calls the batch endpoint until the run ends. Nothing runs server-side
   // after a response, so this loop is what makes the sync progress.
-  const driveSyncRun = async (sessionId: string) => {
+  const driveSyncRun = async (sessionId: string, start?: { cursor: number; phase: string }) => {
     syncAbortRef.current?.abort();
     const controller = new AbortController();
     syncAbortRef.current = controller;
@@ -134,6 +135,7 @@ export default function Dashboard() {
 
     const result = await driveSync({
       sessionId,
+      start,
       signal: controller.signal,
       onProgress: (progress) => {
         if (!isActive()) return;
@@ -148,7 +150,9 @@ export default function Dashboard() {
       },
     });
     if (!isActive()) return; // superseded or unmounted: leave the newer run's UI alone
-    rememberSyncSession(null);
+    // Keep the saved run after a recoverable failure (outage) so a reload can continue it;
+    // clear it once the run ended or can never advance.
+    if (result.status !== 'failed') rememberSyncSession(null);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
     }
@@ -188,6 +192,8 @@ export default function Dashboard() {
       });
       if (res.ok) {
         const data = await res.json();
+        // Navigated away while the start request was in flight: leave the queued run to be resumed later.
+        if (!mountedRef.current) return;
         // Refresh the rate-limit indicator right away; don't make it wait on
         // (or depend on) the repo list reload below.
         if (typeof window !== 'undefined') {
@@ -205,7 +211,7 @@ export default function Dashboard() {
           // Remember the run so a reload resumes it.
           rememberSyncSession(data.sessionId);
           // The progress panel reports from here on; results reload when the loop ends.
-          void driveSyncRun(data.sessionId);
+          void driveSyncRun(data.sessionId, { cursor: 0, phase: data.phase ?? 'metadata' });
         } else {
           await reloadAfterSync();
           setToastMessage(data.message || 'Sync queued');
@@ -237,7 +243,7 @@ export default function Dashboard() {
           return;
         }
         const progress = await res.json();
-        if (cancelled) return;
+        if (cancelled || activeSyncSessionRef.current) return; // a newer sync started meanwhile
         if (progress.phase !== 'metadata' && progress.phase !== 'health') {
           rememberSyncSession(null);
           return;
@@ -261,9 +267,13 @@ export default function Dashboard() {
   }, [sessionStatus]);
 
   // Stop the loop when the dashboard goes away; the run stays resumable.
-  useEffect(() => () => {
-    syncAbortRef.current?.abort();
-    activeSyncSessionRef.current = null;
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      syncAbortRef.current?.abort();
+      activeSyncSessionRef.current = null;
+    };
   }, []);
 
   const onAddRepoSubmit = async (e: React.FormEvent) => {

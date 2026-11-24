@@ -39,7 +39,7 @@ const call = (body: unknown = {}) =>
 
 beforeEach(() => {
     vi.clearAllMocks();
-    m.auth.mockResolvedValue({ user: { name: 'me' }, accessToken: 'tok' });
+    m.auth.mockResolvedValue({ user: { name: 'me' }, userId: '42', accessToken: 'tok' });
     m.getAuthenticated.mockResolvedValue({ data: { login: 'me', id: 42 } });
     m.listRepos.mockResolvedValue([repo('a'), repo('b')]);
     m.getRateLimit.mockResolvedValue({ limit: 5000, remaining: 4000, reset: 0 });
@@ -90,7 +90,10 @@ describe('POST /api/sync-repos (queue only)', () => {
     it('rejects an unauthenticated caller and a missing token before listing anything', async () => {
         m.auth.mockResolvedValue(null);
         expect((await call()).status).toBe(401);
-        m.auth.mockResolvedValue({ user: { name: 'me' } });
+        m.auth.mockResolvedValue({ user: { name: 'me' }, userId: '42' });
+        expect((await call()).status).toBe(401);
+        // A session without the stable id could not be driven by the batch route.
+        m.auth.mockResolvedValue({ user: { name: 'me' }, accessToken: 'tok' });
         expect((await call()).status).toBe(401);
         expect(m.listRepos).not.toHaveBeenCalled();
         expect(m.createSyncProgress).not.toHaveBeenCalled();
