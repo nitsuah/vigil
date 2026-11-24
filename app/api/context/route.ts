@@ -235,7 +235,11 @@ export async function GET(req: NextRequest) {
     // (for example tables not created yet) must not take the whole context down.
     let metrics: { week: string; scorecard: unknown; digest: string } | null = null;
     try {
-      const scorecard = await portfolioScorecard(db, [...visibleIds] as string[]);
+      // Same eligibility as /metrics: archived repos are left out (the caller's access limit still applies).
+      const eligible = (await db`
+        SELECT id FROM repos WHERE id = ANY(${[...visibleIds] as string[]}) AND is_archived IS NOT TRUE
+      `) as Array<{ id: string }>;
+      const scorecard = await portfolioScorecard(db, eligible.map((r) => r.id));
       metrics = { week: scorecard.week, scorecard, digest: renderMetricsDigest(scorecard) };
     } catch (error) {
       logger.warn('[context] Metrics scorecard unavailable:', error);
