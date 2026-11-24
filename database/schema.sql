@@ -305,3 +305,61 @@ CREATE TABLE IF NOT EXISTS repo_relationships (
   UNIQUE (source, target, kind)
 );
 CREATE INDEX IF NOT EXISTS idx_repo_relationships_target ON repo_relationships(target);
+
+-- Delivery metrics (vigil#456): one current row per issue and per PR, upserted
+-- on each sync, plus a pre-aggregated weekly rollup per repo.
+CREATE TABLE IF NOT EXISTS gh_issues (
+  repo_id UUID NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+  number INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('open', 'closed')),
+  state_reason TEXT,
+  labels JSONB NOT NULL DEFAULT '[]',
+  author_login TEXT NOT NULL,
+  author_type TEXT NOT NULL CHECK (author_type IN ('human', 'imp', 'bot')),
+  parent_number INTEGER,
+  opened_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  closed_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  PRIMARY KEY (repo_id, number)
+);
+CREATE INDEX IF NOT EXISTS idx_gh_issues_closed_at ON gh_issues(repo_id, closed_at);
+
+CREATE TABLE IF NOT EXISTS gh_prs (
+  repo_id UUID NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+  number INTEGER NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('open', 'closed', 'merged')),
+  labels JSONB NOT NULL DEFAULT '[]',
+  author_login TEXT NOT NULL,
+  author_type TEXT NOT NULL CHECK (author_type IN ('human', 'imp', 'bot')),
+  closes_issues INTEGER[] NOT NULL DEFAULT '{}',
+  opened_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  merged_at TIMESTAMP WITH TIME ZONE,
+  closed_at TIMESTAMP WITH TIME ZONE,
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  PRIMARY KEY (repo_id, number)
+);
+CREATE INDEX IF NOT EXISTS idx_gh_prs_merged_at ON gh_prs(repo_id, merged_at);
+
+CREATE TABLE IF NOT EXISTS weekly_rollups (
+  repo_id UUID NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+  iso_week TEXT NOT NULL,
+  issues_opened INTEGER NOT NULL DEFAULT 0,
+  issues_closed INTEGER NOT NULL DEFAULT 0,
+  leaf_closed INTEGER NOT NULL DEFAULT 0,
+  scope_end INTEGER NOT NULL DEFAULT 0,
+  prs_opened INTEGER NOT NULL DEFAULT 0,
+  prs_merged INTEGER NOT NULL DEFAULT 0,
+  bugs_opened INTEGER NOT NULL DEFAULT 0,
+  bugs_closed INTEGER NOT NULL DEFAULT 0,
+  imp_prs_opened INTEGER NOT NULL DEFAULT 0,
+  imp_prs_merged INTEGER NOT NULL DEFAULT 0,
+  lead_time_p50_hours NUMERIC,
+  lead_time_p90_hours NUMERIC,
+  PRIMARY KEY (repo_id, iso_week)
+);
+
+CREATE TABLE IF NOT EXISTS metrics_sync_state (
+  repo_id UUID PRIMARY KEY REFERENCES repos(id) ON DELETE CASCADE,
+  last_synced_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
