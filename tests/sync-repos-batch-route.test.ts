@@ -163,6 +163,14 @@ describe('POST /api/sync-repos/batch', () => {
         expect(m.advanceSyncSession).toHaveBeenLastCalledWith(expect.objectContaining({ failedDelta: 1 }));
     });
 
+    it('a health pass that only partly refreshed a repo is counted once, not reported clean', async () => {
+        setSession(session({ phase: 'health', cursor: 3, completedRepos: 3 }));
+        m.syncRepo.mockResolvedValueOnce({ partialSteps: 1 });
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 1 }));
+        expect(body).toMatchObject({ phase: 'complete', failedRepos: 1 });
+    });
+
     it('a health-pass failure is counted once and the run advances past it', async () => {
         setSession(session({ phase: 'health', cursor: 1, completedRepos: 1 }));
         m.syncRepo.mockRejectedValueOnce(new Error('boom'));

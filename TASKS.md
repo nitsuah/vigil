@@ -6,6 +6,11 @@ updated: 2026-11-23
 
 ## In Progress
 
+- [ ] Repository sync stuck at "Step 1 of 2" on Cloudflare (vigil#305): code shipped, live verification open.
+  - Priority: P1
+  - Done 2026-11-24: sync is client-driven and chunked (`/api/sync-repos` queues, `/api/sync-repos/batch` does awaited batches, the dashboard drives and resumes the loop); mocked tests cover it.
+  - Remaining: confirm on the Cloudflare deploy that a real run completes (a POST that finishes quickly and `sync_progress` advancing batch by batch), and measure subrequests per health batch for large repos (#494). Close #305 only after that.
+
 - [ ] Delivery metrics tab (vigil#456): flow metrics, not a backlog snapshot.
   - Priority: P1
   - Context: slices #478 (rollup logic) and #479 (tables) merged. The GitHub mapping and daily sync (#480) is `lib/metrics-sync.ts` plus `POST /api/metrics/sync`, run daily by `.github/workflows/metrics-sync.yml`. Scorecard, overview API and the `/metrics` page shipped. The week-sotu digest (#483) is vigil's half here (`metrics` in `/api/context`) plus stash's `sotu.py`.
@@ -126,7 +131,6 @@ _None open. The rate-limiter identity item is under Done._
 
 _Condensed, one line per item. Full detail lives in FEATURES.md and CHANGELOG.md. The section must stay, because vigil's own TASKS parser expects Done / In Progress / Todo._
 
-- [x] Done 2026-11-24: Repository sync no longer sticks at "Step 1 of 2" on Cloudflare: it is client-driven and chunked (`/api/sync-repos` queues, `/api/sync-repos/batch` does awaited batches, the dashboard drives and resumes the loop) (#305).
 - [x] Done 2026-11-23: Post-deploy smoke fixed for the Cloudflare move: `/api/version` stamps the git HEAD on hand deploys, smoke polls vigil.nitsuah.io, `netlify.toml` marked rollback-only (#353). Connecting Workers Builds to the repo is a dashboard step, tracked on #353.
 - [x] Done 2026-10-28: Journeys review findings, 2026-10-09, all fixed: confirmed relationships under "Needs review" (#276, fixed in #333), relationship graph edges crossing node labels (#277, fixed in #323), Pages site not linking the live dashboard (#279, fixed in #328).
 - [x] Done 2026-10-24: Tasks card now leads with the highest-priority group (P0 → P3) and collapses the lower-priority groups (#275).

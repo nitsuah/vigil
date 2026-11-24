@@ -137,7 +137,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                     continue;
                 }
                 try {
-                    await syncOne(repo, item, phase, client, db, userId);
+                    const partialSteps = await syncOne(repo, item, phase, client, db, userId);
+                    // A health pass that finished but could not refresh a step (best practices, standards,
+                    // health score) is an incomplete repo: count it once so the run doesn't read as clean.
+                    if (phase === 'health' && partialSteps > 0) failedDelta++;
                 } catch (error) {
                     const quota = rateLimitExhausted(error);
                     if (quota) return await stopForRateLimit(session, phase, quota.minutes);
@@ -187,16 +190,17 @@ async function syncOne(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     db: any,
     githubUserId: string,
-): Promise<void> {
+): Promise<number> {
     if (phase === 'metadata') {
         await syncRepoMetadata(repo, db);
         // Repos in the user's own list were confirmed by their token (CWE-639);
         // default repos are known-public and need no grant.
         if (!item.isDefault) await grantRepoAccess(db, repo.fullName, githubUserId);
-        return;
+        return 0;
     }
-    await syncRepo(repo, github, db);
+    const result = await syncRepo(repo, github, db);
     // Re-grant here too (idempotent): a skipped or failed metadata batch must not leave a
     // private repo inaccessible behind a successful health check.
     if (!item.isDefault) await grantRepoAccess(db, repo.fullName, githubUserId);
+    return result?.partialSteps ?? 0;
 }

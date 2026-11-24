@@ -11,7 +11,7 @@ export interface SyncProgress {
   completedRepos: number;
   currentRepo: string;
   phase: 'metadata' | 'health' | 'complete' | 'error';
-  /** Repos that failed or were skipped; the run still completes. */
+  /** Repos that failed, were skipped or were only partly refreshed; the run still completes. */
   failedRepos: number;
   startedAt: Date;
   updatedAt: Date;

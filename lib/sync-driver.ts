@@ -31,6 +31,8 @@ export interface DriveOptions {
     fetchImpl?: typeof fetch;
     /** Safety valve: a run can never need more calls than repos x 2 phases; this just stops a runaway loop. */
     maxCalls?: number;
+    /** Per-request deadline in ms (default 60s). */
+    requestTimeoutMs?: number;
 }
 
 const BATCH_URL = '/api/sync-repos/batch';
@@ -46,8 +48,26 @@ async function callBatch(
     sessionId: string,
     skip: boolean,
     at: { cursor: number; phase: string },
-    signal?: AbortSignal,
+    signal: AbortSignal | undefined,
+    timeoutMs: number,
 ): Promise<CallOutcome> {
+    // A request that never answers must not freeze the loop: past the deadline it counts as a
+    // transient failure (retry, then skip), and the fetch is aborted.
+    const deadline = new AbortController();
+    const onAbort = () => deadline.abort();
+    signal?.addEventListener('abort', onAbort, { once: true });
+    const timer = setTimeout(() => deadline.abort(), timeoutMs);
+    const timedOut = new Promise<CallOutcome>((resolve) => {
+        deadline.signal.addEventListener('abort', () => resolve({ kind: 'transient' }), { once: true });
+    });
+    try {
+        return await Promise.race([send(), timedOut]);
+    } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+    }
+
+    async function send(): Promise<CallOutcome> {
     try {
         const res = await fetchImpl(BATCH_URL, {
             method: 'POST',
@@ -55,7 +75,7 @@ async function callBatch(
             // Name the batch we mean: if a response was lost and the run moved on, the server
             // does no work (and skips nothing) for a position we no longer hold.
             body: JSON.stringify({ sessionId, ...(skip ? { skip: true } : {}), cursor: at.cursor, phase: at.phase }),
-            signal,
+            signal: deadline.signal,
         });
         if (res.status === 401) return { kind: 'unauthorized' };
         // 404: the run is gone (expired or another account). 409: a pre-chunking row that can never advance.
@@ -71,6 +91,7 @@ async function callBatch(
         // Aborts are handled by the caller's signal check; anything else is a network blip.
         return { kind: 'transient' };
     }
+    }
 }
 
 /**
@@ -81,6 +102,7 @@ async function callBatch(
 export async function driveSync(opts: DriveOptions): Promise<DriveResult> {
     const fetchImpl = opts.fetchImpl ?? fetch;
     const maxCalls = opts.maxCalls ?? 2000;
+    const timeoutMs = opts.requestTimeoutMs ?? 60_000;
     let last: SyncProgressState | null = null;
     let at: { cursor: number; phase: string } = opts.start;
     let calls = 0;
@@ -90,14 +112,14 @@ export async function driveSync(opts: DriveOptions): Promise<DriveResult> {
     while (calls++ < maxCalls) {
         if (opts.signal?.aborted) return cancelled();
 
-        let outcome = await callBatch(fetchImpl, opts.sessionId, false, at, opts.signal);
+        let outcome = await callBatch(fetchImpl, opts.sessionId, false, at, opts.signal, timeoutMs);
         if (opts.signal?.aborted) return cancelled();
         if (outcome.kind === 'transient') {
-            outcome = await callBatch(fetchImpl, opts.sessionId, false, at, opts.signal);
+            outcome = await callBatch(fetchImpl, opts.sessionId, false, at, opts.signal, timeoutMs);
             if (opts.signal?.aborted) return cancelled();
         }
         if (outcome.kind === 'transient') {
-            outcome = await callBatch(fetchImpl, opts.sessionId, true, at, opts.signal);
+            outcome = await callBatch(fetchImpl, opts.sessionId, true, at, opts.signal, timeoutMs);
             if (opts.signal?.aborted) return cancelled();
             if (outcome.kind === 'transient') {
                 return { status: 'failed', progress: last, message: 'The sync could not reach the server. Run it again to continue.' };

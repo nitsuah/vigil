@@ -128,6 +128,25 @@ describe('driveSync', () => {
         expect((await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl })).status).toBe('complete');
     });
 
+    it('a request that never answers hits its deadline, is retried, skipped, then reported as failed', async () => {
+        const calls: Array<boolean> = [];
+        const hang = vi.fn((_u: RequestInfo | URL, init?: RequestInit) => {
+            calls.push(JSON.parse(String(init?.body)).skip === true);
+            return new Promise<Response>(() => { /* never settles, ignores abort */ });
+        }) as unknown as typeof fetch;
+        const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl: hang, requestTimeoutMs: 20 });
+        expect(result.status).toBe('failed');
+        expect(calls).toEqual([false, false, true]);
+    });
+
+    it('a slow request that finishes inside the deadline is handled normally', async () => {
+        const slow = vi.fn(async () => {
+            await new Promise((r) => setTimeout(r, 10));
+            return ok(state({ phase: 'complete', done: true }));
+        }) as unknown as typeof fetch;
+        expect((await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl: slow, requestTimeoutMs: 500 })).status).toBe('complete');
+    });
+
     it('cannot loop forever', async () => {
         const fetchImpl = vi.fn(async () => ok(state())) as unknown as typeof fetch;
         const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl, maxCalls: 5 });
