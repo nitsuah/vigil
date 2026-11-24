@@ -28,17 +28,19 @@ export async function createSyncProgress(
   queue: QueueItem[] = [],
 ): Promise<void> {
   const db = getNeonClient();
-  // Reap abandoned sessions so the table can't grow without bound.
-  await db`DELETE FROM sync_progress WHERE updated_at < NOW() - ${RETENTION_INTERVAL}::interval`;
-  // A new run supersedes this user's unfinished ones (including legacy rows
-  // stuck in 'metadata' from before sync was client-driven).
-  await db`DELETE FROM sync_progress WHERE github_user_id = ${githubUserId} AND phase IN ('metadata', 'health')`;
   // Nothing to do: record a finished run so the client doesn't wait on batches.
   const phase = totalRepos === 0 ? 'complete' : 'metadata';
-  await db`
-    INSERT INTO sync_progress (session_id, github_user_id, total_repos, completed_repos, current_repo, phase, queue, cursor, failed_repos)
-    VALUES (${sessionId}, ${githubUserId}, ${totalRepos}, 0, '', ${phase}, ${JSON.stringify(queue)}::jsonb, 0, 0)
-  `;
+  // One transaction: reap abandoned sessions, supersede this user's unfinished runs (including
+  // legacy rows stuck in 'metadata' from before sync was client-driven), then insert. If the
+  // insert fails, the previous run is left alone instead of being lost.
+  await db.transaction([
+    db`DELETE FROM sync_progress WHERE updated_at < NOW() - ${RETENTION_INTERVAL}::interval`,
+    db`DELETE FROM sync_progress WHERE github_user_id = ${githubUserId} AND phase IN ('metadata', 'health')`,
+    db`
+      INSERT INTO sync_progress (session_id, github_user_id, total_repos, completed_repos, current_repo, phase, queue, cursor, failed_repos)
+      VALUES (${sessionId}, ${githubUserId}, ${totalRepos}, 0, '', ${phase}, ${JSON.stringify(queue)}::jsonb, 0, 0)
+    `,
+  ]);
 }
 
 export async function updateSyncProgress(

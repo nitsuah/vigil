@@ -25,7 +25,7 @@ export interface DriveResult {
 export interface DriveOptions {
     sessionId: string;
     /** Where the run is, when known (a fresh run starts at metadata/0). */
-    start?: { cursor: number; phase: string };
+    start: { cursor: number; phase: string };
     signal?: AbortSignal;
     onProgress?: (progress: SyncProgressState) => void;
     fetchImpl?: typeof fetch;
@@ -45,7 +45,7 @@ async function callBatch(
     fetchImpl: typeof fetch,
     sessionId: string,
     skip: boolean,
-    at: { cursor: number; phase: string } | null,
+    at: { cursor: number; phase: string },
     signal?: AbortSignal,
 ): Promise<CallOutcome> {
     try {
@@ -54,7 +54,7 @@ async function callBatch(
             headers: { 'Content-Type': 'application/json' },
             // Name the batch we mean: if a response was lost and the run moved on, the server
             // does no work (and skips nothing) for a position we no longer hold.
-            body: JSON.stringify({ sessionId, ...(skip ? { skip: true } : {}), ...(at ?? {}) }),
+            body: JSON.stringify({ sessionId, ...(skip ? { skip: true } : {}), cursor: at.cursor, phase: at.phase }),
             signal,
         });
         if (res.status === 401) return { kind: 'unauthorized' };
@@ -82,7 +82,7 @@ export async function driveSync(opts: DriveOptions): Promise<DriveResult> {
     const fetchImpl = opts.fetchImpl ?? fetch;
     const maxCalls = opts.maxCalls ?? 2000;
     let last: SyncProgressState | null = null;
-    let at: { cursor: number; phase: string } | null = opts.start ?? null;
+    let at: { cursor: number; phase: string } = opts.start;
     let calls = 0;
 
     const cancelled = (): DriveResult => ({ status: 'cancelled', progress: last });

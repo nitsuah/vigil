@@ -31,7 +31,7 @@ describe('driveSync', () => {
             ok(state({ phase: 'complete', completedRepos: 2, done: true, progressPercentage: 100 })),
         );
         const seen: string[] = [];
-        const result = await driveSync({ sessionId: 's1', fetchImpl, onProgress: (p) => seen.push(p.phase) });
+        const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl, onProgress: (p) => seen.push(p.phase) });
         expect(result.status).toBe('complete');
         expect(seen).toEqual(['metadata', 'health', 'complete']);
     });
@@ -41,7 +41,7 @@ describe('driveSync', () => {
             status(500),
             ok(state({ phase: 'complete', done: true })),
         );
-        const result = await driveSync({ sessionId: 's1', fetchImpl });
+        const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl });
         expect(result.status).toBe('complete');
         expect(calls.map((c) => c.skip)).toEqual([false, false]);
     });
@@ -52,7 +52,7 @@ describe('driveSync', () => {
             ok(state({ phase: 'health', failedRepos: 1 })),
             ok(state({ phase: 'complete', failedRepos: 1, done: true })),
         );
-        const result = await driveSync({ sessionId: 's1', fetchImpl });
+        const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl });
         expect(calls.map((c) => c.skip)).toEqual([false, false, true, false]);
         expect(result.status).toBe('complete');
         expect(result.progress?.failedRepos).toBe(1);
@@ -64,29 +64,37 @@ describe('driveSync', () => {
             status(500), status(500), // batch at cursor 3 is lost twice
             ok(state({ phase: 'complete', done: true })),
         );
-        await driveSync({ sessionId: 's1', fetchImpl, start: { cursor: 0, phase: 'metadata' } });
+        await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl });
         expect(sent.map((b) => [b.cursor, b.phase, b.skip === true])).toEqual([
             [0, 'metadata', false], [3, 'metadata', false], [3, 'metadata', false], [3, 'metadata', true],
         ]);
     });
 
+    it('a resumed run names its saved position, so lost responses cannot skip an unattempted batch', async () => {
+        const { fetchImpl, sent } = scripted(status(500), status(500), status(500));
+        await driveSync({ sessionId: 's1', fetchImpl, start: { cursor: 5, phase: 'health' } });
+        expect(sent.map((b) => [b.cursor, b.phase, b.skip === true])).toEqual([
+            [5, 'health', false], [5, 'health', false], [5, 'health', true],
+        ]);
+    });
+
     it('gives up with a clear message when even the skip cannot reach the server', async () => {
         const { fetchImpl } = scripted(status(500), status(500), status(500));
-        const result = await driveSync({ sessionId: 's1', fetchImpl });
+        const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl });
         expect(result.status).toBe('failed');
         expect(result.message).toMatch(/Run it again/);
     });
 
     it('stops on 401 without retrying', async () => {
         const { fetchImpl, calls } = scripted(status(401, { error: 'Unauthorized' }));
-        expect((await driveSync({ sessionId: 's1', fetchImpl })).status).toBe('unauthorized');
+        expect((await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl })).status).toBe('unauthorized');
         expect(calls).toHaveLength(1);
     });
 
     it('stops on a missing or unresumable run (404, legacy 409) without retrying', async () => {
         for (const code of [404, 409]) {
             const { fetchImpl, calls } = scripted(status(code, { error: 'gone' }));
-            const result = await driveSync({ sessionId: 's1', fetchImpl });
+            const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl });
             expect(result.status).toBe('lost');
             expect(result.message).toBe('gone');
             expect(calls).toHaveLength(1);
@@ -96,7 +104,7 @@ describe('driveSync', () => {
     it('ends with the server reason when the run stops on the rate limit', async () => {
         const reason = 'GitHub rate limit reached after 9 of 14 repos · resets in 23 min';
         const { fetchImpl } = scripted(ok(state({ phase: 'error', currentRepo: reason, done: true })));
-        const result = await driveSync({ sessionId: 's1', fetchImpl });
+        const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl });
         expect(result.status).toBe('error');
         expect(result.message).toBe(reason);
     });
@@ -105,24 +113,24 @@ describe('driveSync', () => {
         const controller = new AbortController();
         controller.abort();
         const { fetchImpl, calls } = scripted();
-        expect((await driveSync({ sessionId: 's1', fetchImpl, signal: controller.signal })).status).toBe('cancelled');
+        expect((await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl, signal: controller.signal })).status).toBe('cancelled');
         expect(calls).toHaveLength(0);
 
         const live = new AbortController();
         const slow = vi.fn(async () => { live.abort(); throw new DOMException('aborted', 'AbortError'); }) as unknown as typeof fetch;
-        const result = await driveSync({ sessionId: 's1', fetchImpl: slow, signal: live.signal });
+        const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl: slow, signal: live.signal });
         expect(result.status).toBe('cancelled');
         expect(slow).toHaveBeenCalledTimes(1);
     });
 
     it('treats a malformed success body as a transient failure', async () => {
         const { fetchImpl } = scripted(ok({} as SyncProgressState), ok(state({ phase: 'complete', done: true })));
-        expect((await driveSync({ sessionId: 's1', fetchImpl })).status).toBe('complete');
+        expect((await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl })).status).toBe('complete');
     });
 
     it('cannot loop forever', async () => {
         const fetchImpl = vi.fn(async () => ok(state())) as unknown as typeof fetch;
-        const result = await driveSync({ sessionId: 's1', fetchImpl, maxCalls: 5 });
+        const result = await driveSync({ sessionId: 's1', start: { cursor: 0, phase: 'metadata' }, fetchImpl, maxCalls: 5 });
         expect(result.status).toBe('failed');
         expect(fetchImpl).toHaveBeenCalledTimes(5);
     });

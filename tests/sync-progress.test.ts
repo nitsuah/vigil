@@ -16,10 +16,10 @@ import {
 const mockQuery = vi.fn();
 
 vi.mock('../lib/db', () => ({
-  getNeonClient: () => (strings: TemplateStringsArray, ...values: unknown[]) => {
+  getNeonClient: () => Object.assign((strings: TemplateStringsArray, ...values: unknown[]) => {
     const query = strings.reduce((acc, str, i) => acc + str + (values[i] ?? ''), '');
     return mockQuery(query, values);
-  },
+  }, { transaction: (queries: Promise<unknown>[]) => Promise.all(queries) }),
 }));
 
 beforeEach(() => {

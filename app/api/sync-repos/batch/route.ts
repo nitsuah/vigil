@@ -63,6 +63,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     const sessionId = body.sessionId;
     const skip = body.skip === true;
+    // Every request names the batch it means; one that doesn't could skip or redo the wrong one.
+    if (typeof body.cursor !== 'number' || typeof body.phase !== 'string') {
+        return NextResponse.json({ error: 'Missing cursor or phase' }, { status: 400 });
+    }
+    const { cursor: wantCursor, phase: wantPhase } = body;
 
     try {
         const authSession = await auth();
@@ -89,10 +94,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const phase: BatchPhase = session.phase;
         // The client names the batch it means (phase + cursor). If the run has moved on
         // (a response was lost, another tab advanced it) nothing is worked or skipped.
-        if (
-            (typeof body.cursor === 'number' && body.cursor !== session.cursor) ||
-            (typeof body.phase === 'string' && body.phase !== session.phase)
-        ) {
+        if (wantCursor !== session.cursor || wantPhase !== session.phase) {
             return NextResponse.json(progressBody(session, { stale: true }));
         }
         const batch = sliceBatch(session.queue, session.cursor, phase);
@@ -194,4 +196,7 @@ async function syncOne(
         return;
     }
     await syncRepo(repo, github, db);
+    // Re-grant here too (idempotent): a skipped or failed metadata batch must not leave a
+    // private repo inaccessible behind a successful health check.
+    if (!item.isDefault) await grantRepoAccess(db, repo.fullName, githubUserId);
 }

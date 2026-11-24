@@ -47,14 +47,23 @@ const session = (over: Partial<SyncSession> = {}): SyncSession => ({
     failedRepos: 0, startedAt: new Date('2026-11-24T10:00:00Z'), updatedAt: new Date(),
     queue: [item('a'), item('b'), item('c'), item('d')], cursor: 0, ...over,
 });
+// Every request names the batch it means; by default that is wherever the current session is.
+let at = { cursor: 0, phase: 'metadata' };
+const setSession = (s: SyncSession) => {
+    at = { cursor: s.cursor, phase: s.phase };
+    m.getSyncSession.mockResolvedValue(s);
+};
 const call = (body: unknown) =>
-    POST(new NextRequest('http://localhost/api/sync-repos/batch', { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body) }));
+    POST(new NextRequest('http://localhost/api/sync-repos/batch', {
+        method: 'POST',
+        body: typeof body === 'string' ? body : JSON.stringify(typeof body === 'object' && body !== null ? { ...at, ...body } : body),
+    }));
 
 beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.GITHUB_TOKEN;
     m.auth.mockResolvedValue({ user: { name: 'x' }, userId: '42', accessToken: 'tok' });
-    m.getSyncSession.mockResolvedValue(session());
+    setSession(session());
     m.advanceSyncSession.mockResolvedValue(true);
     m.getRateLimit.mockResolvedValue({ limit: 5000, remaining: 4000, reset: Math.floor(Date.now() / 1000) + 600 });
     m.getRepo.mockImplementation(async (owner: string, name: string) => ({ name, fullName: `${owner}/${name}` }));
@@ -69,6 +78,10 @@ describe('POST /api/sync-repos/batch', () => {
     it('rejects bad bodies and unauthenticated callers without touching the run', async () => {
         expect((await call('not json')).status).toBe(400);
         expect((await call({})).status).toBe(400);
+        // A request that doesn't name its batch is refused: it could skip or redo the wrong one.
+        const noPos = await POST(new NextRequest('http://localhost/api/sync-repos/batch', { method: 'POST', body: JSON.stringify({ sessionId: 's1', skip: true }) }));
+        expect(noPos.status).toBe(400);
+        expect(m.advanceSyncSession).not.toHaveBeenCalled();
         m.auth.mockResolvedValue(null);
         expect((await call({ sessionId: 's1' })).status).toBe(401);
         m.auth.mockResolvedValue({ user: {}, userId: '42' }); // no GitHub token
@@ -83,7 +96,7 @@ describe('POST /api/sync-repos/batch', () => {
     });
 
     it('answers 409 for a legacy row stuck in metadata with no queue', async () => {
-        m.getSyncSession.mockResolvedValue(session({ queue: null }));
+        setSession(session({ queue: null }));
         const res = await call({ sessionId: 's1' });
         expect(res.status).toBe(409);
         expect((await res.json()).restartable).toBe(true);
@@ -91,7 +104,7 @@ describe('POST /api/sync-repos/batch', () => {
     });
 
     it('returns a finished run as-is and does no work', async () => {
-        m.getSyncSession.mockResolvedValue(session({ phase: 'complete', completedRepos: 4 }));
+        setSession(session({ phase: 'complete', completedRepos: 4 }));
         const body = await (await call({ sessionId: 's1' })).json();
         expect(body).toMatchObject({ phase: 'complete', done: true });
         expect(m.getRepo).not.toHaveBeenCalled();
@@ -112,14 +125,14 @@ describe('POST /api/sync-repos/batch', () => {
     });
 
     it('moves to the health pass after the last metadata batch', async () => {
-        m.getSyncSession.mockResolvedValue(session({ cursor: 3 }));
+        setSession(session({ cursor: 3 }));
         const body = await (await call({ sessionId: 's1' })).json();
         expect(m.syncRepoMetadata).toHaveBeenCalledTimes(1);
         expect(body).toMatchObject({ phase: 'health', cursor: 0, completedRepos: 0 });
     });
 
     it('health batches take one repo and count it as completed', async () => {
-        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 1, completedRepos: 1 }));
+        setSession(session({ phase: 'health', cursor: 1, completedRepos: 1 }));
         const body = await (await call({ sessionId: 's1' })).json();
         expect(m.syncRepo).toHaveBeenCalledTimes(1);
         expect(m.syncRepoMetadata).not.toHaveBeenCalled();
@@ -127,7 +140,7 @@ describe('POST /api/sync-repos/batch', () => {
     });
 
     it('completes after the last health check and stamps last_sync_at from the run start', async () => {
-        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 3, completedRepos: 3 }));
+        setSession(session({ phase: 'health', cursor: 3, completedRepos: 3 }));
         const body = await (await call({ sessionId: 's1' })).json();
         expect(body).toMatchObject({ phase: 'complete', done: true, currentRepo: 'Complete', progressPercentage: 100 });
         expect(m.transaction).toHaveBeenCalledTimes(1);
@@ -141,8 +154,17 @@ describe('POST /api/sync-repos/batch', () => {
         expect(m.syncRepoMetadata).toHaveBeenCalledTimes(3);
     });
 
+    it('the health pass re-grants access so a skipped metadata batch cannot leave a private repo inaccessible', async () => {
+        setSession(session({ phase: 'health', cursor: 1, completedRepos: 1 }));
+        await call({ sessionId: 's1' });
+        expect(m.grantRepoAccess).toHaveBeenCalledTimes(1);
+        m.grantRepoAccess.mockRejectedValueOnce(new Error('db'));
+        await call({ sessionId: 's1' });
+        expect(m.advanceSyncSession).toHaveBeenLastCalledWith(expect.objectContaining({ failedDelta: 1 }));
+    });
+
     it('a health-pass failure is counted once and the run advances past it', async () => {
-        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 1, completedRepos: 1 }));
+        setSession(session({ phase: 'health', cursor: 1, completedRepos: 1 }));
         m.syncRepo.mockRejectedValueOnce(new Error('boom'));
         const body = await (await call({ sessionId: 's1' })).json();
         expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 1 }));
@@ -150,7 +172,7 @@ describe('POST /api/sync-repos/batch', () => {
     });
 
     it('skip advances without any GitHub or database work and counts a health batch as failed', async () => {
-        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 2, completedRepos: 2 }));
+        setSession(session({ phase: 'health', cursor: 2, completedRepos: 2 }));
         const body = await (await call({ sessionId: 's1', skip: true })).json();
         expect(m.getRepo).not.toHaveBeenCalled();
         expect(m.syncRepo).not.toHaveBeenCalled();
@@ -193,7 +215,7 @@ describe('POST /api/sync-repos/batch', () => {
     });
 
     it('does not count a default repo the user token cannot read as a failure', async () => {
-        m.getSyncSession.mockResolvedValue(session({ phase: 'health', queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 1 }));
+        setSession(session({ phase: 'health', queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 1 }));
         m.getRepo.mockImplementation(async (_o: string, name: string) => {
             if (name === 'pub') throw new Error('Not Found');
             return { name, fullName: `o/${name}` };
@@ -203,14 +225,14 @@ describe('POST /api/sync-repos/batch', () => {
     });
 
     it('does count a default repo whose fetch worked but whose write failed', async () => {
-        m.getSyncSession.mockResolvedValue(session({ phase: 'health', queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 1 }));
+        setSession(session({ phase: 'health', queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 1 }));
         m.syncRepo.mockRejectedValueOnce(new Error('db down'));
         await call({ sessionId: 's1' });
         expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 1 }));
     });
 
     it('grants access only for the user\'s own repos, not default ones', async () => {
-        m.getSyncSession.mockResolvedValue(session({ queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 0 }));
+        setSession(session({ queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 0 }));
         await call({ sessionId: 's1' });
         expect(m.grantRepoAccess).toHaveBeenCalledTimes(1);
     });
@@ -219,7 +241,7 @@ describe('POST /api/sync-repos/batch', () => {
         m.getRateLimit.mockResolvedValue({ limit: 5000, remaining: 1, reset: Math.floor(Date.now() / 1000) + 600 });
         m.failSyncSession.mockResolvedValue(false);
         m.getSyncSession.mockResolvedValueOnce(session({ phase: 'health', cursor: 3 })).mockResolvedValueOnce(session({ phase: 'complete', cursor: 4, completedRepos: 4 }));
-        const body = await (await call({ sessionId: 's1' })).json();
+        const body = await (await call({ sessionId: 's1', cursor: 3, phase: 'health' })).json();
         expect(body).toMatchObject({ phase: 'complete', done: true, stale: true });
     });
 
@@ -230,7 +252,7 @@ describe('POST /api/sync-repos/batch', () => {
     });
 
     it('stamps last_sync_at before completing, and a failing stamp leaves the run retryable', async () => {
-        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 3, completedRepos: 3 }));
+        setSession(session({ phase: 'health', cursor: 3, completedRepos: 3 }));
         m.transaction.mockRejectedValueOnce(new Error('db'));
         expect((await call({ sessionId: 's1' })).status).toBe(500);
         expect(m.advanceSyncSession).not.toHaveBeenCalled();

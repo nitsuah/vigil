@@ -126,7 +126,7 @@ export default function Dashboard() {
 
   // Calls the batch endpoint until the run ends. Nothing runs server-side
   // after a response, so this loop is what makes the sync progress.
-  const driveSyncRun = async (sessionId: string, start?: { cursor: number; phase: string }) => {
+  const driveSyncRun = async (sessionId: string, start: { cursor: number; phase: string }) => {
     syncAbortRef.current?.abort();
     const controller = new AbortController();
     syncAbortRef.current = controller;
@@ -237,7 +237,7 @@ export default function Dashboard() {
     (async () => {
       try {
         const res = await fetch(`/api/sync-progress?sessionId=${encodeURIComponent(sessionId)}`);
-        if (cancelled) return;
+        if (cancelled || activeSyncSessionRef.current) return; // a newer sync started meanwhile
         if (!res.ok) {
           if (res.status === 404 || res.status === 401) rememberSyncSession(null);
           return;
@@ -256,7 +256,7 @@ export default function Dashboard() {
           totalRepos: progress.totalRepos,
           completedRepos: progress.completedRepos ?? 0,
         });
-        void driveSyncRun(sessionId);
+        void driveSyncRun(sessionId, { cursor: progress.cursor ?? 0, phase: progress.phase });
       } catch {
         // Leave the remembered run for the next load.
       }

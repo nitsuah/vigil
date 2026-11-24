@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { getProgressWithPercentage, deleteSyncProgress } from '@/lib/sync-progress';
+import { getSyncSession, getProgressPercentage, deleteSyncProgress } from '@/lib/sync-progress';
 
 // session.userId is the GitHub numeric id (auth.ts session callback) -- the same
 // value sync-repos stores as github_user_id, so ownership is a plain equality.
@@ -22,12 +22,16 @@ export async function GET(request: NextRequest) {
   if (userId instanceof NextResponse) return userId;
 
   // Another user's session reads as "not found", never as forbidden, so ids can't be probed.
-  const progress = await getProgressWithPercentage(sessionId, userId);
-  if (!progress) {
+  const session = await getSyncSession(sessionId, userId);
+  if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 });
   }
 
-  return NextResponse.json(progress);
+  // The stored queue can name private repos and never leaves the server; the cursor
+  // is what a resumed driver needs to name the batch it means.
+  const { queue: _queue, ...progress } = session;
+  void _queue;
+  return NextResponse.json({ ...progress, progressPercentage: getProgressPercentage(session) });
 }
 
 export async function DELETE(request: NextRequest) {
