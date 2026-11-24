@@ -8,7 +8,8 @@
  *   ?repo=<name>   Single-repo context (name or owner/repo)
  *   (none)         Full portfolio context, incl. `open_work` (P0/P1 tasks across repos;
  *                  use the get_open_tasks MCP tool for the full filterable list), and
- *                  `metrics` (the weekly delivery scorecard plus a markdown `digest`)
+ *                  `metrics` (the weekly delivery scorecard plus a markdown `digest`;
+ *                  `null` if the metrics tables are unavailable)
  *
  * Auth (checked in order):
  *   1. Authorization: Bearer <key>  -> per scope: repo:read (?repo=) or portfolio:read (portfolio)
