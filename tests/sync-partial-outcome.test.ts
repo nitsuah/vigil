@@ -87,4 +87,17 @@ describe('syncRepo partial outcome', () => {
     });
     await expect(syncRepo(repo, fakeGithub(), fakeDb())).resolves.toEqual({ partialSteps: 3 });
   });
+
+  it('persists is_archived in the health upsert, so a skipped metadata batch cannot leave it stale', async () => {
+    const calls: Array<{ sql: string; values: unknown[] }> = [];
+    const db = vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      calls.push({ sql: strings.join('?'), values });
+      return [{ id: 1 }];
+    }) as unknown as Parameters<typeof syncRepo>[2];
+    await syncRepo({ ...repo, archived: true } as unknown as RepoMetadata, fakeGithub(), db);
+    const upsert = calls.find((c) => c.sql.includes('INSERT INTO repos'))!;
+    expect(upsert.sql).toContain('is_archived');
+    expect(upsert.sql).toContain('is_archived = EXCLUDED.is_archived');
+    expect(upsert.values).toContain(true);
+  });
 });
