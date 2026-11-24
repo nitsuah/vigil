@@ -36,14 +36,29 @@ interface RunRecord {
 
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0);
 
-/** Only link to GitHub run pages; the file is bot-written but still data. */
-/** Valid calendar date (YYYY-MM-DD...) or null; anything else is not trusted as a run date. */
+/**
+ * A real calendar date in ISO form (YYYY-MM-DD, optionally with a UTC time),
+ * or null. Loose forms and rolled-over dates (2026-02-30) are not trusted.
+ */
 function safeDate(v: unknown): string | null {
-    return typeof v === 'string' && Number.isFinite(new Date(v).getTime()) ? v : null;
+    if (typeof v !== 'string') return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z)?$/.exec(v);
+    if (!m) return null;
+    const d = new Date(v);
+    if (!Number.isFinite(d.getTime())) return null;
+    const ok = d.getUTCFullYear() === +m[1] && d.getUTCMonth() + 1 === +m[2] && d.getUTCDate() === +m[3];
+    return ok ? v : null;
 }
 
+/** Only link to GitHub run pages on github.com itself; the file is bot-written but still data. */
 function safeRunUrl(v: unknown): string | null {
-    return typeof v === 'string' && /^https:\/\/github\.com\//.test(v) ? v : null;
+    if (typeof v !== 'string') return null;
+    try {
+        const u = new URL(v);
+        return u.protocol === 'https:' && u.hostname === 'github.com' && !u.username && !u.password && !u.port ? v : null;
+    } catch {
+        return null;
+    }
 }
 
 /** Parse a metrics/<month>.jsonl body, skipping blank and corrupt lines. */
@@ -150,11 +165,13 @@ async function readLatestEarlier(octokit: Octokit, owner: string, repo: string, 
 
 async function openCount(octokit: Octokit, owner: string, repo: string, label: string): Promise<{ count: number; capped: boolean }> {
     // Open issues only; PRs share the issues endpoint, so drop them. One page
-    // is enough for a badge: a full page is reported as a lower bound ("100+").
-    const { data } = await octokit.issues.listForRepo({
+    // is enough for a badge: when GitHub says another page exists the count is
+    // a lower bound ("100+"); a full last page is still exact.
+    const { data, headers } = await octokit.issues.listForRepo({
         owner, repo, labels: label, state: 'open', per_page: ISSUES_PAGE,
     });
-    return { count: data.filter((i) => !i.pull_request).length, capped: data.length >= ISSUES_PAGE };
+    const link = (headers as { link?: string } | undefined)?.link ?? '';
+    return { count: data.filter((i) => !i.pull_request).length, capped: /rel="next"/.test(link) };
 }
 
 /**

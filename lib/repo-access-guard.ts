@@ -55,8 +55,10 @@ export async function resolveReadableRepo(
     await ensureSchema(db);
     // Page through same-named rows until one is visible, so a long run of
     // inaccessible matches can't hide a readable one.
+    // Hard cap (10 pages, 250 rows) so a pathological name can't loop the request.
     const PAGE = 25;
-    for (let offset = 0; ; offset += PAGE) {
+    const MAX_PAGES = 10;
+    for (let offset = 0; offset < PAGE * MAX_PAGES; offset += PAGE) {
         const rows = (await db`
             SELECT id, full_name, private_repo, visibility_verified FROM repos WHERE name = ${repoName} ORDER BY full_name LIMIT ${PAGE} OFFSET ${offset}
         `) as unknown as RepoAccessCheck[];

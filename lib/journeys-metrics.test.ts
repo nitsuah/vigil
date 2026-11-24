@@ -64,8 +64,11 @@ function fakeOctokit(files: Record<string, string>, issues: Record<string, numbe
             listForRepo: async ({ labels }: { labels: string }) => {
                 if (failIssues) throw Object.assign(new Error('boom'), { status: 500 });
                 const n = issues[labels] ?? 0;
-                // A PR rides along only when there are issues, so counts stay exact.
-                return { data: [...Array(n)].map(() => ({})).concat(n > 0 ? [{ pull_request: {} }] : []) };
+                // A PR rides along only when there are issues; pages hold 100 items
+                // and a Link rel="next" header appears when more remain, like GitHub.
+                const all = [...Array(n)].map(() => ({})).concat(n > 0 ? [{ pull_request: {} }] : []);
+                const link = all.length > 100 ? '<https://api.github.com/x?page=2>; rel="next"' : undefined;
+                return { data: all.slice(0, 100), headers: link ? { link } : {} };
             },
         },
     } as unknown as Octokit;
@@ -91,12 +94,22 @@ describe('fetchJourneysHealth', () => {
         // 99 issues + 1 PR fills the page, but only 99 are issues; page-full means "maybe more".
         const h = await fetchJourneysHealth(fakeOctokit({}, { 'bot:journey': 99 }), 'a', 'b', NOW);
         expect(h.openJourneyIssues).toBe(99);
+        expect(h.journeyIssuesCapped).toBe(false);
     });
     it('flags a full issue page as a lower bound', async () => {
         const h = await fetchJourneysHealth(fakeOctokit({}, { 'bot:journey': 100 }), 'a', 'b', NOW);
         // Only the label that filled a page is a lower bound.
         expect(h.journeyIssuesCapped).toBe(true);
         expect(h.reviewIssuesCapped).toBe(false);
+    });
+    it('rejects look-alike run hosts and rolled-over or loose dates', () => {
+        const runs = parseMetricsJsonl([
+            line({ date: '2026-02-30', total: 1, passed: 1, failed: 0, run: 'https://github.com.evil.example/a' }),
+            line({ date: 'Nov 23 2026', total: 1, passed: 1, failed: 0, run: 'https://github.com@evil.example/a' }),
+            line({ date: '2026-11-23T10:00:00Z', total: 1, passed: 1, failed: 0, run: 'https://github.com:444/a' }),
+        ].join('\n'));
+        expect(runs.map((r) => r.date)).toEqual([null, null, '2026-11-23T10:00:00Z']);
+        expect(runs.map((r) => r.run)).toEqual([null, null, null]);
     });
     it('is none when no metrics exist and propagates GitHub errors', async () => {
         expect((await fetchJourneysHealth(fakeOctokit({}, {}), 'a', 'b', NOW)).status).toBe('none');
