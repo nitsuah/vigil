@@ -153,15 +153,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         // Stamp last_sync_at before completing the run, and never move it backwards, so a retry
         // after a failure here repeats this write instead of finding a run already complete.
-        const finishing = planAdvance({ phase, cursor: session.cursor, queueLength: session.queue.length, consumed: batch.length }).phase === 'complete';
-        if (finishing) {
+        const to = planAdvance({ phase, cursor: session.cursor, queueLength: session.queue.length, consumed: batch.length });
+        if (to.phase === 'complete') {
             const startedAt = session.startedAt.toISOString();
             await db.transaction([
                 db`SELECT set_config('app.current_github_id', ${userId}, true)`,
                 db`UPDATE users SET last_sync_at = ${startedAt} WHERE github_id = ${userId} AND (last_sync_at IS NULL OR last_sync_at < ${startedAt})`,
             ]);
         }
-        const to = planAdvance({ phase, cursor: session.cursor, queueLength: session.queue.length, consumed: batch.length });
         const advanced = await advanceSyncSession({
             sessionId, githubUserId: userId, from: { phase, cursor: session.cursor }, to, failedDelta, currentRepo,
         });

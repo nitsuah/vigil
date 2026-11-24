@@ -182,6 +182,12 @@ export default function Dashboard() {
     }, 1500);
   };
 
+  // The loop reports its own outcomes; this only catches an unexpected throw (e.g. the reload after a run).
+  const reportDriverError = () => {
+    setSyncProgress(null);
+    setToastMessage('Sync stopped unexpectedly. Reload to continue it, or run Sync again.');
+  };
+
   const handleSync = async () => {
     try {
       setSyncing(true);
@@ -211,7 +217,7 @@ export default function Dashboard() {
           // Remember the run so a reload resumes it.
           rememberSyncSession(data.sessionId);
           // The progress panel reports from here on; results reload when the loop ends.
-          void driveSyncRun(data.sessionId, { cursor: 0, phase: data.phase ?? 'metadata' });
+          driveSyncRun(data.sessionId, { cursor: 0, phase: data.phase ?? 'metadata' }).catch(reportDriverError);
         } else {
           await reloadAfterSync();
           setToastMessage(data.message || 'Sync queued');
@@ -256,7 +262,7 @@ export default function Dashboard() {
           totalRepos: progress.totalRepos,
           completedRepos: progress.completedRepos ?? 0,
         });
-        void driveSyncRun(sessionId, { cursor: progress.cursor ?? 0, phase: progress.phase });
+        driveSyncRun(sessionId, { cursor: progress.cursor ?? 0, phase: progress.phase }).catch(reportDriverError);
       } catch {
         // Leave the remembered run for the next load.
       }
