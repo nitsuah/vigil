@@ -66,14 +66,13 @@ export async function GET(request: Request) {
         // Same access rule as /api/pmo/overview (CWE-639): the portfolio view never
         // includes a repo the viewer could not open, whatever the filter asks for.
         const accessibleIds = await getAccessibleRepoIds(db, session.userId);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allRepos = ((await db`
             SELECT id, name, full_name FROM repos
             WHERE (is_hidden = false OR is_hidden IS NULL) AND is_archived IS NOT TRUE
             ORDER BY full_name
-        `) as any[]).filter((r) => accessibleIds.has(r.id));
+        `) as Array<{ id: string; name: string; full_name: string }>).filter((r) => accessibleIds.has(r.id));
         const repos = wanted.length > 0 ? allRepos.filter((r) => wanted.includes(String(r.full_name).toLowerCase())) : allRepos;
-        const ids = repos.map((r) => r.id as string);
+        const ids = repos.map((r) => r.id);
 
         const shown = recentWeeks(new Date(), Math.max(weeksParam, MIN_WEEKS)).slice(-weeksParam);
         const queryWeeks = recentWeeks(new Date(), Math.max(weeksParam, MIN_WEEKS));
