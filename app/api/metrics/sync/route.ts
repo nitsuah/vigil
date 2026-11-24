@@ -9,6 +9,9 @@ import { createGithubFetchItems, syncAllMetrics, type MetricsDb } from '@/lib/me
 // reads GitHub with the system GITHUB_TOKEN. Fails closed when either is unset.
 export const maxDuration = 300;
 
+// One run at a time per instance; the workflow's concurrency group covers overlap across instances.
+let running = false;
+
 export async function POST(request: Request): Promise<NextResponse> {
     const secret = process.env.METRICS_SYNC_SECRET;
     const token = process.env.GITHUB_TOKEN;
@@ -19,6 +22,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (!m || !safeEqual(m[1], secret)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } });
     }
+    if (running) return NextResponse.json({ error: 'A sync is already running' }, { status: 409 });
+    running = true;
     try {
         const db = getNeonClient();
         await ensureSchema(db);
@@ -28,5 +33,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     } catch (err) {
         logger.error('[metrics-sync] run failed', err);
         return NextResponse.json({ error: 'Metrics sync failed' }, { status: 500 });
+    } finally {
+        running = false;
     }
 }

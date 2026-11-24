@@ -59,6 +59,33 @@ describe('parseClosedIssues', () => {
     });
 });
 
+describe('range and ordering guards', () => {
+    it('drops references that do not fit a Postgres INTEGER', () => {
+        expect(parseClosedIssues('Fixes #2147483648, closes #2147483647')).toEqual([2147483647]);
+        expect(mapGithubItem(item({ body: 'parent: #2147483648' }))).toMatchObject({ row: { parentNumber: null } });
+        expect(mapGithubItem(item({ body: 'parent: #12' }))).toMatchObject({ row: { parentNumber: 12 } });
+    });
+
+    it('only lets a newer item or cursor overwrite a stored one', async () => {
+        const { db, calls } = fakeDb('2026-11-23T06:00:00.000Z');
+        await syncRepoMetrics(db, { id: 'r1', full_name: 'o/r' }, async () => [item(), item({ number: 2, pull_request: {} })], new Date('2026-11-24T06:00:00Z'));
+        const upserts = calls.filter((c) => c.includes('ON CONFLICT'));
+        expect(upserts.some((c) => c.includes('gh_issues.updated_at < EXCLUDED.updated_at'))).toBe(true);
+        expect(upserts.some((c) => c.includes('gh_prs.updated_at < EXCLUDED.updated_at'))).toBe(true);
+        expect(upserts.some((c) => c.includes('metrics_sync_state.last_synced_at < EXCLUDED.last_synced_at'))).toBe(true);
+    });
+
+    it('rebuilds the old week of a closed parent when a child link to it is added or removed', async () => {
+        const parent = { number: 9, state: 'closed', state_reason: 'completed', labels: [], author_type: 'human', parent_number: null, opened_at: new Date('2026-10-05T00:00:00Z'), closed_at: new Date('2026-10-08T00:00:00Z') };
+        for (const [oldParents, body] of [[[], 'parent: #9'], [[9], 'no link now']] as const) {
+            const { db, calls } = fakeDb('2026-11-23T06:00:00.000Z', [...oldParents], [parent]);
+            const res = await syncRepoMetrics(db, { id: 'r1', full_name: 'o/r' }, async () => [item({ number: 30, body })], new Date('2026-11-24T06:00:00Z'));
+            expect(res.weeks).toBeGreaterThanOrEqual(8); // 2026-W41 through W48
+            expect(calls.some((c) => c.includes('INSERT INTO weekly_rollups'))).toBe(true);
+        }
+    });
+});
+
 describe('weeksToRecompute', () => {
     const mapped = (o: Partial<GhItemPayload>) => [mapGithubItem(item(o))!];
     it('runs from the earliest touched week through the current week', () => {
@@ -71,13 +98,14 @@ describe('weeksToRecompute', () => {
 });
 
 /** In-memory stand-in for the SQL function: records statements and serves the stored rows it is given. */
-function fakeDb(cursor: string | null) {
+function fakeDb(cursor: string | null, oldParents: number[] = [], stored: Array<Record<string, unknown>> = []) {
     const calls: string[] = [];
     const db: MetricsDb = async (strings) => {
         const sql = strings.join('?');
         calls.push(sql);
         if (sql.includes('FROM metrics_sync_state')) return cursor ? [{ last_synced_at: new Date(cursor) }] : [];
-        if (sql.includes('FROM gh_issues')) return [{ number: 1, state: 'open', state_reason: null, labels: [], author_type: 'human', parent_number: null, opened_at: new Date('2026-11-17T10:00:00Z'), closed_at: null }];
+        if (sql.includes('SELECT parent_number FROM gh_issues')) return oldParents.map((n) => ({ parent_number: n }));
+        if (sql.includes('FROM gh_issues')) return [...stored, { number: 1, state: 'open', state_reason: null, labels: [], author_type: 'human', parent_number: null, opened_at: new Date('2026-11-17T10:00:00Z'), closed_at: null }];
         if (sql.includes('FROM gh_prs')) return [];
         return [];
     };

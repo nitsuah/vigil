@@ -48,6 +48,10 @@ export interface PrRow extends MetricsPr {
 
 export type MappedItem = { kind: 'issue'; row: IssueRow } | { kind: 'pr'; row: PrRow };
 
+/** Largest value a Postgres INTEGER column holds; issue references from body text must fit. */
+const MAX_PG_INT = 2_147_483_647;
+const inRange = (n: number | null): n is number => n !== null && Number.isSafeInteger(n) && n > 0 && n <= MAX_PG_INT;
+
 /** Issue numbers a PR body closes ("closes #1", "Fixes owner/repo#2", "resolved: #3"). */
 export function parseClosedIssues(body: string | null | undefined): number[] {
     if (!body) return [];
@@ -55,7 +59,7 @@ export function parseClosedIssues(body: string | null | undefined): number[] {
     const re = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+(?:[\w.-]+\/[\w.-]+)?#(\d+)/gi;
     for (let m = re.exec(body); m; m = re.exec(body)) {
         const n = Number(m[1]);
-        if (Number.isSafeInteger(n) && n > 0) found.add(n);
+        if (inRange(n)) found.add(n);
     }
     return [...found].sort((a, b) => a - b);
 }
@@ -103,7 +107,7 @@ export function mapGithubItem(item: GhItemPayload): MappedItem | null {
             labels,
             authorType,
             authorLogin,
-            parentNumber: parseParentNumber(item.body),
+            parentNumber: ((n) => (inRange(n) ? n : null))(parseParentNumber(item.body)),
             openedAt: item.created_at,
             closedAt,
             updatedAt: item.updated_at,
@@ -116,8 +120,13 @@ export function mapGithubItem(item: GhItemPayload): MappedItem | null {
  * item touched through the current week. `scopeEnd` carries forward, so a late
  * edit to an old issue shifts every later week's open count.
  */
-export function weeksToRecompute(items: readonly MappedItem[], now: Date): string[] {
+export function weeksToRecompute(items: readonly MappedItem[], now: Date, extraStamps: readonly (string | null)[] = []): string[] {
     let earliest: number | null = null;
+    for (const s of extraStamps) {
+        if (!s) continue;
+        const t = new Date(s).getTime();
+        if (Number.isFinite(t) && (earliest === null || t < earliest)) earliest = t;
+    }
     for (const { row } of items) {
         const stamps = [row.openedAt, row.closedAt, 'mergedAt' in row ? row.mergedAt : null];
         for (const s of stamps) {
@@ -175,7 +184,7 @@ async function upsertIssues(db: MetricsDb, repoId: string, rows: IssueRow[]): Pr
             title = EXCLUDED.title, state = EXCLUDED.state, state_reason = EXCLUDED.state_reason, labels = EXCLUDED.labels,
             author_login = EXCLUDED.author_login, author_type = EXCLUDED.author_type, parent_number = EXCLUDED.parent_number,
             opened_at = EXCLUDED.opened_at, closed_at = EXCLUDED.closed_at, updated_at = EXCLUDED.updated_at
-        WHERE gh_issues.updated_at IS DISTINCT FROM EXCLUDED.updated_at
+        WHERE gh_issues.updated_at < EXCLUDED.updated_at
     `;
 }
 
@@ -196,7 +205,7 @@ async function upsertPrs(db: MetricsDb, repoId: string, rows: PrRow[]): Promise<
             state = EXCLUDED.state, labels = EXCLUDED.labels, author_login = EXCLUDED.author_login, author_type = EXCLUDED.author_type,
             closes_issues = EXCLUDED.closes_issues, opened_at = EXCLUDED.opened_at, merged_at = EXCLUDED.merged_at,
             closed_at = EXCLUDED.closed_at, updated_at = EXCLUDED.updated_at
-        WHERE gh_prs.updated_at IS DISTINCT FROM EXCLUDED.updated_at
+        WHERE gh_prs.updated_at < EXCLUDED.updated_at
     `;
 }
 
@@ -280,18 +289,28 @@ export async function syncRepoMetrics(
     const issues = mapped.flatMap((m) => (m.kind === 'issue' ? [m.row] : []));
     const prs = mapped.flatMap((m) => (m.kind === 'pr' ? [m.row] : []));
 
+    // Parent links before they are overwritten: dropping or moving a link changes
+    // the old parent's leaf status just as adding one changes the new parent's.
+    const oldParents = issues.length === 0 ? [] : ((await db`
+        SELECT parent_number FROM gh_issues WHERE repo_id = ${repo.id} AND number = ANY(${issues.map((i) => i.number)}) AND parent_number IS NOT NULL
+    `) as Array<{ parent_number: number }>).map((r) => Number(r.parent_number));
+
     await upsertIssues(db, repo.id, issues);
     await upsertPrs(db, repo.id, prs);
 
-    const weeks = weeksToRecompute(mapped, now);
+    let weeks = weeksToRecompute(mapped, now);
     if (weeks.length > 0) {
         const stored = await loadStored(db, repo.id);
+        const parents = new Set([...oldParents, ...issues.map((i) => i.parentNumber).filter((n): n is number => n !== null)]);
+        const parentStamps = stored.issues.filter((i) => parents.has(i.number)).flatMap((i) => [i.openedAt, i.closedAt]);
+        weeks = weeksToRecompute(mapped, now, parentStamps);
         await upsertRollups(db, repo.id, weeks.map((w) => computeWeeklyRollup(stored.issues, stored.prs, w)));
     }
 
     await db`
         INSERT INTO metrics_sync_state (repo_id, last_synced_at) VALUES (${repo.id}, ${startedAt}::timestamptz)
         ON CONFLICT (repo_id) DO UPDATE SET last_synced_at = EXCLUDED.last_synced_at
+        WHERE metrics_sync_state.last_synced_at < EXCLUDED.last_synced_at
     `;
     return { fullName: repo.full_name, issues: issues.length, prs: prs.length, weeks: weeks.length };
 }

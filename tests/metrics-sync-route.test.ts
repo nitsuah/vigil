@@ -53,3 +53,17 @@ describe('POST /api/metrics/sync', () => {
         expect((await POST(req('Bearer a-long-enough-secret'))).status).toBe(502);
     });
 });
+
+describe('POST /api/metrics/sync overlap', () => {
+    it('rejects a second run while one is in flight', async () => {
+        process.env.METRICS_SYNC_SECRET = 'a-long-enough-secret';
+        process.env.GITHUB_TOKEN = 'ghp_test';
+        let release!: () => void;
+        syncAllMetrics.mockReset().mockReturnValueOnce(new Promise((r) => { release = () => r({ synced: [], failed: [] }); }));
+        const first = POST(req('Bearer a-long-enough-secret'));
+        await new Promise((r) => setTimeout(r, 0));
+        expect((await POST(req('Bearer a-long-enough-secret'))).status).toBe(409);
+        release();
+        expect((await first).status).toBe(200);
+    });
+});
