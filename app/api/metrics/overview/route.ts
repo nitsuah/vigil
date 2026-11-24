@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { ensureSchema, getNeonClient } from '@/lib/db';
 import logger from '@/lib/log';
 import { computeWeeklyRollup, type MetricsIssue, type MetricsPr, type WeeklyRollup } from '@/lib/metrics-rollup';
+import { loadWeeklyRollups } from '@/lib/metrics-portfolio';
 import { buildScorecard, recentWeeks, sumWeekly, type WeeklyScorecard } from '@/lib/metrics-scorecard';
 import { getAccessibleRepoIds } from '@/lib/repo-access';
 
@@ -30,18 +31,6 @@ const DEFAULT_WEEKS = 12;
 const MAX_WEEKS = 52;
 const MIN_WEEKS = 5; // the scorecard compares against the 4 weeks before this one
 const AUTHOR_TYPES = ['human', 'imp', 'bot'];
-
-/** Rows from a weekly_rollups query, as WeeklyRollup. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const toRollup = (r: any): WeeklyRollup => ({
-    isoWeek: r.iso_week,
-    issuesOpened: Number(r.issues_opened), issuesClosed: Number(r.issues_closed), leafClosed: Number(r.leaf_closed),
-    scopeEnd: Number(r.scope_end), prsOpened: Number(r.prs_opened), prsMerged: Number(r.prs_merged),
-    bugsOpened: Number(r.bugs_opened), bugsClosed: Number(r.bugs_closed),
-    impPrsOpened: Number(r.imp_prs_opened), impPrsMerged: Number(r.imp_prs_merged),
-    leadTimeP50Hours: r.lead_time_p50_hours === null ? null : Number(r.lead_time_p50_hours),
-    leadTimeP90Hours: r.lead_time_p90_hours === null ? null : Number(r.lead_time_p90_hours),
-});
 
 export async function GET(request: Request) {
     const session = await auth();
@@ -82,15 +71,9 @@ export async function GET(request: Request) {
         const seed = new Map<string, number>();
 
         if (ids.length > 0 && !label && !authorType) {
-            const [rows, before] = await db.transaction([
-                db`SELECT * FROM weekly_rollups WHERE repo_id = ANY(${ids}) AND iso_week = ANY(${queryWeeks})`,
-                db`SELECT DISTINCT ON (repo_id) repo_id, scope_end FROM weekly_rollups
-                   WHERE repo_id = ANY(${ids}) AND iso_week < ${queryWeeks[0]} ORDER BY repo_id, iso_week DESC`,
-            ]);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            for (const r of rows as any[]) byRepo.get(r.repo_id)?.push(toRollup(r));
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            for (const r of before as any[]) seed.set(r.repo_id, Number(r.scope_end));
+            const loaded = await loadWeeklyRollups(db, ids, queryWeeks);
+            for (const [id, rows] of loaded.byRepo) byRepo.set(id, rows);
+            for (const [id, scope] of loaded.seed) seed.set(id, scope);
         } else if (ids.length > 0) {
             // A label or author-type slice is not pre-aggregated, so roll up the stored rows for it.
             const [issueRows, prRows] = await db.transaction([

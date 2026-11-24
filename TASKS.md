@@ -8,7 +8,8 @@ updated: 2026-11-23
 
 - [ ] Delivery metrics tab (vigil#456): flow metrics, not a backlog snapshot.
   - Priority: P1
-  - Context: slices #478 (rollup logic) and #479 (tables) merged. The GitHub mapping and daily sync (#480) is `lib/metrics-sync.ts` plus `POST /api/metrics/sync`, run daily by `.github/workflows/metrics-sync.yml`. Scorecard, overview API and the `/metrics` page shipped. Still open: the week-sotu digest (#483).
+  - Context: slices #478 (rollup logic) and #479 (tables) merged. The GitHub mapping and daily sync (#480) is `lib/metrics-sync.ts` plus `POST /api/metrics/sync`, run daily by `.github/workflows/metrics-sync.yml`. Scorecard, overview API and the `/metrics` page shipped. The week-sotu digest (#483) is vigil's half here (`metrics` in `/api/context`) plus stash's `sotu.py`.
+  - Done 2026-11-24 (#483, vigil half): `lib/metrics-digest.ts` renders the scorecard as a markdown section, served as `metrics.digest` (with `metrics.scorecard`) in the portfolio `/api/context`, so week-sotu prints the same numbers as `/metrics`.
   - Done 2026-11-24 (#482): `/metrics` page (`app/metrics/page.tsx`, `components/metrics/*`): scorecard, inline-SVG burn-up, opened/closed bars and lead-time charts, repo breakdown, and repo / label / author-type / range filters kept in the URL. Header links to it next to PMO. The app has one (dark) theme, so there is no light variant to style.
   - Done 2026-11-24 (#481): `lib/metrics-scorecard.ts` (this week vs the mean of the previous 4 weeks, good/bad deltas) and `GET /api/metrics/overview` with repo, label, author-type and weeks filters, behind the PMO access rule.
   - Done 2026-11-24 (#480): sync maps issues and PRs from one `issues?since=` listing, upserts idempotently, rebuilds touched weeks, and keeps a per-repo cursor. The workflow needs the `METRICS_SYNC_URL` variable and `METRICS_SYNC_SECRET` secret before it does anything.

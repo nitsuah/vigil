@@ -7,7 +7,9 @@
  * Query params:
  *   ?repo=<name>   Single-repo context (name or owner/repo)
  *   (none)         Full portfolio context, incl. `open_work` (P0/P1 tasks across repos;
- *                  use the get_open_tasks MCP tool for the full filterable list)
+ *                  use the get_open_tasks MCP tool for the full filterable list), and
+ *                  `metrics` (the weekly delivery scorecard plus a markdown `digest`;
+ *                  `null` if the metrics tables are unavailable)
  *
  * Auth (checked in order):
  *   1. Authorization: Bearer <key>  -> per scope: repo:read (?repo=) or portfolio:read (portfolio)
@@ -25,6 +27,8 @@ import logger from '@/lib/log';
 import { resolveScopes, hasScopes } from '@/lib/mcp-auth';
 import { healthGrade, buildGradeDist, buildCiDist } from '@/lib/health-grade';
 import { loadOpenTasks, rollupOpenTasks } from '@/lib/task-rollup';
+import { renderMetricsDigest } from '@/lib/metrics-digest';
+import { portfolioScorecard } from '@/lib/metrics-portfolio';
 import { describeRelationship, listRelationships } from '@/lib/relationships';
 
 export const dynamic = 'force-dynamic';
@@ -228,6 +232,20 @@ export async function GET(req: NextRequest) {
       WHERE r.is_hidden = false AND bp.practice_type = ANY(${VISUAL_SETUP_PRACTICES})
     `) as (VisualSetupRow & { repo_id: number })[];
 
+    // Delivery metrics (vigil#456) for the repos this caller can see. A failure here
+    // (for example tables not created yet) must not take the whole context down.
+    let metrics: { week: string; scorecard: unknown; digest: string } | null = null;
+    try {
+      // Same eligibility as /metrics: archived repos are left out (the caller's access limit still applies).
+      const eligible = (await db`
+        SELECT id FROM repos WHERE id = ANY(${[...visibleIds] as string[]}) AND is_archived IS NOT TRUE
+      `) as Array<{ id: string }>;
+      const scorecard = await portfolioScorecard(db, eligible.map((r) => r.id));
+      metrics = { week: scorecard.week, scorecard, digest: renderMetricsDigest(scorecard) };
+    } catch (error) {
+      logger.warn('[context] Metrics scorecard unavailable:', error);
+    }
+
     const avgHealth = repos.length
       ? Math.round(repos.reduce((s, r) => s + (r.health_score ?? 0), 0) / repos.length)
       : 0;
@@ -304,6 +322,7 @@ export async function GET(req: NextRequest) {
         tier: (r as unknown as { tier?: string | null }).tier ?? null,
         ...visualSetup(visualSetupRows.filter(v => v.repo_id === (r as unknown as { id: number }).id)),
       })),
+      metrics,
       relationships: {
         summary: `${relationships.filter(r => r.status === 'confirmed').length} confirmed · ${relationships.filter(r => r.status === 'proposed').length} proposed`,
         edges:   relationships.map(describeRelationship),
