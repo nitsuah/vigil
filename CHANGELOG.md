@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Delivery metrics tables for the Metrics tab (vigil#456): `gh_issues`, `gh_prs`, `weekly_rollups`, and `metrics_sync_state` in `database/schema.sql` with foreign keys to `repos`, check constraints on state/author_type, and indexes for time-series queries.
 
+- Daily delivery-metrics sync for the Metrics tab (vigil#456, slice 3): `lib/metrics-sync.ts` maps GitHub issues and PRs to rows, upserts them idempotently, rebuilds the weekly rollups from the earliest touched week, and keeps a per-repo `since=` cursor (advanced only after a successful run) with `lib/github-cache.ts` ETags. `POST /api/metrics/sync` (bearer `METRICS_SYNC_SECRET`, system `GITHUB_TOKEN`) is called daily by `.github/workflows/metrics-sync.yml`; the four metrics tables are now also in the runtime migrations (`lib/schema-migrations.ts`).
+
 - Journeys health on repo details (last nightly run, flaky count, `@feature` coverage, open `bot:journey` / `bot:review` issues from the `bot/journeys` branch) and a PMO rollup that flags repos whose nightly journeys are red. Read server-side through the signed-in user's token (`/api/repos/[name]/journeys`, `/api/pmo/journeys`).
 
 - Security health badge ("Sec NN%") in the repo health row, scored with the same inputs as the Health Breakdown popup; "Sec —" when the repo has not been security-checked yet (vigil-340).

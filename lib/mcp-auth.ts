@@ -23,7 +23,7 @@ export type Scope = (typeof ALL_SCOPES)[number];
 export const MIN_SCOPED_KEY_LENGTH = 16;
 
 /** Constant-time compare of two secrets without hashing; only the length can leak. */
-function safeEqual(a: string, b: string): boolean {
+export function safeEqual(a: string, b: string): boolean {
   const ba = Buffer.from(a);
   const bb = Buffer.from(b);
   const len = Math.max(ba.length, bb.length, 1);
