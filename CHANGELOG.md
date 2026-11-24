@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Delivery metrics tables for the Metrics tab (vigil#456): `gh_issues`, `gh_prs`, `weekly_rollups`, and `metrics_sync_state` in `database/schema.sql` with foreign keys to `repos`, check constraints on state/author_type, and indexes for time-series queries.
+
 - Journeys health on repo details (last nightly run, flaky count, `@feature` coverage, open `bot:journey` / `bot:review` issues from the `bot/journeys` branch) and a PMO rollup that flags repos whose nightly journeys are red. Read server-side through the signed-in user's token (`/api/repos/[name]/journeys`, `/api/pmo/journeys`).
 
 - Security health badge ("Sec NN%") in the repo health row, scored with the same inputs as the Health Breakdown popup; "Sec —" when the repo has not been security-checked yet (vigil-340).
