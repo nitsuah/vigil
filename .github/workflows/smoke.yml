@@ -1,6 +1,7 @@
 name: Post-deploy smoke
 
-# After every merge to main, wait for Netlify to publish THAT commit, then run a
+# After every merge to main, wait for Cloudflare Workers Builds to publish THAT
+# commit to vigil.nitsuah.io (OpenNext Worker `gh-vigil`, see wrangler.jsonc), then run a
 # signed-out smoke test against the live site. Catches the class of failure the
 # unit tests can't: a deploy that builds green but is broken in production
 # (e.g. expanding a repo row crashing the whole page).
@@ -16,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  SITE_URL: https://gh-vigil.netlify.app
+  SITE_URL: https://vigil.nitsuah.io
 
 jobs:
   smoke:
@@ -26,12 +27,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # Netlify's production ignore rule compares the previous deployed
-          # commit with the current commit. Fetch history so this workflow can
-          # make the equivalent decision for the pushed commit range.
+          # The deploy-skip decision diffs the pushed commit range, so fetch
+          # history.
           fetch-depth: 0
 
-      - name: Check whether Netlify will build this commit
+      - name: Check whether this commit needs a deploy
         id: deploy
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -61,8 +61,10 @@ jobs:
             exit 0
           fi
 
-          # Keep this list aligned with [context.production].ignore in
-          # netlify.toml. Netlify intentionally skips builds for these paths.
+          # Paths that cannot change what the Worker serves. Keep this list
+          # aligned with the Workers Builds "Build watch paths" exclusions for
+          # gh-vigil (Cloudflare dashboard) and with [context.production].ignore
+          # in netlify.toml (rollback only).
           deploy_required=false
           while IFS= read -r path; do
             case "$path" in
@@ -77,7 +79,7 @@ jobs:
 
           echo "required=$deploy_required" >> "$GITHUB_OUTPUT"
           if [ "$deploy_required" = "false" ]; then
-            echo "Netlify's production ignore rule will skip this docs/test-only change; no new deploy SHA can become live."
+            echo "Docs/test-only change: Workers Builds skips it, so no new deploy SHA can become live."
           fi
 
       - name: Explain skipped deploy smoke
@@ -86,7 +88,7 @@ jobs:
           {
             echo "### Production smoke skipped"
             echo
-            echo "Netlify's production ignore rule skips this commit because it only changes paths excluded in `netlify.toml`."
+            echo "This commit only changes paths excluded from Workers Builds (see the list in this workflow), so no deploy is expected."
             echo "No production deploy is expected, so polling `/api/version` for this commit would time out by design."
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -97,7 +99,7 @@ jobs:
         run: |
           expected="$EXPECTED_SHA"
           echo "Waiting for $SITE_URL/api/version to report $expected"
-          body=$(mktemp); gone=0
+          body=$(mktemp)
           for attempt in $(seq 1 60); do
             status=$(curl -sS --max-time 15 -o "$body" -w '%{http_code}' "$SITE_URL/api/version" 2>/dev/null || echo 000)
             live=$(sed -n 's/.*"commit":"\([^"]*\)".*/\1/p' "$body")
@@ -106,21 +108,12 @@ jobs:
               echo "Deploy is live."
               exit 0
             fi
-            # Netlify answers a site name it doesn't know with a plain-text 404
-            # ("Not Found - Request ID: ..."). A renamed or deleted site never
-            # recovers, so fail now instead of waiting out the timeout.
-            if [ "$status" = 404 ] && grep -q '^Not Found - Request ID' "$body"; then
-              gone=$((gone + 1))
-              if [ "$gone" -ge 3 ]; then
-                echo "::error::No Netlify site at $SITE_URL (404 site-not-found, 3 times in a row). If the site was renamed, update SITE_URL here and SMOKE_URL in playwright.smoke.config.ts."
-                exit 1
-              fi
-            else
-              gone=0
-            fi
             sleep 20
           done
           echo "::error::Timed out waiting for $expected to be deployed (last seen: ${live:-none}, HTTP $status)"
+          if [ "$live" = "dev" ]; then
+            echo "::error::The live Worker reports 'dev': it was deployed without a commit SHA, or Workers Builds is not connected to this repo, so merges never deploy. See #353."
+          fi
           exit 1
 
       - name: Setup Node.js
