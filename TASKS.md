@@ -2,7 +2,7 @@
 
 > 🧭 [vigil](./README.md) · [Features](./FEATURES.md) · [Roadmap](./ROADMAP.md) · **Tasks** · [Changelog](./CHANGELOG.md) · [Metrics](./METRICS.md) <!-- nav -->
 
-updated: 2026-10-24
+updated: 2026-11-23
 
 ## In Progress
 
@@ -118,6 +118,7 @@ _None open. The rate-limiter identity item is under Done._
 
 _Condensed, one line per item. Full detail lives in FEATURES.md and CHANGELOG.md. The section must stay, because vigil's own TASKS parser expects Done / In Progress / Todo._
 
+- [x] Done 2026-11-23: Post-deploy smoke fixed for the Cloudflare move: `/api/version` stamps the git HEAD on hand deploys, smoke polls vigil.nitsuah.io, `netlify.toml` marked rollback-only (#353). Connecting Workers Builds to the repo is a dashboard step, tracked on #353.
 - [x] Done 2026-10-28: Journeys review findings, 2026-10-09, all fixed: confirmed relationships under "Needs review" (#276, fixed in #333), relationship graph edges crossing node labels (#277, fixed in #323), Pages site not linking the live dashboard (#279, fixed in #328).
 - [x] Done 2026-10-24: Tasks card now leads with the highest-priority group (P0 → P3) and collapses the lower-priority groups (#275).
 - [x] Done 2026-10-15: Showcase rollout: Pages + `/brag` spots live for vhs, skyview and nitsuah-io, Actions PRs on for vigil, fire and motor-pool (showcase board scan 2026-10-15).

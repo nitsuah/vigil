@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `/api/version` reports the real commit on Cloudflare Workers: the build falls back to `git rev-parse HEAD` when no CI commit variable is set, so a hand-run `npm run cf:deploy` no longer stamps the Worker `dev`. The post-deploy smoke workflow now polls `https://vigil.nitsuah.io` (it was still polling the retired Netlify site, which answers 503) and explains a `dev` timeout; `netlify.toml` is marked rollback-only (#353).
 - The link-preview image (`/og-1200x630.jpg`) and app icon (`/icon.svg`) no longer redirect to `/login`. The proxy matcher's asset exclusions use escaped dots, so look-alike paths still go through the login check. The MCP docs point at the current host (#454, #455).
 - Repository sync now reports `partial` for the detailed-health phase and overall completion when a non-fatal step (best practices, community standards, health score) fails for a repo, instead of `success` (#437). `syncRepo()` returns a `partialSteps` count; the repo-level failed count is unchanged and no error text is added to telemetry.
 - Unit tests no longer call the live Gemini API: `tests/gemini-health.test.ts` exercises the health-check logic (now `scripts/gemini-health-check.mjs`) through a fake client, and CI's unit-test step no longer receives `GEMINI_API_KEY`. The 10 s live probe was flaking main CI on slow or rate-limited responses; the live check is still `npm run test-gemini-health` in the Netlify build.

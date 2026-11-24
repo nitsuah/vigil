@@ -1,3 +1,4 @@
+# Rollback path only -- see the note above [context.production].
 [build]
   command = "npm run test-gemini-health || true && npm run build"
   publish = ".next"
@@ -5,6 +6,10 @@
 [build.environment]
   SECRETS_SCAN_OMIT_PATHS = ".netlify/.next/cache/**"
 
+# ROLLBACK ONLY: production is served by Cloudflare Workers (wrangler.jsonc); the
+# Netlify site no longer serves vigil.nitsuah.io. The exclusion list below must
+# stay in step with the skip list in .github/workflows/smoke.yml and the Workers
+# Builds "Build watch paths" for gh-vigil.
 # Every production deploy costs Netlify credits, so skip the ones that cannot change
 # what is served (docs, tests, CI config, promo assets). Exit 0 = no relevant changes =
 # skip; an empty CACHED_COMMIT_REF or COMMIT_REF is guarded explicitly (exit 1 = build), so it fails open.
