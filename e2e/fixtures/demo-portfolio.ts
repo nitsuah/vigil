@@ -119,6 +119,52 @@ export const JOURNEYS_ROLLUP = {
   })),
 };
 
+
+/** Delivery metrics on /metrics: 12 fixed weeks ending 2026-W39, two repos, a rising scope line. */
+export const METRICS_OVERVIEW = (() => {
+  const weeks = Array.from({ length: 12 }, (_, i) => `2026-W${String(28 + i).padStart(2, '0')}`);
+  const row = (isoWeek: string, i: number, k: number) => ({
+    isoWeek, issuesOpened: 2 + ((i * k) % 4), issuesClosed: 1 + ((i * (k + 1)) % 5), leafClosed: 1 + ((i * (k + 1)) % 4),
+    scopeEnd: 6 + i * k, prsOpened: 3 + (i % 3), prsMerged: 2 + (i % 4), bugsOpened: i % 3, bugsClosed: (i + 1) % 3,
+    impPrsOpened: i % 2, impPrsMerged: i % 2, leadTimeP50Hours: i === 5 ? null : 3 + (i % 5) * 1.5, leadTimeP90Hours: i === 5 ? null : 9 + (i % 5) * 3,
+  });
+  const vigil = weeks.map((w, i) => row(w, i, 1));
+  const skyview = weeks.map((w, i) => row(w, i, 2));
+  const sum = (key: keyof ReturnType<typeof row>) => weeks.map((_, i) => Number(vigil[i][key]) + Number(skyview[i][key]));
+  const series = weeks.map((isoWeek, i) => ({
+    ...row(isoWeek, i, 1),
+    issuesOpened: sum('issuesOpened')[i], issuesClosed: sum('issuesClosed')[i], leafClosed: sum('leafClosed')[i], scopeEnd: sum('scopeEnd')[i],
+    prsMerged: sum('prsMerged')[i], bugsOpened: sum('bugsOpened')[i], bugsClosed: sum('bugsClosed')[i], impPrsMerged: sum('impPrsMerged')[i],
+  }));
+  const metric = (key: string, label: string, unit: 'count' | 'hours', current: number | null, previousAvg: number | null, direction: string) => ({
+    key, label, unit, current, previousAvg, delta: current === null || previousAvg === null ? null : Math.round((current - previousAvg) * 100) / 100, direction,
+  });
+  const cur = series[11];
+  return {
+    scorecard: {
+      week: '2026-W39',
+      bugInflowExceedsFix: cur.bugsOpened > cur.bugsClosed,
+      metrics: [
+        metric('issuesOpened', 'Issues opened', 'count', cur.issuesOpened, 6.5, 'neutral'),
+        metric('issuesClosed', 'Issues closed', 'count', cur.issuesClosed, 5, 'good'),
+        metric('netBurn', 'Net burn (closed - opened)', 'count', cur.issuesClosed - cur.issuesOpened, -1.5, 'good'),
+        metric('prsMerged', 'PRs merged', 'count', cur.prsMerged, 6, 'bad'),
+        metric('leadTimeP50Hours', 'Merge lead time p50', 'hours', cur.leadTimeP50Hours, 5.25, 'good'),
+        metric('bugsOpened', 'Bugs opened', 'count', cur.bugsOpened, 2, 'bad'),
+        metric('bugsClosed', 'Bugs fixed', 'count', cur.bugsClosed, 2, 'neutral'),
+        metric('impPrsMerged', 'imp PRs merged', 'count', cur.impPrsMerged, 1, 'good'),
+      ],
+    },
+    series,
+    repos: [['vigil', vigil], ['skyview', skyview]].map(([name, rows]) => ({
+      id: name, name, full_name: `nitsuah/${name as string}`, current: (rows as typeof vigil)[11], series: rows,
+    })),
+    available: [{ full_name: 'nitsuah/skyview', name: 'skyview' }, { full_name: 'nitsuah/vigil', name: 'vigil' }],
+    weeks,
+    filters: { repos: [], label: null, authorType: null, weeks: 12 },
+  };
+})();
+
 export async function mockApi(target: Page | BrowserContext): Promise<void> {
   const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   await target.route('**/api/repos?*', (route) => route.fulfill(json(REPOS)));
@@ -129,6 +175,7 @@ export async function mockApi(target: Page | BrowserContext): Promise<void> {
   await target.route('**/api/github-rate-limit', (route) => route.fulfill(json({ core: { remaining: 5000, limit: 5000, reset: 0 } })));
   await target.route('**/api/pmo/overview', (route) => route.fulfill(json(PMO)));
   await target.route('**/api/pmo/journeys', (route) => route.fulfill(json(JOURNEYS_ROLLUP)));
+  await target.route('**/api/metrics/overview*', (route) => route.fulfill(json(METRICS_OVERVIEW)));
   await target.route('**/api/pmo/tasks?*', (route) => route.fulfill(json(OPEN_TASKS)));
 }
 

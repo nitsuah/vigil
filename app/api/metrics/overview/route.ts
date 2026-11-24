@@ -20,6 +20,8 @@ export interface MetricsOverview {
     /** Portfolio rows (summed over the selected repos), one per week, oldest first. */
     series: WeeklyRollup[];
     repos: RepoWeekly[];
+    /** Every repo the viewer may filter on, whatever the current filter selects. */
+    available: Array<{ full_name: string; name: string }>;
     weeks: string[];
     filters: { repos: string[]; label: string | null; authorType: string | null; weeks: number };
 }
@@ -132,6 +134,7 @@ export async function GET(request: Request) {
             scorecard,
             series: fullSeries.slice(-weeksParam),
             repos: repoSummaries,
+            available: allRepos.map((r) => ({ full_name: r.full_name, name: r.name })),
             weeks: shown,
             filters: { repos: wanted, label, authorType, weeks: weeksParam },
         };

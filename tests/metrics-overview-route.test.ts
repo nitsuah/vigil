@@ -72,6 +72,7 @@ describe('GET /api/metrics/overview', () => {
         (getNeonClient as Mock).mockReturnValue(makeDb().db);
         const body = await (await GET(req('?repos=nitsuah/secret'))).json();
         expect(body.repos).toEqual([]);
+        expect(body.available).toEqual([{ full_name: 'nitsuah/vigil', name: 'vigil' }]);
         expect(body.scorecard.metrics.find((m: { key: string }) => m.key === 'issuesClosed').current).toBe(0);
     });
 
