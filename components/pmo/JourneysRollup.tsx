@@ -41,8 +41,9 @@ export function JourneysRollup({ refreshKey }: { refreshKey?: number }) {
 
     const repos = state.kind === 'ready' ? [...state.repos].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name)) : [];
     const red = repos.filter((r) => r.health?.status === 'red');
-    const allGreen = repos.every((r) => r.health?.status === 'green');
     const skipped = state.kind === 'ready' ? state.skipped : 0;
+    // Unchecked repos could be red, so a partial rollup is never "all green".
+    const allGreen = skipped === 0 && repos.every((r) => r.health?.status === 'green');
 
     if (state.kind === 'ready' && repos.length === 0) return null;
 

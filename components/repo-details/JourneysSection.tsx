@@ -40,7 +40,10 @@ function IssueCount({ count, capped, href }: { count: number; capped: boolean; h
 }
 
 export function JourneysSection({ repoName, repoUrl, practiceStatus, isAuthenticated }: JourneysSectionProps) {
-    const [state, setState] = useState<LoadState>({ kind: 'loading' });
+    // Results are tagged with the repo they belong to, so a new repoName shows
+    // loading instead of the previous repo's numbers.
+    const [loaded, setLoaded] = useState<{ repo?: string; state: LoadState }>({ state: { kind: 'loading' } });
+    const state: LoadState = loaded.repo === repoName ? loaded.state : { kind: 'loading' };
     const [attempt, setAttempt] = useState(0);
     const hasNightly = practiceStatus === 'healthy';
 
@@ -52,9 +55,9 @@ export function JourneysSection({ repoName, repoUrl, practiceStatus, isAuthentic
                 const res = await fetch(`/api/repos/${encodeURIComponent(repoName)}/journeys`, { signal: controller.signal });
                 if (!res.ok) throw new Error(String(res.status));
                 const body = await res.json() as { health: JourneysHealth };
-                setState({ kind: 'ready', health: body.health });
+                setLoaded({ repo: repoName, state: { kind: 'ready', health: body.health } });
             } catch (err) {
-                if ((err as Error).name !== 'AbortError') setState({ kind: 'error' });
+                if ((err as Error).name !== 'AbortError') setLoaded({ repo: repoName, state: { kind: 'error' } });
             }
         })();
         return () => controller.abort();
@@ -87,7 +90,7 @@ export function JourneysSection({ repoName, repoUrl, practiceStatus, isAuthentic
                         <span>Could not read journeys results from GitHub.</span>
                         <button
                             type="button"
-                            onClick={() => { setState({ kind: 'loading' }); setAttempt((n) => n + 1); }}
+                            onClick={() => { setLoaded({ repo: repoName, state: { kind: 'loading' } }); setAttempt((n) => n + 1); }}
                             className="px-2 py-0.5 rounded border border-red-500/40 hover:bg-red-500/10"
                         >
                             Retry
