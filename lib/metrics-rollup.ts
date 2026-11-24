@@ -64,7 +64,9 @@ export function classifyAuthor(
 export function parseParentNumber(body: string | null | undefined): number | null {
     if (!body) return null;
     const m = /(?:split from|child of|parent:?)\s+(?:[\w.-]+\/[\w.-]+)?#(\d+)/i.exec(body);
-    return m ? Number(m[1]) : null;
+    if (!m) return null;
+    const n = Number(m[1]);
+    return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
 /** ISO week label such as '2026-W47' for a date, in UTC. */
@@ -85,6 +87,8 @@ export function isoWeekRange(isoWeek: string): { start: Date; end: Date } {
     const jan4 = new Date(Date.UTC(Number(m[1]), 0, 4));
     const week1Monday = jan4.getTime() - ((jan4.getUTCDay() + 6) % 7) * DAY_MS;
     const start = new Date(week1Monday + (Number(m[2]) - 1) * 7 * DAY_MS);
+    // Reject labels that do not exist (W00, W53 in a 52-week year): the label must round-trip.
+    if (isoWeekOf(start) !== isoWeek) throw new Error(`Invalid ISO week: ${isoWeek}`);
     return { start, end: new Date(start.getTime() + 7 * DAY_MS) };
 }
 

@@ -54,6 +54,12 @@ describe('parseParentNumber', () => {
     it('returns null when there is no parent reference', () => {
         expect(parseParentNumber('Fixes #5')).toBeNull();
         expect(parseParentNumber('')).toBeNull();
+    });
+
+    it('rejects zero and unsafe parent numbers', () => {
+        expect(parseParentNumber('Parent: #0')).toBeNull();
+        expect(parseParentNumber('Child of #9007199254740993')).toBeNull();
+        expect(parseParentNumber('Child of #9007199254740991')).toBe(9007199254740991);
         expect(parseParentNumber(null)).toBeNull();
     });
 });
@@ -155,5 +161,22 @@ describe('computeWeeklyRollup', () => {
             leadTimeP50Hours: null,
             leadTimeP90Hours: null,
         });
+    });
+});
+
+describe('isoWeekRange validation', () => {
+    it('rejects week labels that do not exist', () => {
+        expect(() => isoWeekRange('2026-W00')).toThrow('Invalid ISO week');
+        expect(() => isoWeekRange('2025-W53')).toThrow('Invalid ISO week');
+        expect(() => isoWeekRange('2026-W54')).toThrow('Invalid ISO week');
+    });
+
+    it('accepts real week 53 and week 52 labels', () => {
+        expect(isoWeekRange('2026-W53').start.toISOString()).toBe('2026-12-28T00:00:00.000Z');
+        expect(isoWeekRange('2025-W52').start.toISOString()).toBe('2025-12-22T00:00:00.000Z');
+    });
+
+    it('computeWeeklyRollup refuses a nonexistent week', () => {
+        expect(() => computeWeeklyRollup([], [], '2025-W53')).toThrow('Invalid ISO week');
     });
 });
