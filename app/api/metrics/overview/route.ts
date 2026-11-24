@@ -124,7 +124,7 @@ export async function GET(request: Request) {
         const fullSeries = sumWeekly(perRepoRows, queryWeeks, ids.map((id) => seed.get(id) ?? 0));
         const scorecard = buildScorecard(fullSeries, new Date());
         const repoSummaries: RepoWeekly[] = repos.map((r, i) => {
-            const series = sumWeekly([perRepoRows[i]], shown, [seed.get(r.id) ?? 0]);
+            const series = sumWeekly([perRepoRows[i]], queryWeeks, [seed.get(r.id) ?? 0]).slice(-weeksParam);
             return { id: r.id, name: r.name, full_name: r.full_name, current: series[series.length - 1], series };
         });
 
