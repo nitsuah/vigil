@@ -104,6 +104,21 @@ export const RELATIONSHIPS = (() => {
   };
 })();
 
+/** Nightly Journeys rollup on /pmo: fixed rows, so the section never shows a load error. */
+export const JOURNEYS_ROLLUP = {
+  skipped: 0,
+  repos: [
+    ['skyview', 8, 8], ['vigil', 12, 12],
+  ].map(([name, total, passed]) => ({
+    name, full_name: `nitsuah/${name}`,
+    health: {
+      status: 'green', lastRunDate: '2026-09-25', lastRunUrl: `https://github.com/nitsuah/${name}/actions/runs/1`,
+      total, passed, failed: 0, flaky: 0, coverage: null,
+      openJourneyIssues: 0, openReviewIssues: 0, journeyIssuesCapped: false, reviewIssuesCapped: false,
+    },
+  })),
+};
+
 export async function mockApi(target: Page | BrowserContext): Promise<void> {
   const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   await target.route('**/api/repos?*', (route) => route.fulfill(json(REPOS)));
@@ -113,6 +128,7 @@ export async function mockApi(target: Page | BrowserContext): Promise<void> {
   await target.route('**/api/gemini-status', (route) => route.fulfill(json({ status: 'ok' })));
   await target.route('**/api/github-rate-limit', (route) => route.fulfill(json({ core: { remaining: 5000, limit: 5000, reset: 0 } })));
   await target.route('**/api/pmo/overview', (route) => route.fulfill(json(PMO)));
+  await target.route('**/api/pmo/journeys', (route) => route.fulfill(json(JOURNEYS_ROLLUP)));
   await target.route('**/api/pmo/tasks?*', (route) => route.fulfill(json(OPEN_TASKS)));
 }
 

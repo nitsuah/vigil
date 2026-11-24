@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The nightly PMO journeys mock `/api/pmo/journeys` in the demo fixture, so the Nightly Journeys section renders fixed rows instead of a load error; PMO and relationship-map baselines refreshed (#335, #336).
+
 ### Security
 
 - CI/deploy badge URL patterns (GitHub Actions, GitLab, CircleCI, Travis) are now linear, segment-based expressions instead of lazy wildcards.
