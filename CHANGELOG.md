@@ -49,6 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `/metrics` page (vigil#456, slice 5): weekly scorecard, burn-up, opened-vs-closed and lead-time charts (inline SVG, no new dependency), a per-repo table, and repo / label / author-type / range filters kept in the URL for shareable links. `GET /api/metrics/overview` also returns `available` (the repos the viewer may filter on). A Metrics link sits next to PMO in the header.
 
+- Weekly metrics digest (vigil#456, slice 6): the portfolio `GET /api/context` now returns `metrics` (`week`, `scorecard`, and a markdown `digest` from `lib/metrics-digest.ts`) for the repos the caller can see, so the weekly state-of-the-union shows the same numbers as `/metrics`. If the metrics tables cannot be read, `metrics` is `null` and the rest of the context is unaffected.
+
 - Journeys health on repo details (last nightly run, flaky count, `@feature` coverage, open `bot:journey` / `bot:review` issues from the `bot/journeys` branch) and a PMO rollup that flags repos whose nightly journeys are red. Read server-side through the signed-in user's token (`/api/repos/[name]/journeys`, `/api/pmo/journeys`).
 
 - Security health badge ("Sec NN%") in the repo health row, scored with the same inputs as the Health Breakdown popup; "Sec —" when the repo has not been security-checked yet (vigil-340).
