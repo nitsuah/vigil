@@ -6,6 +6,8 @@ import {
   deleteSyncProgress,
   getProgressPercentage,
   getProgressWithPercentage,
+  getSyncSession,
+  advanceSyncSession,
   SyncProgress
 } from '../lib/sync-progress';
 
@@ -119,6 +121,7 @@ test('getSyncProgress returns progress when found', async () => {
     completedRepos: 5,
     currentRepo: 'repo-1',
     phase: 'metadata',
+    failedRepos: 0,
     startedAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-01T00:01:00Z'),
   });
@@ -250,7 +253,8 @@ test('createSyncProgress reaps abandoned sessions before inserting', async () =>
   await createSyncProgress('test-1', 'user-1', 3);
 
   expect(mockQuery.mock.calls[0][0]).toContain('DELETE FROM sync_progress WHERE updated_at <');
-  expect(mockQuery.mock.calls[1][0]).toContain('INSERT INTO sync_progress');
+  expect(mockQuery.mock.calls[1][0]).toContain('DELETE FROM sync_progress WHERE github_user_id');
+  expect(mockQuery.mock.calls[2][0]).toContain('INSERT INTO sync_progress');
 });
 
 test('updateSyncProgress does nothing with empty updates', async () => {
@@ -288,6 +292,7 @@ test('getProgressWithPercentage adds percentage', async () => {
     completedRepos: 5,
     currentRepo: 'repo-1',
     phase: 'metadata',
+    failedRepos: 0,
     startedAt: new Date('2024-01-01T00:00:00Z'),
     updatedAt: new Date('2024-01-01T00:01:00Z'),
     progressPercentage: 50,
@@ -305,4 +310,63 @@ test('getProgressWithPercentage returns undefined when not found', async () => {
   const result = await getProgressWithPercentage('nonexistent', 'user-1');
 
   expect(result).toBeUndefined();
+});
+
+// --- chunked sync (#305) ---------------------------------------------------
+
+test('createSyncProgress stores the queue and supersedes unfinished runs of the same user', async () => {
+  await createSyncProgress('s-new', 'user-1', 2, [
+    { owner: 'o', name: 'a', fullName: 'o/a', isDefault: false },
+    { owner: 'o', name: 'b', fullName: 'o/b', isDefault: true },
+  ]);
+  const queries = mockQuery.mock.calls.map((c) => c[0] as string);
+  expect(queries.some((q) => q.includes('DELETE FROM sync_progress') && q.includes("phase IN ('metadata', 'health')"))).toBe(true);
+  const insert = mockQuery.mock.calls.find((c) => (c[0] as string).includes('INSERT INTO sync_progress'))!;
+  expect(insert[1]).toEqual(expect.arrayContaining(['s-new', 'user-1', 2, 'metadata']));
+  expect(JSON.parse(insert[1].find((v: unknown) => typeof v === 'string' && v.startsWith('[')))).toHaveLength(2);
+});
+
+test('createSyncProgress records an empty run as already complete', async () => {
+  await createSyncProgress('s-empty', 'user-1', 0);
+  const insert = mockQuery.mock.calls.find((c) => (c[0] as string).includes('INSERT INTO sync_progress'))!;
+  expect(insert[1]).toContain('complete');
+});
+
+test('getSyncSession returns the queue and cursor, null queue for a legacy row', async () => {
+  const row = {
+    session_id: 's1', github_user_id: 'u', total_repos: 1, completed_repos: 0, current_repo: '', phase: 'metadata',
+    failed_repos: null, cursor: null, started_at: '2026-11-01T00:00:00Z', updated_at: '2026-11-01T00:00:00Z',
+  };
+  mockQuery.mockResolvedValueOnce([{ ...row, queue: [{ owner: 'o', name: 'a', fullName: 'o/a' }], cursor: 2 }]);
+  const fresh = await getSyncSession('s1', 'u');
+  expect(fresh?.queue).toEqual([{ owner: 'o', name: 'a', fullName: 'o/a', isDefault: false }]);
+  expect(fresh?.cursor).toBe(2);
+  expect(fresh?.failedRepos).toBe(0);
+
+  mockQuery.mockResolvedValueOnce([{ ...row, queue: null }]);
+  const legacy = await getSyncSession('s1', 'u');
+  expect(legacy?.queue).toBeNull();
+  expect(legacy?.cursor).toBe(0);
+
+  mockQuery.mockResolvedValueOnce([]);
+  expect(await getSyncSession('s1', 'someone-else')).toBeUndefined();
+});
+
+test('advanceSyncSession pins the starting phase and cursor, and reports a lost race', async () => {
+  mockQuery.mockResolvedValueOnce([{ session_id: 's1' }]);
+  const won = await advanceSyncSession({
+    sessionId: 's1', githubUserId: 'u', from: { phase: 'metadata', cursor: 3 },
+    to: { phase: 'health', cursor: 0, completedRepos: 0 }, failedDelta: 1, currentRepo: 'o/a',
+  });
+  expect(won).toBe(true);
+  const [query, values] = mockQuery.mock.calls.at(-1)!;
+  expect(query).toContain('AND phase =');
+  expect(query).toContain('AND cursor =');
+  expect(values).toEqual(expect.arrayContaining(['s1', 'u', 'metadata', 3, 'health', 1]));
+
+  mockQuery.mockResolvedValueOnce([]);
+  expect(await advanceSyncSession({
+    sessionId: 's1', githubUserId: 'u', from: { phase: 'metadata', cursor: 3 },
+    to: { phase: 'health', cursor: 0, completedRepos: 0 }, failedDelta: 0, currentRepo: '',
+  })).toBe(false);
 });

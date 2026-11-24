@@ -1,0 +1,197 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { SyncSession } from '@/lib/sync-progress';
+
+const m = vi.hoisted(() => ({
+    auth: vi.fn(),
+    getSyncSession: vi.fn(),
+    advanceSyncSession: vi.fn(),
+    updateSyncProgress: vi.fn(),
+    syncRepo: vi.fn(),
+    syncRepoMetadata: vi.fn(),
+    grantRepoAccess: vi.fn(),
+    getRepo: vi.fn(),
+    getRateLimit: vi.fn(),
+    transaction: vi.fn(),
+}));
+
+vi.mock('@/auth', () => ({ auth: () => m.auth() }));
+vi.mock('@/lib/log', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
+vi.mock('@/lib/db', () => ({
+    ensureSchema: vi.fn(async () => undefined),
+    getNeonClient: () => Object.assign(vi.fn(async () => []), { transaction: m.transaction }),
+}));
+vi.mock('@/lib/sync', () => ({ syncRepo: m.syncRepo, syncRepoMetadata: m.syncRepoMetadata }));
+vi.mock('@/lib/repo-access', () => ({ grantRepoAccess: m.grantRepoAccess }));
+vi.mock('@/lib/github', () => ({
+    GitHubClient: class {
+        getRepo = m.getRepo;
+        getRateLimit = m.getRateLimit;
+    },
+}));
+vi.mock('@/lib/sync-progress', async () => {
+    const actual = await vi.importActual<typeof import('@/lib/sync-progress')>('@/lib/sync-progress');
+    return {
+        ...actual,
+        getSyncSession: m.getSyncSession,
+        advanceSyncSession: m.advanceSyncSession,
+        updateSyncProgress: m.updateSyncProgress,
+    };
+});
+
+import { NextRequest } from 'next/server';
+import { POST } from '@/app/api/sync-repos/batch/route';
+
+const item = (n: string, isDefault = false) => ({ owner: 'o', name: n, fullName: `o/${n}`, isDefault });
+const session = (over: Partial<SyncSession> = {}): SyncSession => ({
+    sessionId: 's1', githubUserId: '42', totalRepos: 4, completedRepos: 0, currentRepo: '', phase: 'metadata',
+    failedRepos: 0, startedAt: new Date('2026-11-24T10:00:00Z'), updatedAt: new Date(),
+    queue: [item('a'), item('b'), item('c'), item('d')], cursor: 0, ...over,
+});
+const call = (body: unknown) =>
+    POST(new NextRequest('http://localhost/api/sync-repos/batch', { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body) }));
+
+beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.GITHUB_TOKEN;
+    m.auth.mockResolvedValue({ user: { name: 'x' }, userId: '42', accessToken: 'tok' });
+    m.getSyncSession.mockResolvedValue(session());
+    m.advanceSyncSession.mockResolvedValue(true);
+    m.getRateLimit.mockResolvedValue({ limit: 5000, remaining: 4000, reset: Math.floor(Date.now() / 1000) + 600 });
+    m.getRepo.mockImplementation(async (owner: string, name: string) => ({ name, fullName: `${owner}/${name}` }));
+    m.syncRepo.mockResolvedValue({ partialSteps: 0 });
+    m.syncRepoMetadata.mockResolvedValue(undefined);
+    m.grantRepoAccess.mockResolvedValue(undefined);
+    m.updateSyncProgress.mockResolvedValue(undefined);
+    m.transaction.mockResolvedValue([]);
+});
+
+describe('POST /api/sync-repos/batch', () => {
+    it('rejects bad bodies and unauthenticated callers without touching the run', async () => {
+        expect((await call('not json')).status).toBe(400);
+        expect((await call({})).status).toBe(400);
+        m.auth.mockResolvedValue(null);
+        expect((await call({ sessionId: 's1' })).status).toBe(401);
+        m.auth.mockResolvedValue({ user: {}, userId: '42' }); // no GitHub token
+        expect((await call({ sessionId: 's1' })).status).toBe(401);
+        expect(m.getSyncSession).not.toHaveBeenCalled();
+    });
+
+    it('reports an unknown or foreign run as 404', async () => {
+        m.getSyncSession.mockResolvedValue(undefined);
+        expect((await call({ sessionId: 'nope' })).status).toBe(404);
+        expect(m.getSyncSession).toHaveBeenCalledWith('nope', '42');
+    });
+
+    it('answers 409 for a legacy row stuck in metadata with no queue', async () => {
+        m.getSyncSession.mockResolvedValue(session({ queue: null }));
+        const res = await call({ sessionId: 's1' });
+        expect(res.status).toBe(409);
+        expect((await res.json()).restartable).toBe(true);
+        expect(m.syncRepoMetadata).not.toHaveBeenCalled();
+    });
+
+    it('returns a finished run as-is and does no work', async () => {
+        m.getSyncSession.mockResolvedValue(session({ phase: 'complete', completedRepos: 4 }));
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(body).toMatchObject({ phase: 'complete', done: true });
+        expect(m.getRepo).not.toHaveBeenCalled();
+    });
+
+    it('runs a metadata batch of three, awaited, and advances the cursor', async () => {
+        const res = await call({ sessionId: 's1' });
+        const body = await res.json();
+        expect(m.syncRepoMetadata).toHaveBeenCalledTimes(3);
+        expect(m.grantRepoAccess).toHaveBeenCalledTimes(3);
+        expect(m.syncRepo).not.toHaveBeenCalled();
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({
+            from: { phase: 'metadata', cursor: 0 },
+            to: { phase: 'metadata', cursor: 3, completedRepos: 0 },
+            failedDelta: 0,
+        }));
+        expect(body).toMatchObject({ phase: 'metadata', cursor: 3, done: false, failedRepos: 0 });
+    });
+
+    it('moves to the health pass after the last metadata batch', async () => {
+        m.getSyncSession.mockResolvedValue(session({ cursor: 3 }));
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(m.syncRepoMetadata).toHaveBeenCalledTimes(1);
+        expect(body).toMatchObject({ phase: 'health', cursor: 0, completedRepos: 0 });
+    });
+
+    it('health batches take one repo and count it as completed', async () => {
+        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 1, completedRepos: 1 }));
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(m.syncRepo).toHaveBeenCalledTimes(1);
+        expect(m.syncRepoMetadata).not.toHaveBeenCalled();
+        expect(body).toMatchObject({ phase: 'health', cursor: 2, completedRepos: 2, progressPercentage: 50 });
+    });
+
+    it('completes after the last health check and stamps last_sync_at from the run start', async () => {
+        m.getSyncSession.mockResolvedValue(session({ phase: 'health', cursor: 3, completedRepos: 3 }));
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(body).toMatchObject({ phase: 'complete', done: true, currentRepo: 'Complete', progressPercentage: 100 });
+        expect(m.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('records a failing repo and still advances past it', async () => {
+        m.syncRepoMetadata.mockRejectedValueOnce(new Error('boom'));
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 1 }));
+        expect(body).toMatchObject({ cursor: 3, failedRepos: 1 });
+        expect(m.syncRepoMetadata).toHaveBeenCalledTimes(3);
+    });
+
+    it('skip advances without any GitHub or database work and counts the batch as failed', async () => {
+        const body = await (await call({ sessionId: 's1', skip: true })).json();
+        expect(m.getRepo).not.toHaveBeenCalled();
+        expect(m.syncRepoMetadata).not.toHaveBeenCalled();
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 3 }));
+        expect(body.failedRepos).toBe(3);
+    });
+
+    it('stops the run with a reset time when the quota is low, before doing work', async () => {
+        m.getRateLimit.mockResolvedValue({ limit: 5000, remaining: 10, reset: Math.floor(Date.now() / 1000) + 1380 });
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(body.phase).toBe('error');
+        expect(body.currentRepo).toMatch(/rate limit reached after 0 of 4 repos · resets in 23 min/);
+        expect(m.updateSyncProgress).toHaveBeenCalledWith('s1', expect.objectContaining({ phase: 'error' }));
+        expect(m.syncRepoMetadata).not.toHaveBeenCalled();
+    });
+
+    it('stops the run when the quota runs out mid-batch', async () => {
+        const exhausted = Object.assign(new Error('rate limited'), {
+            status: 403,
+            response: { status: 403, headers: { 'x-ratelimit-limit': '5000', 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 600) } },
+        });
+        m.syncRepoMetadata.mockRejectedValueOnce(exhausted);
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(body.phase).toBe('error');
+        expect(m.advanceSyncSession).not.toHaveBeenCalled();
+    });
+
+    it('does not count a default repo the user token cannot read as a failure', async () => {
+        m.getSyncSession.mockResolvedValue(session({ queue: [item('a'), item('pub', true)], totalRepos: 2, cursor: 0 }));
+        m.getRepo.mockImplementation(async (_o: string, name: string) => {
+            if (name === 'pub') throw new Error('Not Found');
+            return { name, fullName: `o/${name}` };
+        });
+        await call({ sessionId: 's1' });
+        expect(m.advanceSyncSession).toHaveBeenCalledWith(expect.objectContaining({ failedDelta: 0 }));
+        expect(m.grantRepoAccess).toHaveBeenCalledTimes(1); // only the user's own repo
+    });
+
+    it('reports where the run is when a second driver advanced it first', async () => {
+        m.advanceSyncSession.mockResolvedValue(false);
+        m.getSyncSession.mockResolvedValueOnce(session()).mockResolvedValueOnce(session({ cursor: 3 }));
+        const body = await (await call({ sessionId: 's1' })).json();
+        expect(body).toMatchObject({ stale: true, cursor: 3 });
+        expect(m.transaction).not.toHaveBeenCalled();
+    });
+
+    it('returns 500 with a generic message when the run state cannot be read', async () => {
+        m.getSyncSession.mockRejectedValue(new Error('connection string leaked'));
+        const res = await call({ sessionId: 's1' });
+        expect(res.status).toBe(500);
+        expect(JSON.stringify(await res.json())).not.toContain('leaked');
+    });
+});

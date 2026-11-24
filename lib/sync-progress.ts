@@ -2,6 +2,7 @@
 // Replaces in-memory Map to persist across serverless invocations
 
 import { getNeonClient } from './db';
+import { parseQueue, type AdvanceResult, type BatchPhase, type QueueItem } from './sync-batch';
 
 export interface SyncProgress {
   sessionId: string;
@@ -10,6 +11,8 @@ export interface SyncProgress {
   completedRepos: number;
   currentRepo: string;
   phase: 'metadata' | 'health' | 'complete' | 'error';
+  /** Repos that failed or were skipped; the run still completes. */
+  failedRepos: number;
   startedAt: Date;
   updatedAt: Date;
 }
@@ -18,19 +21,29 @@ export interface SyncProgress {
 // anything untouched this long is abandoned (tab closed, crashed sync).
 const RETENTION_INTERVAL = '1 day';
 
-export async function createSyncProgress(sessionId: string, githubUserId: string, totalRepos: number): Promise<void> {
+export async function createSyncProgress(
+  sessionId: string,
+  githubUserId: string,
+  totalRepos: number,
+  queue: QueueItem[] = [],
+): Promise<void> {
   const db = getNeonClient();
   // Reap abandoned sessions so the table can't grow without bound.
   await db`DELETE FROM sync_progress WHERE updated_at < NOW() - ${RETENTION_INTERVAL}::interval`;
+  // A new run supersedes this user's unfinished ones (including legacy rows
+  // stuck in 'metadata' from before sync was client-driven).
+  await db`DELETE FROM sync_progress WHERE github_user_id = ${githubUserId} AND phase IN ('metadata', 'health')`;
+  // Nothing to do: record a finished run so the client doesn't wait on batches.
+  const phase = totalRepos === 0 ? 'complete' : 'metadata';
   await db`
-    INSERT INTO sync_progress (session_id, github_user_id, total_repos, completed_repos, current_repo, phase)
-    VALUES (${sessionId}, ${githubUserId}, ${totalRepos}, 0, '', 'metadata')
+    INSERT INTO sync_progress (session_id, github_user_id, total_repos, completed_repos, current_repo, phase, queue, cursor, failed_repos)
+    VALUES (${sessionId}, ${githubUserId}, ${totalRepos}, 0, '', ${phase}, ${JSON.stringify(queue)}::jsonb, 0, 0)
   `;
 }
 
 export async function updateSyncProgress(
   sessionId: string,
-  updates: Partial<Omit<SyncProgress, 'sessionId' | 'githubUserId' | 'startedAt' | 'updatedAt'>>
+  updates: Partial<Omit<SyncProgress, 'sessionId' | 'githubUserId' | 'startedAt' | 'updatedAt' | 'failedRepos'>>
 ): Promise<void> {
   if (
     updates.totalRepos === undefined &&
@@ -60,7 +73,7 @@ export async function updateSyncProgress(
 export async function getSyncProgress(sessionId: string, githubUserId: string): Promise<SyncProgress | undefined> {
   const db = getNeonClient();
   const rows = await db`
-    SELECT session_id, github_user_id, total_repos, completed_repos, current_repo, phase, started_at, updated_at
+    SELECT session_id, github_user_id, total_repos, completed_repos, current_repo, phase, failed_repos, started_at, updated_at
     FROM sync_progress
     WHERE session_id = ${sessionId} AND github_user_id = ${githubUserId}
   `;
@@ -75,6 +88,7 @@ export async function getSyncProgress(sessionId: string, githubUserId: string): 
     completedRepos: row.completed_repos,
     currentRepo: row.current_repo,
     phase: row.phase,
+    failedRepos: row.failed_repos ?? 0,
     startedAt: new Date(row.started_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -100,4 +114,71 @@ export async function getProgressWithPercentage(
     ...progress,
     progressPercentage: getProgressPercentage(progress),
   };
+}
+
+/** A run plus the server-side state a batch needs; never sent to the client. */
+export interface SyncSession extends SyncProgress {
+  /** null for rows created before sync was client-driven: not resumable. */
+  queue: QueueItem[] | null;
+  cursor: number;
+}
+
+export async function getSyncSession(sessionId: string, githubUserId: string): Promise<SyncSession | undefined> {
+  const db = getNeonClient();
+  const rows = await db`
+    SELECT session_id, github_user_id, total_repos, completed_repos, current_repo, phase,
+           failed_repos, queue, cursor, started_at, updated_at
+    FROM sync_progress
+    WHERE session_id = ${sessionId} AND github_user_id = ${githubUserId}
+  `;
+  if (rows.length === 0) return undefined;
+  const row = rows[0];
+  return {
+    sessionId: row.session_id,
+    githubUserId: row.github_user_id,
+    totalRepos: row.total_repos,
+    completedRepos: row.completed_repos,
+    currentRepo: row.current_repo,
+    phase: row.phase,
+    failedRepos: row.failed_repos ?? 0,
+    startedAt: new Date(row.started_at),
+    updatedAt: new Date(row.updated_at),
+    queue: parseQueue(typeof row.queue === 'string' ? safeJson(row.queue) : row.queue),
+    cursor: row.cursor ?? 0,
+  };
+}
+
+function safeJson(text: string): unknown {
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+/**
+ * Move the run past a finished batch. The WHERE clause pins the phase and
+ * cursor the batch started from, so a duplicate driver (second tab, retried
+ * request) can't advance the run twice. Returns false when it lost that race.
+ */
+export async function advanceSyncSession(args: {
+  sessionId: string;
+  githubUserId: string;
+  from: { phase: BatchPhase; cursor: number };
+  to: AdvanceResult;
+  failedDelta: number;
+  currentRepo: string;
+}): Promise<boolean> {
+  const db = getNeonClient();
+  const rows = await db`
+    UPDATE sync_progress SET
+      phase           = ${args.to.phase},
+      cursor          = ${args.to.cursor},
+      completed_repos = ${args.to.completedRepos},
+      failed_repos    = failed_repos + ${args.failedDelta},
+      current_repo    = ${args.to.phase === 'complete' ? 'Complete' : args.currentRepo},
+      updated_at      = NOW()
+    WHERE session_id = ${args.sessionId}
+      AND github_user_id = ${args.githubUserId}
+      AND phase = ${args.from.phase}
+      AND cursor = ${args.from.cursor}
+    RETURNING session_id
+  `;
+  return rows.length > 0;
 }

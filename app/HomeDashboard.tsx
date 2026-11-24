@@ -18,6 +18,7 @@ import { resolveDocTargetPath } from '@/lib/doc-target-paths';
 import { detectRepoType, RepoType } from '@/lib/repo-type';
 import { byokPromptKey } from '@/lib/byok-prompt-key';
 import { ProgressToast, type SyncPhase } from '@/components/ProgressToast';
+import { driveSync, rememberSyncSession, recallSyncSession } from '@/lib/sync-driver';
 import type { Repo } from '@/types/repo';
 import type { RepoTier } from '@/lib/repo-tier';
 
@@ -110,6 +111,73 @@ export default function Dashboard() {
     clearFilters,
   } = useRepoFilters(repos);
 
+  // Only the most recent sync may touch the progress bar: a second "Sync All"
+  // can start while an older one is still running, and the older loop must not
+  // update or clear the newer bar. Aborting also stops the loop on unmount.
+  const activeSyncSessionRef = useRef<string | null>(null);
+  const syncAbortRef = useRef<AbortController | null>(null);
+
+  // Pull the freshly synced data into the table (and any expanded rows).
+  const reloadAfterSync = async () => {
+    await refetch();
+    Array.from(expandedRepos).forEach(name => fetchRepoDetails(name, true));
+  };
+
+  // Calls the batch endpoint until the run ends. Nothing runs server-side
+  // after a response, so this loop is what makes the sync progress.
+  const driveSyncRun = async (sessionId: string) => {
+    syncAbortRef.current?.abort();
+    const controller = new AbortController();
+    syncAbortRef.current = controller;
+    activeSyncSessionRef.current = sessionId;
+    const isActive = () => activeSyncSessionRef.current === sessionId && !controller.signal.aborted;
+
+    const result = await driveSync({
+      sessionId,
+      signal: controller.signal,
+      onProgress: (progress) => {
+        if (!isActive()) return;
+        setSyncProgress(prev => prev ? {
+          ...prev,
+          phase: progress.phase,
+          progress: progress.progressPercentage ?? 0,
+          currentRepo: progress.currentRepo || 'Processing...',
+          totalRepos: progress.totalRepos ?? prev.totalRepos,
+          completedRepos: progress.completedRepos ?? 0,
+        } : null);
+      },
+    });
+    if (!isActive()) return; // superseded or unmounted: leave the newer run's UI alone
+    rememberSyncSession(null);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
+    }
+    // A stopped sync still wrote the repos it finished; show them either way.
+    await reloadAfterSync();
+    const progress = result.progress;
+    const failed = progress?.failedRepos ?? 0;
+    // Leave the finished panel up briefly, then swap it for a one-line summary.
+    setTimeout(() => {
+      if (activeSyncSessionRef.current !== sessionId) return;
+      setSyncProgress(null);
+      if (result.status === 'complete') {
+        const total = progress?.totalRepos ?? 0;
+        setToastMessage(failed > 0
+          ? `Sync complete · ${Math.max(0, total - failed)} of ${total} repositories updated, ${failed} failed`
+          : `Sync complete · ${total} repositories updated`);
+      } else if (result.status === 'unauthorized') {
+        setToastMessage('Sync stopped: please sign in again, then run it again.');
+      } else if (result.status === 'lost') {
+        setToastMessage('That sync can no longer be continued. Run Sync again to start a new one.');
+      } else if (result.message && result.message !== 'Sync failed') {
+        // The server puts the reason (e.g. the rate-limit reset) in currentRepo.
+        setToastMessage(`Sync stopped: ${result.message}`);
+      } else {
+        setToastMessage('Sync failed. Check the server logs, then try again.');
+      }
+    }, 1500);
+  };
+
   const handleSync = async () => {
     try {
       setSyncing(true);
@@ -120,32 +188,30 @@ export default function Dashboard() {
       });
       if (res.ok) {
         const data = await res.json();
-        // Start progress tracking
-        if (data.sessionId) {
-          setSyncProgress({
-            sessionId: data.sessionId,
-            phase: 'metadata',
-            progress: 0,
-            currentRepo: 'Starting...',
-            totalRepos: data.totalRepos,
-            completedRepos: 0,
-          });
-        }
         // Refresh the rate-limit indicator right away; don't make it wait on
         // (or depend on) the repo list reload below.
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
         }
         if (data.sessionId) {
-          // The progress panel reports from here on; results reload when it completes.
-          pollSyncProgress(data.sessionId);
+          setSyncProgress({
+            sessionId: data.sessionId,
+            phase: data.phase ?? 'metadata',
+            progress: 0,
+            currentRepo: 'Starting...',
+            totalRepos: data.totalRepos,
+            completedRepos: 0,
+          });
+          // Remember the run so a reload resumes it.
+          rememberSyncSession(data.sessionId);
+          // The progress panel reports from here on; results reload when the loop ends.
+          void driveSyncRun(data.sessionId);
         } else {
           await reloadAfterSync();
-          setToastMessage(data.message || 'Sync started');
+          setToastMessage(data.message || 'Sync queued');
         }
-
       } else {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         setToastMessage(`Sync failed: ${errorData.error || 'Unknown error'}`);
       }
     } catch {
@@ -155,88 +221,50 @@ export default function Dashboard() {
     }
   };
 
-  // Only the most recent sync may touch the progress bar: a second "Sync All"
-  // can start while an older one is still polling (or giving up), and the older
-  // callbacks must not update or clear the newer bar.
-  const activeSyncSessionRef = useRef<string | null>(null);
-
-  // Pull the freshly synced data into the table (and any expanded rows).
-  const reloadAfterSync = async () => {
-    await refetch();
-    Array.from(expandedRepos).forEach(name => fetchRepoDetails(name, true));
-  };
-
-  const pollSyncProgress = async (sessionId: string) => {
-    activeSyncSessionRef.current = sessionId;
-    const isActive = () => activeSyncSessionRef.current === sessionId;
-    // A non-OK poll used to end polling silently and freeze the bar at 0% while
-    // the sync kept running. Retry through transient failures; after a run of
-    // them, drop the bar instead of showing a stuck one.
-    const MAX_FAILED_POLLS = 10;
-    let failedPolls = 0;
-    const retryOrGiveUp = () => {
-      if (!isActive()) return;
-      failedPolls += 1;
-      if (failedPolls < MAX_FAILED_POLLS) {
-        setTimeout(poll, 1000);
-      } else {
-        setSyncProgress(null);
-        setToastMessage('Sync is still running in the background; progress is unavailable. Refresh later to see results.');
-      }
-    };
-    const poll = async () => {
-      if (!isActive()) return;
+  // Resume a run interrupted by a reload or navigation. A run that is gone or
+  // was left by the old background sync (never advances) is dropped quietly.
+  useEffect(() => {
+    const sessionId = recallSyncSession();
+    if (!sessionId || sessionStatus !== 'authenticated') return;
+    if (activeSyncSessionRef.current) return;
+    let cancelled = false;
+    (async () => {
       try {
-        const res = await fetch(`/api/sync-progress?sessionId=${sessionId}`);
-        if (!isActive()) return;
-        // 401 won't clear by retrying: the session can't be matched to the sync's owner.
-        if (res.status === 401) {
-          setSyncProgress(null);
-          setToastMessage('Sync is running, but this session can\'t read its progress. Reload the page (or sign out and back in) to see results.');
-          return;
-        }
+        const res = await fetch(`/api/sync-progress?sessionId=${encodeURIComponent(sessionId)}`);
+        if (cancelled) return;
         if (!res.ok) {
-          retryOrGiveUp();
+          if (res.status === 404 || res.status === 401) rememberSyncSession(null);
           return;
         }
-        failedPolls = 0;
         const progress = await res.json();
-        setSyncProgress(prev => prev ? {
-          ...prev,
-          phase: progress.phase ?? prev.phase,
-          progress: progress.progressPercentage ?? 0,
-          currentRepo: progress.currentRepo ?? 'Processing...',
-          totalRepos: progress.totalRepos ?? prev.totalRepos,
-          completedRepos: progress.completedRepos ?? 0,
-        } : null);
-
-        if (progress.phase !== 'complete' && progress.phase !== 'error') {
-          setTimeout(poll, 1000);
-        } else {
-          // Trigger rate limit refresh when sync completes
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('rate-limit-refresh'));
-          }
-          // A stopped sync still wrote the repos it finished; show them either way.
-          await reloadAfterSync();
-          // Leave the finished panel up briefly, then swap it for a one-line summary.
-          setTimeout(() => {
-            if (!isActive()) return;
-            setSyncProgress(null);
-            setToastMessage(progress.phase === 'complete'
-              ? `Sync complete · ${progress.totalRepos ?? 0} repositories updated`
-              // The server puts the reason (e.g. the rate-limit reset) in currentRepo.
-              : progress.currentRepo && progress.currentRepo !== 'Sync failed'
-                ? `Sync stopped: ${progress.currentRepo}`
-                : 'Sync failed. Check the server logs, then try again.');
-          }, 1500);
+        if (cancelled) return;
+        if (progress.phase !== 'metadata' && progress.phase !== 'health') {
+          rememberSyncSession(null);
+          return;
         }
+        setSyncProgress({
+          sessionId,
+          phase: progress.phase,
+          progress: progress.progressPercentage ?? 0,
+          currentRepo: progress.currentRepo || 'Resuming...',
+          totalRepos: progress.totalRepos,
+          completedRepos: progress.completedRepos ?? 0,
+        });
+        void driveSyncRun(sessionId);
       } catch {
-        retryOrGiveUp();
+        // Leave the remembered run for the next load.
       }
-    };
-    await poll();
-  };
+    })();
+    return () => { cancelled = true; };
+    // driveSyncRun only closes over refs and stable setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionStatus]);
+
+  // Stop the loop when the dashboard goes away; the run stays resumable.
+  useEffect(() => () => {
+    syncAbortRef.current?.abort();
+    activeSyncSessionRef.current = null;
+  }, []);
 
   const onAddRepoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

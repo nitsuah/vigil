@@ -6,6 +6,11 @@ updated: 2026-11-23
 
 ## In Progress
 
+- [x] Repository sync stuck at "Step 1 of 2" on Cloudflare (vigil#305): sync is now client-driven and chunked.
+  - Priority: P1
+  - Context: the old route ran the sync in an un-awaited IIFE after returning 200; on Workers the isolate is torn down and `sync_progress` never left `metadata`. Workers Free also caps a request at 50 subrequests.
+  - Done 2026-11-24: `POST /api/sync-repos` only lists and queues (queue and cursor stored on the `sync_progress` row, additive columns); `POST /api/sync-repos/batch` runs 3 repos per metadata call and 1 per health call, awaited, and advances the row; the dashboard (`lib/sync-driver.ts`) drives the loop, retries a failed batch once then skips it, aborts on unmount and resumes after a reload. Legacy `metadata` rows answer 409 and are restartable. Chose option 1 (no Workers Paid, no Queues).
+
 - [ ] Delivery metrics tab (vigil#456): flow metrics, not a backlog snapshot.
   - Priority: P1
   - Context: slices #478 (rollup logic) and #479 (tables) merged. The GitHub mapping and daily sync (#480) is `lib/metrics-sync.ts` plus `POST /api/metrics/sync`, run daily by `.github/workflows/metrics-sync.yml`. Scorecard, overview API and the `/metrics` page shipped. The week-sotu digest (#483) is vigil's half here (`metrics` in `/api/context`) plus stash's `sotu.py`.

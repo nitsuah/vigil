@@ -1,27 +1,23 @@
 import { NextResponse } from 'next/server';
 import logger from '@/lib/log';
 import { auth } from '@/auth';
-import { GitHubClient, RepoMetadata } from '@/lib/github';
+import { GitHubClient } from '@/lib/github';
 import { getNeonClient, ensureSchema } from '@/lib/db';
-import { syncRepo, syncRepoMetadata } from '@/lib/sync';
-import { grantRepoAccess } from '@/lib/repo-access';
 import { defaultReposNotIn, filterReposForSync, SyncFilters } from '@/lib/sync-filters';
-import { createSyncProgress, updateSyncProgress } from '@/lib/sync-progress';
+import { createSyncProgress } from '@/lib/sync-progress';
+import type { QueueItem } from '@/lib/sync-batch';
 import { rateLimitExhausted } from '@/lib/rate-limit-headers';
 import { createSyncObservability } from '@/lib/sync-observability';
 
 const GITHUB_API_TIMEOUT_MS = 10000;
-const SYNC_DELAY_MS = 1000; // Reduced delay — rate limit check handles throttling
-const MAX_RETRY_ATTEMPTS = 5;
-const RETRY_BASE_DELAY_MS = 1000;
-const CONCURRENCY_LIMIT = 3; // Max parallel repo syncs
 const RATE_LIMIT_THRESHOLD = 200; // Pause syncs below this remaining
 
+// Starts a sync: lists the repos and queues them. The work itself runs in
+// /api/sync-repos/batch, one awaited request per small batch.
 export async function POST(request: Request): Promise<NextResponse> {
     const observe = createSyncObservability({
         emit: (event) => logger.info('Sync-repos phase', event),
     });
-    let backgroundStarted = false;
     try {
         // Filters come from the dashboard's current filter state so the sync
         // refreshes exactly the repos currently displayed.
@@ -119,7 +115,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         logger.info('Sync-repos: Fetching repos list...');
         // Upsert the user record inside a transaction so set_config is transaction-local
         // and the RLS policy (FORCE ROW LEVEL SECURITY on users) is satisfied.
-        const txResults = await db.transaction([
+        await db.transaction([
             db`SELECT set_config('app.current_github_id', ${String(githubUserId)}, true)`,
             db`
                 INSERT INTO users (github_id, github_username)
@@ -127,16 +123,13 @@ export async function POST(request: Request): Promise<NextResponse> {
                 ON CONFLICT (github_id) DO UPDATE
                     SET github_username = EXCLUDED.github_username,
                         updated_at = NOW()
-                RETURNING id, last_sync_at
+                RETURNING id
             `,
         ]);
-        const userRow = txResults[1][0];
-        const userId = userRow.id as string;
         observe.finish('database', 'success');
 
         // Always do a full refresh — the Sync button must refresh every
         // displayed repo, not just ones GitHub reports as recently updated.
-        const syncStartTime = new Date().toISOString();
         observe.start('repository_list');
         const repos = await github.listRepos();
         logger.info(`Sync-repos: Found ${repos.length} repos from GitHub`);
@@ -176,341 +169,27 @@ export async function POST(request: Request): Promise<NextResponse> {
             logger.warn('Sync-repos: Failed to check rate limits, proceeding anyway');
         }
 
-        // Create progress tracking
+        // Create progress tracking. The queue is stored with the run so every
+        // batch request is self-contained; nothing runs after this response
+        // (Workers tears the isolate down), the dashboard drives the batches.
+        const queue: QueueItem[] = [
+            ...reposToSync.map((r) => ({ owner: r.fullName.split('/')[0], name: r.name, fullName: r.fullName, isDefault: false })),
+            ...defaultsToSync.map((d) => ({ owner: d.owner, name: d.name, fullName: d.fullName, isDefault: true })),
+        ];
         const sessionId = `sync-${githubUserId}-${Date.now()}`;
         observe.start('completion');
-        await createSyncProgress(sessionId, String(githubUserId), totalRepos);
+        await createSyncProgress(sessionId, String(githubUserId), totalRepos, queue);
+        observe.finish('completion', 'success', { counts: { total: totalRepos } });
 
-        // Start background sync without awaiting to avoid timeout
-        backgroundStarted = true;
-        (async () => {
-            // Check rate limits periodically during sync
-            const checkRateLimit = async () => {
-                try {
-                    const rl = await github.getRateLimit();
-                    return rl.remaining;
-                } catch {
-                    return Infinity; // Proceed if we can't check
-                }
-            };
-
-            // Progress writes are best-effort: a transient DB error while
-            // reporting progress must never fail a repo or abort the sync.
-            const reportProgress = (updates: Parameters<typeof updateSyncProgress>[1]) =>
-                updateSyncProgress(sessionId, updates).catch((e: unknown) =>
-                    logger.warn('Sync progress update failed:', e instanceof Error ? e.message : e));
-
-            let successCount = 0;
-            let errorCount = 0;
-            let metadataSuccess = 0;
-            let metadataFailure = 0;
-            const failedRepos: RepoMetadata[] = [];
-            const failedRepoNames = new Set<string>();
-
-            // 1. FAST METADATA SYNC (First Pass)
-            // This ensures all repos appear in the dashboard immediately
-            observe.start('metadata');
-            logger.info('Starting Phase 1: Fast Metadata Sync');
-            await reportProgress({ phase: 'metadata', currentRepo: 'Starting...' });
-            for (const repo of reposToSync) {
-                try {
-                    await reportProgress({ currentRepo: repo.fullName });
-                    await syncRepoMetadata(repo, db);
-                    // repo came from this user's own github.listRepos() call
-                    // above, so their GitHub token already confirmed access
-                    // (CWE-639) -- record it now that the row exists.
-                    await grantRepoAccess(db, repo.fullName, String(githubUserId));
-                    successCount++;
-                    metadataSuccess++;
-                } catch (repoError: unknown) {
-                    const message = repoError instanceof Error ? repoError.message : 'Unknown error';
-                    logger.warn(`Error syncing metadata for ${repo.name}:`, message);
-                    errorCount++;
-                    metadataFailure++;
-                    failedRepos.push(repo);
-                    failedRepoNames.add(repo.fullName);
-                }
-            }
-
-            observe.finish('metadata', metadataFailure > 0 ? 'partial' : 'success', {
-                counts: { total: reposToSync.length, succeeded: metadataSuccess, failed: metadataFailure },
-            });
-
-            // 2. DETAILED HEALTH SYNC (Second Pass - Background)
-            // This fills in the health scores, issues, PRs, etc. slowly to avoid rate limits
-            observe.start('detailed_health');
-            logger.info('Starting Phase 2: Detailed Health Sync (Background)');
-            await reportProgress({ phase: 'health', currentRepo: 'Starting...' });
-
-            // completedRepos counts repos whose detailed sync finished (success or
-            // final failure). Counting metadata instead left the bar parked at
-            // "11/13" through the slow health phase, which looked frozen.
-            let detailsFinished = 0;
-            let detailsFailed = 0;
-            const detailsFailedRepos = new Set<string>();
-            // Repos whose detailed sync finished but with a non-fatal step failed
-            // (best practices / community standards / health score). Kept apart
-            // from detailsFailed so unique repo-failure counts stay accurate.
-            let detailsPartial = 0;
-            const markFinished = () => reportProgress({ completedRepos: ++detailsFinished });
-
-            // Helper to sync details with delay and exponential backoff retry
-            const syncDetailsWithDelay = async (repoMeta: RepoMetadata, client: GitHubClient, isFirstRepo: boolean) => {
-                try {
-                    await syncDetailsWithRetry(repoMeta, client, isFirstRepo);
-                } finally {
-                    await markFinished();
-                }
-            };
-            const syncDetailsWithRetry = async (repoMeta: RepoMetadata, client: GitHubClient, isFirstRepo: boolean) => {
-                let lastError: Error | null = null;
-                for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
-                    try {
-                        await reportProgress({ currentRepo: repoMeta.fullName });
-                        const result = await syncRepo(repoMeta, client, db);
-                        if (result && result.partialSteps > 0) detailsPartial++;
-                        logger.info(`✓ Detailed sync completed for ${repoMeta.name}${attempt > 0 ? ` (attempt ${attempt + 1})` : ''}`);
-                        
-                        // Delay after successful sync (except for first repo)
-                        if (!isFirstRepo) {
-                            await new Promise(resolve => setTimeout(resolve, SYNC_DELAY_MS));
-                        }
-                        return; // Success, exit the retry loop
-                    } catch (error) {
-                        lastError = error instanceof Error ? error : new Error('Unknown error');
-
-                        const errorWithStatus = error as { status?: number; response?: { status?: number } };
-                        const status = errorWithStatus?.status ?? errorWithStatus?.response?.status;
-                        // Retry only transient throttling: a 429, or GitHub's secondary
-                        // limit. An exhausted hourly quota won't clear within the backoff,
-                        // and other 403s (missing permission) never clear.
-                        const exhausted = rateLimitExhausted(error) !== null;
-                        const isRateLimit = !exhausted && (status === 429 ||
-                            (status === 403 && /secondary rate limit/i.test(lastError.message)));
-                        const isServerError = status !== undefined && status >= 500;
-                        const isNetworkError = lastError.message.includes('ETIMEDOUT') ||
-                            lastError.message.includes('ECONNRESET') ||
-                            lastError.message.includes('network');
-
-                        if ((isRateLimit || isServerError || isNetworkError) && attempt < MAX_RETRY_ATTEMPTS - 1) {
-                            // Exponential backoff with jitter: 1s, 2s, 4s, 8s, 16s + random 0-1s
-                            const backoffDelay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt) + Math.random() * 1000;
-                            const reason = isRateLimit ? 'rate limit' : isServerError ? 'server error' : 'network error';
-                            logger.warn(`${reason} for ${repoMeta.name} (${status || '?'}), retrying in ${Math.round(backoffDelay)}ms (attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS})`);
-                            await new Promise(resolve => setTimeout(resolve, backoffDelay));
-                        } else if (attempt === MAX_RETRY_ATTEMPTS - 1) {
-                            logger.warn(`Failed detailed sync for ${repoMeta.name} after ${MAX_RETRY_ATTEMPTS} attempts: ${lastError.message}`);
-                        } else {
-                            // Not transient (e.g. a permission 403, or the hourly quota is gone): don't retry.
-                            logger.warn(`Failed detailed sync for ${repoMeta.name} (not retryable): ${lastError.message}`);
-                            break;
-                        }
-                    }
-                }
-                detailsFailed++;
-                detailsFailedRepos.add(repoMeta.fullName);
-                failedRepoNames.add(repoMeta.fullName);
-            };
-
-            // Set when the quota runs low: the sync stops instead of sleeping
-            // until the hourly reset (up to an hour, with no progress shown).
-            let rateLimitedUntil: number | null = null;
-
-            // Sync user repos details with concurrency control
-            const queue = [...reposToSync];
-            const workers: Promise<void>[] = [];
-            for (let w = 0; w < Math.min(CONCURRENCY_LIMIT, queue.length); w++) {
-                workers.push((async () => {
-                    while (queue.length > 0) {
-                        if (rateLimitedUntil !== null) break;
-                        const repoMeta = queue.shift()!;
-                        // Check rate limit before each repo (header-based, see GitHubClient.getRateLimit)
-                        const remaining = await checkRateLimit();
-                        if (remaining < RATE_LIMIT_THRESHOLD) {
-                            const rl = await github.getRateLimit().catch(() => null);
-                            rateLimitedUntil = rl ? rl.reset * 1000 : Date.now() + 3_600_000;
-                            logger.warn(`Sync stopping: rate limit low (${remaining}); ${queue.length + 1} repos left unsynced`);
-                            break;
-                        }
-                        const idx = reposToSync.indexOf(repoMeta);
-                        await syncDetailsWithDelay(repoMeta, github, idx === 0);
-                    }
-                })());
-            }
-            await Promise.all(workers);
-            observe.finish('detailed_health', rateLimitedUntil !== null || detailsFailed > 0 || detailsPartial > 0 ? 'partial' : 'success', {
-                counts: {
-                    total: reposToSync.length,
-                    completed: detailsFinished,
-                    failed: detailsFailed,
-                    remaining: Math.max(0, reposToSync.length - detailsFinished),
-                },
-            });
-
-            // Re-queue repos that failed in Phase 1 for a second pass — they may
-            // have failed due to a transient rate limit or network blip.
-            if (failedRepos.length > 0) {
-                observe.start('metadata_retry');
-                let retrySuccess = 0;
-                let retryFailure = 0;
-                logger.info(`Re-queueing ${failedRepos.length} repos that failed metadata sync`);
-                const retryQueue = [...failedRepos];
-                const retryWorkers: Promise<void>[] = [];
-                for (let w = 0; w < Math.min(CONCURRENCY_LIMIT, retryQueue.length); w++) {
-                    retryWorkers.push((async () => {
-                        while (retryQueue.length > 0) {
-                            const repoMeta = retryQueue.shift()!;
-                            try {
-                                await syncRepoMetadata(repoMeta, db);
-                                await grantRepoAccess(db, repoMeta.fullName, String(githubUserId));
-                                successCount++;
-                                errorCount--;
-                                if (!detailsFailedRepos.has(repoMeta.fullName)) {
-                                    failedRepoNames.delete(repoMeta.fullName);
-                                }
-                                retrySuccess++;
-                            } catch (repoError: unknown) {
-                                const message = repoError instanceof Error ? repoError.message : 'Unknown error';
-                                logger.warn(`Retry failed for ${repoMeta.name}:`, message);
-                                retryFailure++;
-                            }
-                        }
-                    })());
-                }
-                await Promise.all(retryWorkers);
-                observe.finish('metadata_retry', retryFailure > 0 ? 'partial' : 'success', {
-                    counts: { total: failedRepos.length, succeeded: retrySuccess, failed: retryFailure },
-                });
-            }
-
-            // Always sync default repos (using system token from environment)
-            let defaultSkipped = 0;
-            if (defaultsToSync.length > 0) observe.start('default_repos');
-            const systemToken = process.env.GITHUB_TOKEN;
-            const systemUsername = process.env.GITHUB_SYSTEM_USERNAME || 'nitsuah';
-            if (rateLimitedUntil !== null) {
-                defaultSkipped = defaultsToSync.length;
-                logger.warn(`Skipping ${defaultsToSync.length} default repos: rate limit low`);
-                observe.finish('default_repos', 'skipped', { counts: { total: defaultsToSync.length, skipped: defaultsToSync.length } });
-            } else if (systemToken) {
-                const detailsFailedBeforeDefaults = detailsFailed;
-                let defaultSuccess = 0;
-                let defaultFailure = 0;
-                const systemGithub = new GitHubClient(systemToken, systemUsername);
-                for (let i = 0; i < defaultsToSync.length; i++) {
-                    const defaultRepo = defaultsToSync[i];
-                    try {
-                        logger.info(`Syncing default repo metadata: ${defaultRepo.fullName}`);
-                        const repoMeta = await systemGithub.getRepo(defaultRepo.owner, defaultRepo.name);
-                        // Metadata first
-                        await syncRepoMetadata(repoMeta, db);
-                        // Then details
-                        await syncDetailsWithDelay(repoMeta, systemGithub, i === 0 && reposToSync.length === 0);
-                        successCount++;
-                        defaultSuccess++;
-                    } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                        logger.warn(`Failed to sync default repo ${defaultRepo.fullName}:`, errorMessage);
-                        errorCount++;
-                        defaultFailure++;
-                        failedRepoNames.add(defaultRepo.fullName);
-                    }
-                }
-                const defaultDetailFailures = detailsFailed - detailsFailedBeforeDefaults;
-                observe.finish('default_repos', defaultFailure > 0 || defaultDetailFailures > 0 ? 'partial' : 'success', {
-                    counts: {
-                        total: defaultsToSync.length,
-                        succeeded: Math.max(0, defaultSuccess - defaultDetailFailures),
-                        failed: defaultFailure + defaultDetailFailures,
-                    },
-                });
-            } else {
-                // If no system token, try to sync using user's token (may fail for repos they don't own)
-                logger.info('No GITHUB_TOKEN found - attempting to sync default repos with user token');
-                const detailsFailedBeforeDefaults = detailsFailed;
-                let defaultSuccess = 0;
-                for (let i = 0; i < defaultsToSync.length; i++) {
-                    const defaultRepo = defaultsToSync[i];
-                    try {
-                        const repoMeta = await github.getRepo(defaultRepo.owner, defaultRepo.name);
-                        // Metadata first
-                        await syncRepoMetadata(repoMeta, db);
-                        // Then details
-                        await syncDetailsWithDelay(repoMeta, github, i === 0 && reposToSync.length === 0);
-                        successCount++;
-                        defaultSuccess++;
-                    } catch (error) {
-                        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                        logger.info(`Could not sync default repo ${defaultRepo.fullName} with user token:`, errorMessage);
-                        // Don't count as error since this is expected for public repos
-                        defaultSkipped++;
-                    }
-                }
-                const defaultDetailFailures = detailsFailed - detailsFailedBeforeDefaults;
-                observe.finish('default_repos', defaultSkipped > 0 || defaultDetailFailures > 0 ? 'partial' : 'success', {
-                    counts: {
-                        total: defaultsToSync.length,
-                        succeeded: Math.max(0, defaultSuccess - defaultDetailFailures),
-                        skipped: defaultSkipped,
-                        failed: defaultDetailFailures,
-                    },
-                });
-            }
-
-            const totalProcessed = successCount + errorCount;
-            logger.info(`Background sync process completed: ${successCount}/${totalProcessed} repos processed`);
-
-            // Update last_sync_at — needs set_config so FORCE RLS policy is satisfied
-            await db.transaction([
-                db`SELECT set_config('app.current_github_id', ${String(githubUserId)}, true)`,
-                db`UPDATE users SET last_sync_at = ${syncStartTime} WHERE id = ${userId}`,
-            ]);
-            
-            if (rateLimitedUntil !== null) {
-                const minutes = Math.max(1, Math.ceil((rateLimitedUntil - Date.now()) / 60_000));
-                await reportProgress({
-                    phase: 'error',
-                    currentRepo: `GitHub rate limit reached after ${detailsFinished} of ${totalRepos} repos · resets in ${minutes} min`,
-                });
-                observe.finish('completion', 'partial', {
-                    counts: {
-                        total: totalRepos,
-                        failed: failedRepoNames.size,
-                        skipped: defaultSkipped,
-                        completed: detailsFinished,
-                        remaining: Math.max(0, totalRepos - detailsFinished),
-                    },
-                });
-                return;
-            }
-            await reportProgress({ phase: 'complete', currentRepo: 'Complete' });
-            observe.finish('completion', errorCount > 0 || detailsFailed > 0 || detailsPartial > 0 || defaultSkipped > 0 ? 'partial' : 'success', {
-                counts: {
-                    total: totalRepos,
-                    failed: failedRepoNames.size,
-                    skipped: defaultSkipped,
-                    completed: detailsFinished,
-                },
-            });
-        })().catch(async (error) => {
-            for (const phase of ['metadata', 'metadata_retry', 'detailed_health', 'default_repos', 'completion'] as const) {
-                observe.finish(phase, 'failure', { errorClass: 'unknown' });
-            }
-            logger.error('Background sync failed:', error);
-            // Tell the polling client the sync is over instead of leaving it on 'metadata'/'health'.
-            await updateSyncProgress(sessionId, { phase: 'error', currentRepo: 'Sync failed' })
-                .catch((e: unknown) => logger.warn('Could not record sync failure:', e instanceof Error ? e.message : e));
-        });
-
-        // Return immediately to avoid timeout
         return NextResponse.json({
             success: true,
-            message: 'Sync started in background',
+            message: totalRepos === 0 ? 'Nothing to sync' : 'Sync queued',
             totalRepos,
-            sessionId
+            sessionId,
+            phase: totalRepos === 0 ? 'complete' : 'metadata',
         });
     } catch (error: unknown) {
-        if (!backgroundStarted) observe.finish('completion', 'failure', { errorClass: 'database' });
+        observe.finish('completion', 'failure', { errorClass: 'database' });
         observe.finish('auth', 'failure', { errorClass: 'unknown' });
         observe.finish('database', 'failure', { errorClass: 'database' });
         observe.finish('repository_list', 'failure', { errorClass: 'unknown' });
