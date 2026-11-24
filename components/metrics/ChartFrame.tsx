@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { niceMax, shortWeek } from '@/lib/metrics-charts';
+import { shortWeek } from '@/lib/metrics-charts';
 
 export const W = 640;
 export const H = 220;
@@ -21,7 +21,7 @@ export function ChartFrame({ title, summary, weeks, max, legend, children }: {
     legend: Array<{ label: string; className: string }>;
     children: ReactNode;
 }): React.JSX.Element {
-    const top = niceMax(max);
+    const top = max; // callers pass an already-rounded maximum, so axis labels match the plot
     const ticks = [0, 0.5, 1].map((f) => Math.round(top * f * 10) / 10);
     const every = Math.ceil(weeks.length / 6);
     return (
