@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit tests for `lib/expandable-row-utils.ts`.
 - Unit tests for `lib/doc-health.ts`.
 - Unit tests for `lib/github-errors.ts`.
+- Unit tests for `lib/health-profiles.ts`.
 
 ### Fixed
 
