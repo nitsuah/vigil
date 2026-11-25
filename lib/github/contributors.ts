@@ -7,11 +7,14 @@ export async function getContributorStats(
   repo: string
 ): Promise<{ contributorCount: number; commitFrequency: number | null; busFactor: number }> {
   try {
-    const contributors = await octokit.paginate(octokit.repos.listContributors, {
+    const { data: contributors } = await octokit.repos.listContributors({
       owner,
       repo,
       per_page: 100,
     });
+    if (contributors.length === 100) {
+      logger.warn(`[GitHub] Contributor scan capped at 100 for ${owner}/${repo}`);
+    }
 
     const contributorCount = contributors.length;
     const totalCommits = contributors.reduce((sum, c) => sum + (c.contributions || 0), 0);
