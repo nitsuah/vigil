@@ -6,6 +6,11 @@ updated: 2026-11-23
 
 ## In Progress
 
+- [ ] Repository sync stuck at "Step 1 of 2" on Cloudflare (vigil#305): code shipped, live verification open.
+  - Priority: P1
+  - Done 2026-11-24: sync is client-driven and chunked (`/api/sync-repos` queues, `/api/sync-repos/batch` does awaited batches, the dashboard drives and resumes the loop); mocked tests cover it.
+  - Remaining: confirm on the Cloudflare deploy that a real run completes (a POST that finishes quickly and `sync_progress` advancing batch by batch), and measure subrequests per health batch for large repos (#494). Close #305 only after that.
+
 - [ ] Delivery metrics tab (vigil#456): flow metrics, not a backlog snapshot.
   - Priority: P1
   - Context: slices #478 (rollup logic) and #479 (tables) merged. The GitHub mapping and daily sync (#480) is `lib/metrics-sync.ts` plus `POST /api/metrics/sync`, run daily by `.github/workflows/metrics-sync.yml`. Scorecard, overview API and the `/metrics` page shipped. The week-sotu digest (#483) is vigil's half here (`metrics` in `/api/context`) plus stash's `sotu.py`.

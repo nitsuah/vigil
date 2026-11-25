@@ -251,6 +251,13 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
     )`,
     `CREATE INDEX IF NOT EXISTS idx_sync_progress_github_user ON sync_progress(github_user_id)`,
 
+    // Client-driven chunked sync (#305): the run's work queue and cursor live
+    // in the row so each batch request is self-contained and a reload can
+    // resume. Rows from before this have queue NULL and are restartable.
+    `ALTER TABLE sync_progress ADD COLUMN IF NOT EXISTS queue JSONB`,
+    `ALTER TABLE sync_progress ADD COLUMN IF NOT EXISTS cursor INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE sync_progress ADD COLUMN IF NOT EXISTS failed_repos INTEGER NOT NULL DEFAULT 0`,
+
     // repo_access: which signed-in GitHub users have confirmed access to a
     // given (private) repo, as of their last sync/add. See lib/repo-access.ts
     // and database/schema.sql for the full rationale -- `repos` is a single

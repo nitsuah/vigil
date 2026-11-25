@@ -260,7 +260,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             contributor_count, commit_frequency, bus_factor, avg_pr_merge_time_hours, contributors_last_checked,
             has_security_policy, has_security_advisories, private_vuln_reporting_enabled,
             dependabot_alerts_enabled, dependabot_alert_count, code_scanning_enabled, code_scanning_alert_count,
-            secret_scanning_enabled, secret_scanning_alert_count, security_last_checked, private_repo, visibility_verified,
+            secret_scanning_enabled, secret_scanning_alert_count, security_last_checked, private_repo, visibility_verified, is_archived,
             open_issues_count, stale_issues_count, issue_category_counts
         )
         VALUES (
@@ -272,7 +272,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             ${contributorCount}, ${finiteOrNull(commitFrequency)}, ${busFactor}, ${finiteOrNull(avgPrMergeTimeHours)}, NOW(),
             ${hasSecurityPolicy}, ${hasSecurityAdvisories}, ${privateVulnReportingEnabled},
             ${dependabotAlertsEnabled}, ${dependabotAlertCount}, ${codeScanningEnabled}, ${codeScanningAlertCount},
-            ${secretScanningEnabled}, ${secretScanningAlertCount}, NOW(), ${repo.isPrivate}, TRUE,
+            ${secretScanningEnabled}, ${secretScanningAlertCount}, NOW(), ${repo.isPrivate}, TRUE, ${repo.archived},
             ${openIssuesCountDetailed}, ${staleIssuesCount}, ${issueCategoryCounts === null ? null : JSON.stringify(issueCategoryCounts)}
         )
         ON CONFLICT (full_name) DO UPDATE SET
@@ -289,6 +289,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
           last_commit_date = EXCLUDED.last_commit_date,
           private_repo = EXCLUDED.private_repo,
           visibility_verified = TRUE,
+          is_archived = EXCLUDED.is_archived,
           open_prs = EXCLUDED.open_prs,
           prs_ready_count = EXCLUDED.prs_ready_count,
           prs_blocked_count = EXCLUDED.prs_blocked_count,
