@@ -8,27 +8,28 @@ import {
 } from './health-profiles';
 
 describe('HEALTH_PROFILES', () => {
-  it('has exactly three profiles with matching keys and ids', () => {
+  it('has exactly three profiles matching keys ids', () => {
     const keys = Object.keys(HEALTH_PROFILES) as HealthProfileId[];
     expect(keys).toEqual(['starter', 'production', 'enterprise']);
 
     for (const key of keys) {
-      expect(HEALTH_PROFILES[key].id).toBe(key);
+      expect(HEALTH_PROFILES[key as HealthProfileId].id).toBe(key);
     }
   });
 
-  it('each profile has six weights summing to 100, all positive', () => {
+  it('each profile six weights summing 100, all positive', () => {
+    const weightKeys = [
+      'security',
+      'testing',
+      'bestPractices',
+      'documentation',
+      'community',
+      'activity',
+    ] as const;
+
     for (const key of Object.keys(HEALTH_PROFILES) as HealthProfileId[]) {
-      const profile = HEALTH_PROFILES[key];
+      const profile = HEALTH_PROFILES[key as HealthProfileId];
       const weights = profile.weights;
-      const weightKeys = [
-        'security',
-        'testing',
-        'bestPractices',
-        'documentation',
-        'community',
-        'activity',
-      ] as const;
 
       for (const w of weightKeys) {
         expect(weights[w]).toBeGreaterThan(0);
@@ -39,9 +40,9 @@ describe('HEALTH_PROFILES', () => {
     }
   });
 
-  it('each profile has a non-empty array of unique requiredSecurityControls', () => {
+  it('each profile non-empty array unique requiredSecurityControls', () => {
     for (const key of Object.keys(HEALTH_PROFILES) as HealthProfileId[]) {
-      const controls = HEALTH_PROFILES[key].requiredSecurityControls;
+      const controls = HEALTH_PROFILES[key as HealthProfileId].requiredSecurityControls;
       expect(Array.isArray(controls)).toBe(true);
       expect(controls.length).toBeGreaterThan(0);
       const unique = new Set(controls);
