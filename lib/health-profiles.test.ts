@@ -9,11 +9,11 @@ import {
 
 describe('HEALTH_PROFILES', () => {
   it('has exactly three profiles with matching keys and ids', () => {
-    const keys = Object.keys(HEALTH_PROFILES);
+    const keys = Object.keys(HEALTH_PROFILES) as HealthProfileId[];
     expect(keys).toEqual(['starter', 'production', 'enterprise']);
 
     for (const key of keys) {
-      expect(HEALTH_PROFILES[key as HealthProfileId].id).toBe(key);
+      expect(HEALTH_PROFILES[key].id).toBe(key);
     }
   });
 
