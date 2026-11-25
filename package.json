@@ -81,7 +81,10 @@
     "js-yaml": "^5.2.3",
     "nanoid": "^3.3.18",
     "sharp": "^0.35.5",
-    "minimatch": "^11.0.4"
+    "minimatch": "^11.0.4",
+    "@opennextjs/aws": {
+      "cookie": "0.7.2"
+    }
   },
   "lint-staged": {
     "*.{ts,tsx}": [
