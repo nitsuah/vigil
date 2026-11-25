@@ -78,7 +78,7 @@ interface ReviewThreadsConnection {
 // this cap can only cause a false negative (a genuinely-all-resolved PR
 // with more threads than the cap doesn't get the stale-review badge),
 // never a false positive.
-const MAX_REVIEW_THREAD_PAGES = 20;
+export const MAX_REVIEW_THREAD_PAGES_PER_REPO = 5;
 
 /**
  * Determines whether *all* of a PR's review threads are resolved, following
@@ -90,7 +90,8 @@ const MAX_REVIEW_THREAD_PAGES = 20;
 async function fetchAllThreadsResolved(
   octokit: Octokit,
   prNodeId: string,
-  initialThreads: ReviewThreadsConnection
+  initialThreads: ReviewThreadsConnection,
+  budget: { remaining: number }
 ): Promise<boolean> {
   let hadThreads = initialThreads.nodes.length > 0;
   for (const thread of initialThreads.nodes) {
@@ -101,10 +102,8 @@ async function fetchAllThreadsResolved(
   // `{ nodes: [...] }` shape) — treat a missing pageInfo as "no more pages".
   let hasNextPage = initialThreads.pageInfo?.hasNextPage ?? false;
   let cursor = initialThreads.pageInfo?.endCursor ?? null;
-  let pages = 0;
-
-  while (hasNextPage && pages < MAX_REVIEW_THREAD_PAGES) {
-    pages++;
+  while (hasNextPage && budget.remaining > 0) {
+    budget.remaining--;
     let result: { node: { reviewThreads: ReviewThreadsConnection } | null };
     try {
       result = await octokit.graphql<{
@@ -253,6 +252,7 @@ export async function getPullRequestReadiness(
     let blockedCount = 0;
     let staleReviewCount = 0;
     const records: PullRequestReadinessRecord[] = [];
+    const threadPageBudget = { remaining: MAX_REVIEW_THREAD_PAGES_PER_REPO };
 
     for (const pr of nodes) {
       const ciState = pr.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state ?? null;
@@ -263,7 +263,8 @@ export async function getPullRequestReadiness(
       const threadsResolved = await fetchAllThreadsResolved(
         octokit,
         pr.id,
-        pr.reviewThreads ?? { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] }
+        pr.reviewThreads ?? { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+        threadPageBudget
       );
       const staleReview = isStaleReview({
         reviewDecision: pr.reviewDecision,
