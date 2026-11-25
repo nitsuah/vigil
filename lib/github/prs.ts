@@ -69,15 +69,10 @@ interface ReviewThreadsConnection {
   nodes: Array<{ isResolved: boolean }>;
 }
 
-// Safety net for pathological PRs with an enormous number of review threads —
-// bounds the follow-up pagination below at 2,000 threads/PR (20 pages * 100).
-// We only ever hit this cap when *every* thread seen so far is resolved (an
-// unresolved thread short-circuits immediately, see fetchAllThreadsResolved).
-// Hitting it means the connection wasn't fully exhausted, so
-// fetchAllThreadsResolved fails closed to `false` rather than guessing --
-// this cap can only cause a false negative (a genuinely-all-resolved PR
-// with more threads than the cap doesn't get the stale-review badge),
-// never a false positive.
+// One repo-wide budget bounds review-thread follow-up requests across every
+// open PR in a health pass. Initial thread pages are included in the parent
+// query; an exhausted budget fails closed (no stale-review badge) rather than
+// guessing that uninspected threads are resolved.
 export const MAX_REVIEW_THREAD_PAGES_PER_REPO = 5;
 
 /**
