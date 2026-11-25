@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Unit tests for `resolveDocTargetPath` (#498).
 - Unit tests for `detectTemplateLanguage` (#496).
 - Pure rollup logic for the Metrics tab (vigil#456, slice 1): `lib/metrics-rollup.ts` with `classifyAuthor`, `parseParentNumber`, `isoWeekOf`, `isoWeekRange`, and `computeWeeklyRollup`, plus unit tests in `lib/metrics-rollup.test.ts`. No I/O, so later slices (sync, API, UI) build on tested numbers. Parent numbers must be positive safe integers and `isoWeekRange` rejects nonexistent week labels (W00, W53 in 52-week years).
 
