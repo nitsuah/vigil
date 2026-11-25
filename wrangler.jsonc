@@ -12,5 +12,8 @@
   },
   "workers_dev": true,
   "preview_urls": false,
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Plain-text vars (GITHUB_ID, NEXTAUTH_URL, SITE_URL, AUTH_TRUST_HOST) live in the
+  // dashboard; without this, `wrangler deploy` would delete them.
+  "keep_vars": true
 }
