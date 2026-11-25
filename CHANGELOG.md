@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Unit tests for `lib/expandable-row-utils.ts`.
+
 ### Fixed
 
 - Bound large-repository health-sync pagination: PR review-thread follow-ups share a five-request budget, zombie branches stop at three pages, issue labels at two pages, and contributor scans at 100 results (#494).
