@@ -227,6 +227,8 @@ export async function getZombieBranches(
       cursor = refs.pageInfo.endCursor;
     }
 
+    if (hasNextPage) logger.warn(`[GitHub] Zombie-branch scan capped at ${MAX_REFS_PAGES} pages for ${owner}/${repo}`);
+
     const now = Date.now();
     const branches: ZombieBranch[] = nodes.map((node) => {
       const lastCommitDate = node.target?.committedDate ?? null;
@@ -449,5 +451,6 @@ export async function getOpenIssueLabels(
     // 403, 404, 5xx, network: keep what we have and mark it incomplete.
     logger.warn(`[GitHub] Failed to fetch open issue labels for ${owner}/${repo}:`, error);
   }
+  if (!complete) logger.warn(`[GitHub] Open issue label scan capped or incomplete for ${owner}/${repo}`);
   return { issues, complete };
 }
