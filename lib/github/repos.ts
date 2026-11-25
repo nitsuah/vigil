@@ -180,7 +180,7 @@ interface RefsPage {
 // under-reporting. Cap at 20 pages (2,000 branches) purely as a runaway-repo
 // safety net; any repo with that many live branches has bigger problems than
 // this dashboard.
-const MAX_REFS_PAGES = 20;
+export const MAX_REFS_PAGES = 3;
 
 /**
  * Fetch branches with their latest commit dates via GraphQL so stale
@@ -226,6 +226,8 @@ export async function getZombieBranches(
       hasNextPage = refs.pageInfo.hasNextPage;
       cursor = refs.pageInfo.endCursor;
     }
+
+    if (hasNextPage) logger.warn(`[GitHub] Zombie-branch scan capped at ${MAX_REFS_PAGES} pages for ${owner}/${repo}`);
 
     const now = Date.now();
     const branches: ZombieBranch[] = nodes.map((node) => {
@@ -409,7 +411,7 @@ export interface OpenIssueLabels {
 }
 
 const OPEN_ISSUES_PER_PAGE = 100;
-const MAX_OPEN_ISSUE_PAGES = 10;
+export const MAX_OPEN_ISSUE_PAGES = 2;
 
 /**
  * Labels of every open issue and PR in the repo, paging through
@@ -449,5 +451,6 @@ export async function getOpenIssueLabels(
     // 403, 404, 5xx, network: keep what we have and mark it incomplete.
     logger.warn(`[GitHub] Failed to fetch open issue labels for ${owner}/${repo}:`, error);
   }
+  if (!complete) logger.warn(`[GitHub] Open issue label scan capped or incomplete for ${owner}/${repo}`);
   return { issues, complete };
 }

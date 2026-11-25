@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Bound large-repository health-sync pagination: PR review-thread follow-ups share a five-request budget, zombie branches stop at three pages, issue labels at two pages, and contributor scans at 100 results (#494).
+
 - Repository sync no longer sticks at "Step 1 of 2" on Cloudflare Workers: it is client-driven and chunked. `POST /api/sync-repos` lists and queues the repos, `POST /api/sync-repos/batch` does the awaited work (3 repos per metadata call, 1 per health call, inside the 50-subrequest cap), and the dashboard drives the loop with one retry per batch, skip-and-record on a second failure, cancel on unmount and resume after a reload. Runs left in `metadata` by the old background sync are restartable (#305).
 - The nightly PMO journeys mock `/api/pmo/journeys` in the demo fixture, so the Nightly Journeys section renders fixed rows instead of a load error; PMO and relationship-map baselines refreshed (#335, #336).
 

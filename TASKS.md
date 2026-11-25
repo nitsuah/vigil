@@ -9,7 +9,7 @@ updated: 2026-11-23
 - [ ] Repository sync stuck at "Step 1 of 2" on Cloudflare (vigil#305): code shipped, live verification open.
   - Priority: P1
   - Done 2026-11-24: sync is client-driven and chunked (`/api/sync-repos` queues, `/api/sync-repos/batch` does awaited batches, the dashboard drives and resumes the loop); mocked tests cover it.
-  - Remaining: confirm on the Cloudflare deploy that a real run completes (a POST that finishes quickly and `sync_progress` advancing batch by batch), and measure subrequests per health batch for large repos (#494). Close #305 only after that.
+  - Remaining: confirm on the Cloudflare deploy that a real run completes (`sync_progress` advances batch by batch) and record actual subrequests for a large-repo health pass. #494 now caps the identified pagination sources; keep #305 open until live evidence is recorded.
 
 - [ ] Delivery metrics tab (vigil#456): flow metrics, not a backlog snapshot.
   - Priority: P1
