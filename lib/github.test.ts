@@ -324,7 +324,7 @@ describe('GitHubClient', () => {
             await client.getZombieBranches('repo-1', undefined, 30);
 
             // MAX_REFS_PAGES in lib/github/repos.ts — kept in sync with this test.
-            expect(mockGraphql).toHaveBeenCalledTimes(20);
+            expect(mockGraphql).toHaveBeenCalledTimes(3);
         });
 
         it('should return an empty list when the zombie branches query fails', async () => {
@@ -372,8 +372,8 @@ describe('GitHubClient', () => {
 
             const result = await client.getOpenIssueLabels('repo-1');
 
-            expect(mockIssuesListForRepo).toHaveBeenCalledTimes(10);
-            expect(result.issues).toHaveLength(1000);
+            expect(mockIssuesListForRepo).toHaveBeenCalledTimes(2);
+            expect(result.issues).toHaveLength(200);
             expect(result.complete).toBe(false);
         });
 
