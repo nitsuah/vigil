@@ -38,6 +38,11 @@ describe('filterReposForSync', () => {
     expect(result.map((r) => r.name)).toEqual(['web-app', 'game', 'tool', 'forked']);
   });
 
+  it('drops temporary advisory forks but keeps repos that only mention ghsa', () => {
+    const list = [repo({ name: 'app-ghsa-2345-6789-cfgh' }), repo({ name: 'ghsa-tools' }), repo({ name: 'app-ghsa-notes' })];
+    expect(filterReposForSync(list, {}, new Map()).map((r) => r.name)).toEqual(['ghsa-tools', 'app-ghsa-notes']);
+  });
+
   it('filters by type', () => {
     const result = filterReposForSync(repos, { filterType: 'game' }, new Map());
     expect(result.map((r) => r.name)).toEqual(['game']);

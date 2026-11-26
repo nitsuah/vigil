@@ -6,6 +6,7 @@
  * unit-tested; the I/O sits behind small injected seams (`MetricsDb`,
  * `fetchItems`) so tests run without a database or the network.
  */
+import { isAdvisoryFork } from '@/lib/advisory-fork';
 import { githubCache } from '@/lib/github-cache';
 import { createOctokitClient } from '@/lib/githubClient';
 import logger from '@/lib/log';
@@ -153,15 +154,28 @@ export type MetricsDb = (strings: TemplateStringsArray, ...values: unknown[]) =>
 export interface MetricsRepo {
     id: string;
     full_name: string;
+    private_repo?: boolean | null;
+    visibility_verified?: boolean | null;
 }
 
-export type FetchItems = (fullName: string, since: string | null) => Promise<GhItemPayload[]>;
+export interface FetchedItems {
+    items: GhItemPayload[];
+    /** GitHub requests made. */
+    requests: number;
+    /** True when `maxPages` ran out before the listing did. */
+    more: boolean;
+}
+
+/** Items updated since `since`, oldest update first, reading at most `maxPages` pages. */
+export type FetchItems = (fullName: string, since: string | null, maxPages: number) => Promise<FetchedItems>;
 
 export interface RepoSyncResult {
     fullName: string;
     issues: number;
     prs: number;
     weeks: number;
+    /** True when changed items remain; the next call continues from the stored cursor. */
+    more: boolean;
 }
 
 const toIso = (v: unknown): string => (v instanceof Date ? v.toISOString() : String(v));
@@ -268,22 +282,25 @@ async function loadStored(db: MetricsDb, repoId: string): Promise<{ issues: Metr
 
 /**
  * Sync one repo: fetch items changed since the stored cursor, upsert them,
- * rebuild the touched weeks, then advance the cursor. The cursor is the time
- * the fetch *started*, and only moves after every write succeeded, so a
- * failed run is retried from the same point and an item updated mid-run is
- * seen again next time.
+ * rebuild the touched weeks, then advance the cursor. After a complete listing
+ * the cursor is the time the fetch *started*; when `maxPages` cut it short, it
+ * is the newest update that was read, so the next call resumes there. It only
+ * moves after every write succeeded, so a failed run is retried from the same
+ * point and an item updated mid-run is seen again next time.
  */
 export async function syncRepoMetrics(
     db: MetricsDb,
     repo: MetricsRepo,
     fetchItems: FetchItems,
     now: Date = new Date(),
+    maxPages: number = MAX_PAGES_PER_CALL,
 ): Promise<RepoSyncResult> {
     const state = (await db`SELECT last_synced_at FROM metrics_sync_state WHERE repo_id = ${repo.id}`) as Array<{ last_synced_at: unknown }>;
     const since = state[0] ? toIso(state[0].last_synced_at) : null;
     const startedAt = now.toISOString();
 
-    const mapped = (await fetchItems(repo.full_name, since))
+    const fetched = await fetchItems(repo.full_name, since, maxPages);
+    const mapped = fetched.items
         .map(mapGithubItem)
         .filter((m): m is MappedItem => m !== null);
     const issues = mapped.flatMap((m) => (m.kind === 'issue' ? [m.row] : []));
@@ -294,6 +311,16 @@ export async function syncRepoMetrics(
     const oldParents = issues.length === 0 ? [] : ((await db`
         SELECT parent_number FROM gh_issues WHERE repo_id = ${repo.id} AND number = ANY(${issues.map((i) => i.number)}) AND parent_number IS NOT NULL
     `) as Array<{ parent_number: number }>).map((r) => Number(r.parent_number));
+
+    let cursor = startedAt;
+    if (fetched.more) {
+        const newest = Math.max(...mapped.map((m) => Date.parse(m.row.updatedAt)));
+        // `since` is inclusive: a cursor that stays put would re-read the same pages for ever.
+        if (!Number.isFinite(newest) || (since !== null && newest <= Date.parse(since))) {
+            throw new Error(`Backfill cannot advance past ${since ?? 'the start'} within ${maxPages} page(s)`);
+        }
+        cursor = new Date(Math.min(newest, now.getTime())).toISOString();
+    }
 
     await upsertIssues(db, repo.id, issues);
     await upsertPrs(db, repo.id, prs);
@@ -308,42 +335,120 @@ export async function syncRepoMetrics(
     }
 
     await db`
-        INSERT INTO metrics_sync_state (repo_id, last_synced_at) VALUES (${repo.id}, ${startedAt}::timestamptz)
+        INSERT INTO metrics_sync_state (repo_id, last_synced_at) VALUES (${repo.id}, ${cursor}::timestamptz)
         ON CONFLICT (repo_id) DO UPDATE SET last_synced_at = EXCLUDED.last_synced_at
         WHERE metrics_sync_state.last_synced_at < EXCLUDED.last_synced_at
     `;
-    return { fullName: repo.full_name, issues: issues.length, prs: prs.length, weeks: weeks.length };
+    return { fullName: repo.full_name, issues: issues.length, prs: prs.length, weeks: weeks.length, more: fetched.more };
 }
 
-export interface MetricsSyncSummary {
+/*
+ * Workers Free allows 50 external subrequests per invocation, and each GitHub
+ * request and each Neon HTTP query is one. One call therefore syncs as many
+ * repos as fit and returns a cursor; metrics-sync.yml repeats it until `done`.
+ */
+/** Left under 50 for redirects and Octokit retries. */
+export const SUBREQUEST_BUDGET = 40;
+/** The route's schema check and this module's repo listing. */
+export const BATCH_OVERHEAD = 2;
+/** Most Neon queries one repo can make: cursor read, old parents, two upserts, two loads, rollups, cursor write. */
+export const MAX_DB_QUERIES_PER_REPO = 8;
+export const MAX_PAGES_PER_CALL = 5;
+/** Charged for a fetch that threw: one request plus Octokit's three retries. */
+const FAILED_FETCH_COST = 4;
+
+export interface MetricsSyncFailure {
+    /** Safe for the public workflow log: a private or unverified repo is shown by id only. */
+    repo: string;
+    /** A category, never the raw message, which can quote repo names and account URLs. */
+    error: string;
+}
+
+export interface MetricsSyncBatch {
     synced: RepoSyncResult[];
-    failed: Array<{ fullName: string; error: string }>;
+    failed: MetricsSyncFailure[];
+    /** Pass back as `after` to continue; a repo id, so it names nothing. */
+    next: string | null;
+    done: boolean;
+    /** Repos not finished yet, including one whose backfill is part way through. */
+    remaining: number;
 }
 
-/** Sync every non-archived repo (owner decision 1 on #456); one repo's failure never stops the rest. */
-export async function syncAllMetrics(
+const publicLabel = (r: MetricsRepo): string =>
+    r.visibility_verified === true && r.private_repo === false ? r.full_name : `private repo ${r.id}`;
+
+function errorCategory(err: unknown): string {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/too many subrequests/i.test(message)) return 'Too many subrequests';
+    if (message.startsWith('Backfill cannot advance')) return 'Backfill cannot advance';
+    const status = (err as { status?: unknown } | null)?.status;
+    if (typeof status === 'number') return `GitHub HTTP ${status}`;
+    return 'Sync failed (see Worker logs)';
+}
+
+/**
+ * Sync the next batch of non-archived repos (owner decision 1 on #456) after
+ * the `after` repo id, skipping temporary advisory forks. One repo's failure
+ * never stops the rest.
+ */
+export async function syncMetricsBatch(
     db: MetricsDb,
     fetchItems: FetchItems,
+    after: string | null = null,
     now: Date = new Date(),
-): Promise<MetricsSyncSummary> {
-    const repos = (await db`
-        SELECT id, full_name FROM repos WHERE is_archived IS NOT TRUE ORDER BY full_name
+): Promise<MetricsSyncBatch> {
+    const rows = (await db`
+        SELECT id, full_name, private_repo, visibility_verified FROM repos
+        WHERE is_archived IS NOT TRUE AND (${after}::uuid IS NULL OR id > ${after}::uuid)
+        ORDER BY id
     `) as unknown as MetricsRepo[];
-    const summary: MetricsSyncSummary = { synced: [], failed: [] };
-    for (const repo of repos) {
+    const repos = rows.filter((r) => !isAdvisoryFork(r.full_name));
+
+    let used = BATCH_OVERHEAD;
+    const countedDb: MetricsDb = (strings, ...values) => {
+        used++;
+        return db(strings, ...values);
+    };
+    const countedFetch: FetchItems = async (fullName, since, maxPages) => {
         try {
-            summary.synced.push(await syncRepoMetrics(db, repo, fetchItems, now));
+            const fetched = await fetchItems(fullName, since, maxPages);
+            used += fetched.requests;
+            return fetched;
         } catch (err) {
-            const error = err instanceof Error ? err.message : String(err);
-            logger.warn(`[metrics-sync] ${repo.full_name} failed: ${error}`);
-            summary.failed.push({ fullName: repo.full_name, error });
+            used += FAILED_FETCH_COST;
+            throw err;
         }
+    };
+
+    const synced: RepoSyncResult[] = [];
+    const failed: MetricsSyncFailure[] = [];
+    let next = after;
+    let finished = 0;
+    for (const repo of repos) {
+        // Start a repo only if its worst case still fits, so none is cut off mid-write.
+        const pages = Math.min(MAX_PAGES_PER_CALL, SUBREQUEST_BUDGET - used - MAX_DB_QUERIES_PER_REPO);
+        if (pages < 1) break;
+        try {
+            const result = await syncRepoMetrics(countedDb, repo, countedFetch, now, pages);
+            synced.push(result);
+            // Leave `next` before an unfinished backfill so the next call continues it.
+            if (result.more) break;
+        } catch (err) {
+            const category = errorCategory(err);
+            logger.warn(`[metrics-sync] ${repo.full_name} failed: ${err instanceof Error ? err.message : String(err)}`);
+            // Both can come from running late in a batch (the count fell short, or too few
+            // pages were left): give the repo a fresh invocation, unless it already led one.
+            if (finished > 0 && (category === 'Too many subrequests' || category === 'Backfill cannot advance')) break;
+            failed.push({ repo: publicLabel(repo), error: category });
+        }
+        next = repo.id;
+        finished++;
     }
-    return summary;
+    const remaining = repos.length - finished;
+    return { synced, failed, next, done: remaining === 0, remaining };
 }
 
 const PAGE_SIZE = 100;
-const MAX_PAGES = 50;
 
 /**
  * Real `fetchItems`: pages `GET /repos/{o}/{r}/issues?state=all&since=` with
@@ -352,14 +457,17 @@ const MAX_PAGES = 50;
  */
 export function createGithubFetchItems(token: string): FetchItems {
     const octokit = createOctokitClient(token);
-    return async (fullName, since) => {
+    return async (fullName, since, maxPages) => {
         const [owner, repo] = fullName.split('/');
         if (!owner || !repo) throw new Error(`Invalid repo full name: ${fullName}`);
         const items: GhItemPayload[] = [];
-        for (let page = 1; page <= MAX_PAGES; page++) {
+        let requests = 0;
+        let more = false;
+        for (let page = 1; page <= maxPages; page++) {
             const key = `metrics:${fullName}:${since ?? 'all'}:${page}`;
             const cached = githubCache.get(key);
             let data: GhItemPayload[];
+            requests++;
             try {
                 const res = await octokit.request('GET /repos/{owner}/{repo}/issues', {
                     owner, repo, state: 'all', per_page: PAGE_SIZE, page,
@@ -378,8 +486,9 @@ export function createGithubFetchItems(token: string): FetchItems {
                 }
             }
             items.push(...data);
-            if (data.length < PAGE_SIZE) break;
+            more = data.length === PAGE_SIZE;
+            if (!more) break;
         }
-        return items;
+        return { items, requests, more };
     };
 }

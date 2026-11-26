@@ -2,13 +2,18 @@ import { describe, it, expect, vi } from 'vitest';
 import {
     mapGithubItem,
     parseClosedIssues,
-    syncAllMetrics,
+    createGithubFetchItems,
+    MAX_PAGES_PER_CALL,
+    SUBREQUEST_BUDGET,
+    syncMetricsBatch,
     syncRepoMetrics,
     weeksToRecompute,
     type GhItemPayload,
     type MetricsDb,
 } from './metrics-sync';
 
+const request = vi.fn();
+vi.mock('@/lib/githubClient', () => ({ createOctokitClient: () => ({ request: (...a: unknown[]) => request(...a) }) }));
 vi.mock('@/lib/log', () => ({ default: { warn: vi.fn(), info: vi.fn(), debug: vi.fn(), error: vi.fn() } }));
 
 const item = (over: Partial<GhItemPayload> = {}): GhItemPayload => ({
@@ -68,7 +73,7 @@ describe('range and ordering guards', () => {
 
     it('only lets a newer item or cursor overwrite a stored one', async () => {
         const { db, calls } = fakeDb('2026-11-23T06:00:00.000Z');
-        await syncRepoMetrics(db, { id: 'r1', full_name: 'o/r' }, async () => [item(), item({ number: 2, pull_request: {} })], new Date('2026-11-24T06:00:00Z'));
+        await syncRepoMetrics(db, { id: 'r1', full_name: 'o/r' }, async () => page([item(), item({ number: 2, pull_request: {} })]), new Date('2026-11-24T06:00:00Z'));
         const upserts = calls.filter((c) => c.includes('ON CONFLICT'));
         expect(upserts.some((c) => c.includes('gh_issues.updated_at < EXCLUDED.updated_at'))).toBe(true);
         expect(upserts.some((c) => c.includes('gh_prs.updated_at < EXCLUDED.updated_at'))).toBe(true);
@@ -79,7 +84,7 @@ describe('range and ordering guards', () => {
         const parent = { number: 9, state: 'closed', state_reason: 'completed', labels: [], author_type: 'human', parent_number: null, opened_at: new Date('2026-10-05T00:00:00Z'), closed_at: new Date('2026-10-08T00:00:00Z') };
         for (const [oldParents, body] of [[[], 'parent: #9'], [[9], 'no link now']] as const) {
             const { db, calls } = fakeDb('2026-11-23T06:00:00.000Z', [...oldParents], [parent]);
-            const res = await syncRepoMetrics(db, { id: 'r1', full_name: 'o/r' }, async () => [item({ number: 30, body })], new Date('2026-11-24T06:00:00Z'));
+            const res = await syncRepoMetrics(db, { id: 'r1', full_name: 'o/r' }, async () => page([item({ number: 30, body })]), new Date('2026-11-24T06:00:00Z'));
             expect(res.weeks).toBeGreaterThanOrEqual(8); // 2026-W41 through W48
             expect(calls.some((c) => c.includes('INSERT INTO weekly_rollups'))).toBe(true);
         }
@@ -96,6 +101,9 @@ describe('weeksToRecompute', () => {
         expect(weeksToRecompute([], new Date())).toEqual([]);
     });
 });
+
+/** A fetch result: one request, and nothing left unless `more` says so. */
+const page = (items: GhItemPayload[], more = false) => ({ items, requests: 1, more });
 
 /** In-memory stand-in for the SQL function: records statements and serves the stored rows it is given. */
 function fakeDb(cursor: string | null, oldParents: number[] = [], stored: Array<Record<string, unknown>> = []) {
@@ -118,9 +126,9 @@ describe('syncRepoMetrics', () => {
 
     it('fetches since the stored cursor, upserts, rebuilds rollups and advances the cursor', async () => {
         const { db, calls } = fakeDb('2026-11-23T06:00:00.000Z');
-        const fetchItems = vi.fn().mockResolvedValue([item(), item({ number: 2, pull_request: {} })]);
+        const fetchItems = vi.fn().mockResolvedValue(page([item(), item({ number: 2, pull_request: {} })]));
         const res = await syncRepoMetrics(db, repo, fetchItems, now);
-        expect(fetchItems).toHaveBeenCalledWith('nitsuah/vigil', '2026-11-23T06:00:00.000Z');
+        expect(fetchItems).toHaveBeenCalledWith('nitsuah/vigil', '2026-11-23T06:00:00.000Z', MAX_PAGES_PER_CALL);
         expect(res).toMatchObject({ issues: 1, prs: 1 });
         const kinds = calls.map((c) => /INSERT INTO (\w+)/.exec(c)?.[1]).filter(Boolean);
         expect(kinds).toEqual(['gh_issues', 'gh_prs', 'weekly_rollups', 'metrics_sync_state']);
@@ -129,9 +137,9 @@ describe('syncRepoMetrics', () => {
 
     it('does a full fetch with no cursor and writes nothing when GitHub has no changes', async () => {
         const { db, calls } = fakeDb(null);
-        const fetchItems = vi.fn().mockResolvedValue([]);
+        const fetchItems = vi.fn().mockResolvedValue(page([]));
         const res = await syncRepoMetrics(db, repo, fetchItems, now);
-        expect(fetchItems).toHaveBeenCalledWith('nitsuah/vigil', null);
+        expect(fetchItems).toHaveBeenCalledWith('nitsuah/vigil', null, MAX_PAGES_PER_CALL);
         expect(res).toMatchObject({ issues: 0, prs: 0, weeks: 0 });
         expect(calls.filter((c) => c.startsWith('\n        INSERT INTO gh_') || c.includes('INSERT INTO weekly'))).toEqual([]);
     });
@@ -145,30 +153,175 @@ describe('syncRepoMetrics', () => {
     it('a second identical run issues the same statements (upserts are keyed, rollups rebuilt)', async () => {
         const run = async () => {
             const { db, calls } = fakeDb('2026-11-23T06:00:00.000Z');
-            await syncRepoMetrics(db, repo, async () => [item()], now);
+            await syncRepoMetrics(db, repo, async () => page([item()]), now);
             return calls;
         };
         expect(await run()).toEqual(await run());
     });
 });
 
-describe('syncAllMetrics', () => {
-    it('skips archived repos at the query and isolates per-repo failures', async () => {
-        const seen: string[] = [];
-        const db: MetricsDb = async (strings) => {
+describe('syncRepoMetrics partial backfill', () => {
+    const now = new Date('2026-11-24T06:00:00Z');
+    const repo = { id: 'r1', full_name: 'o/r' };
+    const cursorWritten = async (since: string | null, items: GhItemPayload[]) => {
+        const { db } = fakeDb(since);
+        let written: unknown;
+        const spy: MetricsDb = (strings, ...values) => {
+            if (strings.join('?').includes('INSERT INTO metrics_sync_state')) written = values[1];
+            return db(strings, ...values);
+        };
+        const res = await syncRepoMetrics(spy, repo, async () => page(items, true), now, 1);
+        expect(res.more).toBe(true);
+        return written;
+    };
+
+    it('stores the newest update read, so the next call resumes there', async () => {
+        const items = [item({ updated_at: '2026-11-18T00:00:00Z' }), item({ number: 2, updated_at: '2026-11-19T00:00:00Z' })];
+        expect(await cursorWritten(null, items)).toBe('2026-11-19T00:00:00.000Z');
+    });
+
+    it('never moves the cursor past the time the fetch started', async () => {
+        expect(await cursorWritten(null, [item({ updated_at: '2026-11-24T06:00:05Z' })])).toBe(now.toISOString());
+    });
+
+    it('fails rather than re-reading the same pages for ever', async () => {
+        const since = '2026-11-18T00:00:00.000Z';
+        const { db, calls } = fakeDb(since);
+        const fetchItems = async () => page([item({ updated_at: since })], true);
+        await expect(syncRepoMetrics(db, repo, fetchItems, now, 1)).rejects.toThrow('Backfill cannot advance');
+        expect(calls.some((c) => c.includes('INSERT INTO'))).toBe(false);
+    });
+});
+
+describe('createGithubFetchItems', () => {
+    const full = (n: number) => Array.from({ length: 100 }, (_, i) => item({ number: n * 100 + i + 1 }));
+
+    it('stops at the page allowance and reports that more remains', async () => {
+        request.mockReset().mockImplementation(async (_route, p: { page: number }) => ({ data: full(p.page), headers: {} }));
+        const res = await createGithubFetchItems('t')('o/capped', null, 2);
+        expect(res).toMatchObject({ requests: 2, more: true });
+        expect(res.items).toHaveLength(200);
+    });
+
+    it('reports a complete listing on a short page', async () => {
+        request.mockReset().mockResolvedValue({ data: [item()], headers: {} });
+        expect(await createGithubFetchItems('t')('o/short', null, 5)).toMatchObject({ requests: 1, more: false });
+    });
+});
+
+describe('syncMetricsBatch', () => {
+    const now = new Date('2026-11-24T00:00:00Z');
+    const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+    const repoRow = (n: number, over: Record<string, unknown> = {}) =>
+        ({ id: uuid(n), full_name: `o/repo-${n}`, private_repo: false, visibility_verified: true, ...over });
+
+    /** Serves `repos` after the cursor and counts every query, as Workers counts subrequests. */
+    function world(repos: Array<ReturnType<typeof repoRow>>) {
+        const count = { queries: 0 };
+        const sqls: string[] = [];
+        const db: MetricsDb = async (strings, ...values) => {
+            count.queries++;
             const sql = strings.join('?');
-            seen.push(sql);
-            if (sql.includes('FROM repos')) return [{ id: 'a', full_name: 'o/a' }, { id: 'b', full_name: 'o/b' }];
+            sqls.push(sql);
+            if (sql.includes('FROM repos')) return repos.filter((r) => values[0] === null || r.id > (values[0] as string));
             return [];
         };
-        expect(seen.length).toBe(0);
-        const fetchItems = vi.fn().mockImplementation(async (name: string) => {
-            if (name === 'o/a') throw new Error('rate limited');
-            return [];
+        return { db, count, sqls };
+    }
+
+    async function drive(repos: Array<ReturnType<typeof repoRow>>, fetchItems: Parameters<typeof syncMetricsBatch>[1]) {
+        const w = world(repos);
+        const batches = [];
+        const spent: number[] = [];
+        let after: string | null = null;
+        for (let i = 0; i < 100; i++) {
+            let requests = 0;
+            const before = w.count.queries;
+            const batch = await syncMetricsBatch(w.db, async (...args) => {
+                const res = await fetchItems(...args);
+                requests += res.requests;
+                return res;
+            }, after, now);
+            batches.push(batch);
+            // The route's schema check is one more subrequest than the queries seen here.
+            spent.push(1 + w.count.queries - before + requests);
+            after = batch.next;
+            if (batch.done) break;
+        }
+        return { batches, spent, sqls: w.sqls };
+    }
+
+    it('covers every repo over several calls, each within the budget', async () => {
+        const repos = Array.from({ length: 40 }, (_, i) => repoRow(i + 1));
+        const { batches, spent, sqls } = await drive(repos, async () => page([]));
+        expect(sqls[0]).toContain('is_archived IS NOT TRUE');
+        expect(batches.length).toBeGreaterThan(1);
+        expect(batches[batches.length - 1]).toMatchObject({ done: true, remaining: 0 });
+        expect(batches.flatMap((b) => b.synced.map((s) => s.fullName))).toEqual(repos.map((r) => r.full_name));
+        expect(Math.max(...spent)).toBeLessThanOrEqual(SUBREQUEST_BUDGET);
+    });
+
+    it('stays within the budget when every repo has changes and a full page allowance', async () => {
+        const repos = Array.from({ length: 12 }, (_, i) => repoRow(i + 1));
+        const { batches, spent } = await drive(repos, async (_name, _since, maxPages) => ({
+            items: [item({ body: 'parent: #1' })], requests: maxPages, more: false,
+        }));
+        expect(batches[batches.length - 1].done).toBe(true);
+        expect(batches.flatMap((b) => b.synced)).toHaveLength(12);
+        expect(Math.max(...spent)).toBeLessThanOrEqual(SUBREQUEST_BUDGET);
+    });
+
+    it('stays on a repo until its backfill is complete', async () => {
+        let left = 2;
+        const { batches } = await drive([repoRow(1), repoRow(2)], async (name) => {
+            if (name === 'o/repo-1' && left > 0) {
+                left--;
+                return page([item({ updated_at: `2026-11-${20 - left}T00:00:00Z` })], true);
+            }
+            return page([]);
         });
-        const summary = await syncAllMetrics(db, fetchItems, new Date('2026-11-24T00:00:00Z'));
-        expect(seen[0]).toContain('is_archived IS NOT TRUE');
-        expect(summary.failed).toEqual([{ fullName: 'o/a', error: 'rate limited' }]);
-        expect(summary.synced.map((s) => s.fullName)).toEqual(['o/b']);
+        expect(batches.map((b) => [b.synced.map((s) => s.fullName), b.next, b.remaining])).toEqual([
+            [['o/repo-1'], null, 2],
+            [['o/repo-1'], null, 2],
+            [['o/repo-1', 'o/repo-2'], uuid(2), 0],
+        ]);
+    });
+
+    it('isolates failures, and never names a private or unverified repo or quotes the message', async () => {
+        const repos = [
+            repoRow(1),
+            repoRow(2, { full_name: 'o/secret', private_repo: true }),
+            repoRow(3, { full_name: 'o/unverified', visibility_verified: false }),
+            repoRow(4),
+        ];
+        const { batches } = await drive(repos, async (name) => {
+            if (name === 'o/repo-4') return page([]);
+            throw Object.assign(new Error(`no access to ${name}`), { status: 403 });
+        });
+        const failed = batches.flatMap((b) => b.failed);
+        expect(failed).toEqual([
+            { repo: 'o/repo-1', error: 'GitHub HTTP 403' },
+            { repo: `private repo ${uuid(2)}`, error: 'GitHub HTTP 403' },
+            { repo: `private repo ${uuid(3)}`, error: 'GitHub HTTP 403' },
+        ]);
+        expect(batches.flatMap((b) => b.synced.map((s) => s.fullName))).toEqual(['o/repo-4']);
+    });
+
+    it('defers a repo that hits the subrequest limit, and reports it only if it led its batch', async () => {
+        const { batches } = await drive([repoRow(1), repoRow(2)], async (name) => {
+            if (name === 'o/repo-2') throw new Error('Too many subrequests by single Worker invocation.');
+            return page([]);
+        });
+        expect(batches[0]).toMatchObject({ next: uuid(1), done: false, failed: [] });
+        expect(batches[1]).toMatchObject({ done: true, failed: [{ repo: 'o/repo-2', error: 'Too many subrequests' }] });
+    });
+
+    it('does not sync temporary advisory forks', async () => {
+        const fork = repoRow(2, { full_name: 'o/repo-ghsa-2345-6789-cfgh', private_repo: true });
+        const fetchItems = vi.fn().mockResolvedValue(page([]));
+        const { batches } = await drive([repoRow(1), fork], fetchItems);
+        expect(fetchItems.mock.calls.map((c) => c[0])).toEqual(['o/repo-1']);
+        expect(batches).toHaveLength(1);
+        expect(batches[0]).toMatchObject({ done: true, remaining: 0, failed: [] });
     });
 });

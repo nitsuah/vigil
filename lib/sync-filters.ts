@@ -1,3 +1,4 @@
+import { isAdvisoryFork } from '@/lib/advisory-fork';
 import { RepoType, detectRepoType } from '@/lib/repo-type';
 import type { RepoMetadata } from '@/lib/github';
 import { DEFAULT_REPOS } from '@/lib/default-repos';
@@ -21,7 +22,7 @@ export interface DbRepoState {
 /**
  * Reduce the full GitHub repo list to the set currently displayed on the
  * dashboard: applies the same type/language/fork filters as useRepoFilters,
- * and always drops hidden and archived repos.
+ * and always drops hidden and archived repos and temporary advisory forks.
  */
 export function filterReposForSync(
   repos: RepoMetadata[],
@@ -29,6 +30,7 @@ export function filterReposForSync(
   dbRepoMap: Map<string, DbRepoState>
 ): RepoMetadata[] {
   return repos.filter((repo) => {
+    if (isAdvisoryFork(repo.fullName)) return false;
     const dbRepo = dbRepoMap.get(repo.fullName);
     if (dbRepo?.is_hidden) return false;
     if (repo.archived || dbRepo?.is_archived) return false;

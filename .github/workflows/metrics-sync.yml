@@ -4,6 +4,9 @@ name: Metrics sync
 # issues and PRs for every tracked repo into gh_issues / gh_prs / weekly_rollups.
 # Needs the repo variable METRICS_SYNC_URL (the site origin) and the secret
 # METRICS_SYNC_SECRET (the same value the app reads); skipped until both exist.
+# One request cannot cover every repo within the Worker's subrequest limit, so
+# the job repeats it with the returned cursor until `done`, and fails if any repo
+# failed. This log is public: the app names private repos by id only.
 on:
   schedule:
     - cron: '23 6 * * *'
@@ -18,7 +21,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     env:
       METRICS_SYNC_URL: ${{ vars.METRICS_SYNC_URL }}
       METRICS_SYNC_SECRET: ${{ secrets.METRICS_SYNC_SECRET }}
@@ -29,6 +32,37 @@ jobs:
             echo "METRICS_SYNC_URL or METRICS_SYNC_SECRET is not set; skipping."
             exit 0
           fi
-          curl --fail-with-body --silent --show-error --max-time 300 -X POST \
-            -H "Authorization: Bearer $METRICS_SYNC_SECRET" \
-            "${METRICS_SYNC_URL%/}/api/metrics/sync"
+          url="${METRICS_SYNC_URL%/}/api/metrics/sync"
+          body="$RUNNER_TEMP/metrics-sync.json"
+          failures="$RUNNER_TEMP/metrics-sync-failures.txt"
+          : > "$failures"
+          after=""
+          synced=0
+          for batch in $(seq 1 200); do
+            # A batch is safe to repeat, so transient errors are retried.
+            status=$(curl --silent --show-error --max-time 120 --retry 2 --retry-delay 15 \
+              -o "$body" -w '%{http_code}' -X POST \
+              -H "Authorization: Bearer $METRICS_SYNC_SECRET" \
+              "$url?after=$after") || { echo "::error::Batch $batch: request failed"; exit 1; }
+            if [ "$status" != "200" ] || ! jq -e '.done | type == "boolean"' "$body" > /dev/null 2>&1; then
+              echo "::error::Batch $batch: unexpected response (HTTP $status)"
+              head -c 500 "$body"
+              exit 1
+            fi
+            jq -r '"synced \(.repos), failed \(.failed | length), remaining \(.remaining)"' "$body" | sed "s/^/Batch $batch: /"
+            jq -r '.failed[] | "\(.repo): \(.error)"' "$body" >> "$failures"
+            synced=$((synced + $(jq '.repos' "$body")))
+            if [ "$(jq '.done' "$body")" = "true" ]; then
+              failed=$(wc -l < "$failures")
+              echo "Synced $synced repos, $failed failed."
+              if [ "$failed" -gt 0 ]; then
+                cat "$failures"
+                echo "::error::$failed repos failed to sync"
+                exit 1
+              fi
+              exit 0
+            fi
+            after=$(jq -r '.next // ""' "$body")
+          done
+          echo "::error::Sync did not finish within 200 batches ($synced repos synced)"
+          exit 1
