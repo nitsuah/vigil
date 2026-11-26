@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupWorkByRepo, type PriorityKey } from '@/lib/pmo-grid';
+import { ciColor, gradeColor, groupWorkByRepo, type PriorityKey } from '@/lib/pmo-grid';
 import type { OpenTask } from '@/lib/task-rollup';
 
 const task = (full_name: string, title: string, priority: OpenTask['priority'], status: OpenTask['status'] = 'todo'): OpenTask => ({
@@ -43,5 +43,34 @@ describe('groupWorkByRepo', () => {
     it('matches repos by full name case-insensitively', () => {
         const { active } = groupWorkByRepo(repos, [task('O/Alpha', 'x', 'P1')], all);
         expect(active.map((g) => g.repo.name)).toEqual(['alpha']);
+    });
+});
+
+describe('ciColor', () => {
+    it('maps CI statuses to text colours', () => {
+        expect(ciColor('passing')).toBe('text-emerald-400');
+        expect(ciColor('failing')).toBe('text-red-400');
+        expect(ciColor(null)).toBe('text-slate-500');
+        expect(ciColor('pending')).toBe('text-slate-500');
+    });
+});
+
+describe('gradeColor', () => {
+    it('handles null', () => {
+        expect(gradeColor(null)).toBe('text-slate-400 border-slate-600/40');
+    });
+    it.each([
+        [100, 'text-emerald-300'],
+        [90, 'text-emerald-300'],
+        [89, 'text-green-400'],
+        [80, 'text-green-400'],
+        [79, 'text-yellow-400'],
+        [70, 'text-yellow-400'],
+        [69, 'text-orange-400'],
+        [60, 'text-orange-400'],
+        [59, 'text-red-400'],
+        [0, 'text-red-400'],
+    ])('score %i starts with %s', (score, cls) => {
+        expect(gradeColor(score).split(' ')[0]).toBe(cls);
     });
 });
