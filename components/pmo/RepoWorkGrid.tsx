@@ -7,7 +7,7 @@ import {
 import type { PmoRepoSummary, PmoInProgressItem } from '@/app/api/pmo/overview/route';
 import type { OpenTaskRollup } from '@/lib/task-rollup';
 import { MAX_ROLLUP_LIMIT } from '@/lib/task-rollup';
-import { groupWorkByRepo, PRIORITY_KEYS, type PriorityKey, type RepoWorkGroup } from '@/lib/pmo-grid';
+import { ciColor, gradeColor, groupWorkByRepo, PRIORITY_KEYS, type PriorityKey, type RepoWorkGroup } from '@/lib/pmo-grid';
 import { healthGrade } from '@/lib/health-grade';
 
 const CHIP_COLOR: Record<PriorityKey, string> = {
@@ -32,21 +32,6 @@ type OnHandoff = (repoName: string, item: PmoInProgressItem, taskId: string) => 
  * rather than queue a duplicate.
  */
 const queuedHandoffs = new Map<string, string>();
-
-function ciColor(status: string | null): string {
-    if (status === 'passing') return 'text-emerald-400';
-    if (status === 'failing') return 'text-red-400';
-    return 'text-slate-500';
-}
-
-function gradeColor(score: number | null): string {
-    if (score === null) return 'text-slate-400 border-slate-600/40';
-    if (score >= 90) return 'text-emerald-300 border-emerald-400/50 bg-emerald-500/15';
-    if (score >= 80) return 'text-green-400 border-green-500/40 bg-green-500/10';
-    if (score >= 70) return 'text-yellow-400 border-yellow-500/35 bg-yellow-500/10';
-    if (score >= 60) return 'text-orange-400 border-orange-500/40 bg-orange-500/10';
-    return 'text-red-400 border-red-500/50 bg-red-500/15';
-}
 
 function HealthBadge({ score }: { score: number | null }): React.JSX.Element {
     return (

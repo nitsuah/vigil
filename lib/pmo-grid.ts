@@ -73,3 +73,18 @@ export function groupWorkByRepo<R extends GridRepo>(
         idle: groups.filter((g) => g.tasks.length === 0).sort((a, b) => a.repo.name.localeCompare(b.repo.name)),
     };
 }
+
+export function ciColor(status: string | null): string {
+    if (status === 'passing') return 'text-emerald-400';
+    if (status === 'failing') return 'text-red-400';
+    return 'text-slate-500';
+}
+
+export function gradeColor(score: number | null): string {
+    if (score === null) return 'text-slate-400 border-slate-600/40';
+    if (score >= 90) return 'text-emerald-300 border-emerald-400/50 bg-emerald-500/15';
+    if (score >= 80) return 'text-green-400 border-green-500/40 bg-green-500/10';
+    if (score >= 70) return 'text-yellow-400 border-yellow-500/35 bg-yellow-500/10';
+    if (score >= 60) return 'text-orange-400 border-orange-500/40 bg-orange-500/10';
+    return 'text-red-400 border-red-500/50 bg-red-500/15';
+}
