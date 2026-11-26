@@ -11,7 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Unit tests for `lib/diff-inline.ts` (extracted from DiffView).
 - Unit tests for `lib/ai-failover.ts`.
 - Unit tests for `lib/language-colors.ts`.
 - Unit tests for `lib/expandable-row-utils.ts`.
