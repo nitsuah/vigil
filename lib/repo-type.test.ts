@@ -188,6 +188,11 @@ describe('repo-type', () => {
       expect(result.type).toBe('bot');
     });
 
+    it('should prioritize web-app over tool', () => {
+      const result = detectRepoType('project', 'A web application tool', null, ['react', 'tool']);
+      expect(result.type).toBe('web-app');
+    });
+
     it('should prioritize bot over tool', () => {
       const result = detectRepoType('bot-tool', 'A bot tool', null, ['bot', 'cli']);
       expect(result.type).toBe('bot');
