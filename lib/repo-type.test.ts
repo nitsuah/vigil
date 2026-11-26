@@ -187,6 +187,62 @@ describe('repo-type', () => {
       const result = detectRepoType('web-bot', 'A web bot', null, ['bot', 'react']);
       expect(result.type).toBe('bot');
     });
+
+    it('should prioritize bot over tool', () => {
+      const result = detectRepoType('bot-tool', 'A bot tool', null, ['bot', 'cli']);
+      expect(result.type).toBe('bot');
+    });
+
+    it('should prioritize tool over library', () => {
+      const result = detectRepoType('tool-lib', 'A tool library', null, ['tool', 'library']);
+      expect(result.type).toBe('tool');
+    });
+
+    it('should prioritize library over research', () => {
+      const result = detectRepoType('lib-research', 'A library for research', null, ['library', 'research']);
+      expect(result.type).toBe('library');
+    });
+
+    it('should prioritize research over unknown', () => {
+      const result = detectRepoType('research-proj', 'An experiment', null, ['research']);
+      expect(result.type).toBe('research');
+    });
+
+    it('should handle null description', () => {
+      const result = detectRepoType('my-game', null, null, []);
+      expect(result.type).toBe('game');
+    });
+
+    it('should handle empty topic array', () => {
+      const result = detectRepoType('project', 'A game', null, []);
+      expect(result.type).toBe('game');
+    });
+
+    it('should handle case-insensitive topics', () => {
+      const result1 = detectRepoType('project', 'A project', null, ['GAME']);
+      expect(result1.type).toBe('game');
+
+      const result2 = detectRepoType('project', 'A project', null, ['NextJS', 'REACT']);
+      expect(result2.type).toBe('web-app');
+
+      const result3 = detectRepoType('project', 'A project', null, ['CLI', 'TOOL']);
+      expect(result3.type).toBe('tool');
+    });
+
+    it('should detect bot by phaser topic', () => {
+      const result = detectRepoType('project', 'A project', null, ['phaser']);
+      expect(result.type).toBe('game');
+    });
+
+    it('should detect game when name is "games"', () => {
+      const result = detectRepoType('games', 'A project', null, []);
+      expect(result.type).toBe('game');
+    });
+
+    it('should detect tool by vigil name', () => {
+      const result = detectRepoType('vigil', 'A project', null, []);
+      expect(result.type).toBe('tool');
+    });
   });
 
   describe('getTypeColor', () => {
