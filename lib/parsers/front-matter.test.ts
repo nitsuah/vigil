@@ -14,7 +14,7 @@ const evil = (lang: string) =>
     `---${lang}\n(function(){ globalThis.__frontMatterPwned = true; return { title: 'x' }; })()\n---\n# Roadmap\n\n## Q1 2025\n- [ ] item\n`;
 
 describe('front matter never executes code', () => {
-    for (const lang of ['js', 'javascript', 'coffee']) {
+    for (const lang of ['js', 'javascript', 'coffee', 'coffeescript', 'cson', 'JS', 'JavaScript', 'CoffeeScript', 'CSON']) {
         it(`parseFrontMatter refuses a ---${lang} fence`, () => {
             const out = parseFrontMatter(evil(lang));
             expect(g.__frontMatterPwned).toBeUndefined();
