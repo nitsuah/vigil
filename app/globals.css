@@ -181,3 +181,5 @@ body {
 .chat-markdown ul,
 .chat-markdown ol { margin-left: 1.15rem; }
 .chat-markdown pre { margin: 0.5rem 0; }
+/* Mobile report controls get a 44px touch area. */
+.report-touch button { min-height: 44px; min-width: 44px; }

@@ -150,6 +150,8 @@ export function MobileRepoCard({
         */}
         <button
           type="button"
+          data-tour="repo-name"
+          data-report-toggle
           aria-expanded={isExpanded}
           aria-controls={`mobile-card-details-${repo.name}`}
           aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${repo.name} card details`}
@@ -291,7 +293,7 @@ export function MobileRepoCard({
           {/* Row 2: health + alert badges + doc icons */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Health grade */}
-            <div className={`pointer-events-auto ${repo.is_hidden ? 'opacity-50 grayscale' : ''}`}>
+            <div data-tour="health-score" className={`pointer-events-auto ${repo.is_hidden ? 'opacity-50 grayscale' : ''}`}>
               {details ? (
                 <HealthBreakdown
                   repo={repo}
@@ -396,7 +398,7 @@ export function MobileRepoCard({
 
             {/* Doc status icons */}
             {!details && isLoadingDetails && (
-              <div className="flex items-center gap-1 animate-pulse ml-auto" aria-label="Loading docs">
+              <div data-tour="docs" className="flex items-center gap-1 animate-pulse ml-auto" aria-label="Loading docs">
                 {DOC_ICONS.map(({ type }) => (
                   <div key={type} className="h-3.5 w-3.5 rounded-full bg-slate-700/60" />
                 ))}
@@ -404,6 +406,7 @@ export function MobileRepoCard({
             )}
             {docIconState && (
               <div
+                data-tour="docs"
                 className="pointer-events-auto flex items-center gap-1 ml-auto"
                 title={docHealth ? `Doc health: ${docHealth.score}%` : 'Doc status'}
               >

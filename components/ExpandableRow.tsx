@@ -166,9 +166,11 @@ function ExpandableRowContent({
   // to viewport width and would still kick in a 2-col layout on a
   // half-width/tablet-width screen that is otherwise showing the mobile
   // card list.
+  // Three columns only from xl (1280px): beside the sidebar, lg left each card
+  // too narrow and clipped its header controls (#534).
   const sectionGridClass = isMobile
     ? 'flex flex-col gap-4'
-    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-6';
+    : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 lg:gap-6 [&>*]:min-w-0 [&>*]:[overflow-wrap:anywhere]';
 
   return (
     <div className="p-4 md:p-6 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 border-t border-slate-700/50">
@@ -176,14 +178,14 @@ function ExpandableRowContent({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onBack(); }}
-          className="mb-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-800 hover:text-slate-100 transition-colors"
+          className="mb-4 flex min-h-[44px] min-w-[44px] items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-800 hover:text-slate-100 transition-colors"
         >
           ← Back to repo list
         </button>
       )}
       {/* Main Layout: Repository Stats + Issues (left sidebar) + Content Grid (right) —
           on mobile this collapses into a single stacked column (see isMobile above). */}
-      <div className={isMobile ? 'flex flex-col gap-4' : 'flex flex-col md:flex-row gap-4 md:gap-6'}>
+      <div className={isMobile ? 'report-touch flex flex-col gap-4' : 'flex flex-col md:flex-row gap-4 md:gap-6'}>
         {/* Left Sidebar: AI Summary + Repository Stats + Issues + Metrics */}
         <div className={isMobile ? 'w-full space-y-4' : 'w-full md:w-60 lg:w-72 xl:w-80 md:shrink-0 space-y-4 md:space-y-6'}>
           {/* AI Summary - First in sidebar */}

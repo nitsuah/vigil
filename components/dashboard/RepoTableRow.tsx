@@ -144,6 +144,7 @@ export function RepoTableRow({
             {/* Keyboard-reachable expand control; clicking the row does the same. */}
             <button
               type="button"
+              data-report-toggle
               aria-expanded={isExpanded}
               aria-label={`${isExpanded ? "Hide" : "Show"} details for ${repo.name}`}
               className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
@@ -347,7 +348,7 @@ export function RepoTableRow({
                 <span className={`text-lg font-bold ${health.color}`}>{health.grade}</span>
               )}
               {/* Security health badge - shown inline when details available */}
-              {securityScore != null && (
+              {securityScore != null && !expandedHealth && (
                 <span
                   title={`Security health: ${securityScore}%`}
                   aria-label={`Security health: ${securityScore}%`}
@@ -362,7 +363,7 @@ export function RepoTableRow({
                   Sec {securityScore}%
                 </span>
               )}
-              {details && !details.postureHidden && repo.security_last_checked === null && (
+              {details && !expandedHealth && !details.postureHidden && repo.security_last_checked == null && (
                 <span
                   title="Security health unavailable (not checked yet)"
                   aria-label="Security health unavailable (not checked yet)"
