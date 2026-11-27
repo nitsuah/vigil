@@ -415,7 +415,9 @@ export async function syncMetricsBatch(
             used += fetched.requests;
             return fetched;
         } catch (err) {
-            used += FAILED_FETCH_COST;
+            // Pages read before the failure, plus the failed request and its retries.
+            const before = (err as { requestsBefore?: unknown } | null)?.requestsBefore;
+            used += (typeof before === 'number' ? before : 0) + FAILED_FETCH_COST;
             throw err;
         }
     };
@@ -482,6 +484,8 @@ export function createGithubFetchItems(token: string): FetchItems {
                 if ((err as { status?: number }).status === 304 && cached) {
                     data = cached.data as GhItemPayload[];
                 } else {
+                    // Let the batch charge the pages already read before this one failed.
+                    if (err && typeof err === 'object') (err as { requestsBefore?: number }).requestsBefore = requests - 1;
                     throw err;
                 }
             }

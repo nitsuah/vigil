@@ -287,6 +287,20 @@ describe('syncMetricsBatch', () => {
         ]);
     });
 
+    it('charges the pages read before a listing failed, so failures cannot overrun the budget', async () => {
+        const repos = Array.from({ length: 12 }, (_, i) => repoRow(i + 1));
+        const w = world(repos);
+        let attempts = 0;
+        const batch = await syncMetricsBatch(w.db, async () => {
+            attempts++;
+            // Four full pages read, then the fifth fails (it and its three retries are real subrequests too).
+            throw Object.assign(new Error('bad gateway'), { status: 502, requestsBefore: 4 });
+        }, null, now);
+        // Real spend: the route's schema check, every query, and 4 pages + 4 attempts per failed listing.
+        expect(1 + w.count.queries + attempts * 8).toBeLessThanOrEqual(SUBREQUEST_BUDGET);
+        expect(batch.done).toBe(false);
+    });
+
     it('isolates failures, and never names a private or unverified repo or quotes the message', async () => {
         const repos = [
             repoRow(1),
