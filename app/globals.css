@@ -187,7 +187,7 @@ body {
    Where a header runs out of room, its controls move to a second line. */
 .report-grid > * { overflow-wrap: break-word; }
 .report-grid :is(li, p, a, code) { overflow-wrap: anywhere; }
-.report-grid h4 { white-space: nowrap; }
+.report-grid h4 { white-space: normal; overflow-wrap: normal; word-break: normal; }
 .report-grid :has(> div > h4),
 .report-grid :has(> div > h4) > div,
 .report-grid :has(> h4) { flex-wrap: wrap; row-gap: 0.5rem; }
