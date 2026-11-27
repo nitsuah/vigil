@@ -61,6 +61,7 @@ export function MetricsSection({ metrics, isExpanded: isExpandedProp, onToggleEx
             <h4 className="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
               Metrics
               <span title="Self-Reported" className="text-xs font-normal text-slate-400">⚠️</span>
+              <span className="text-xs font-normal text-slate-400">Self-reported</span>
             </h4>
             <span
               title={`Metrics: ${otherMetrics.length} tracked`}
