@@ -21,7 +21,7 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 360
     env:
       METRICS_SYNC_URL: ${{ vars.METRICS_SYNC_URL }}
       METRICS_SYNC_SECRET: ${{ secrets.METRICS_SYNC_SECRET }}
