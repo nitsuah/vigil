@@ -200,7 +200,6 @@ export async function POST(request: Request): Promise<NextResponse> {
         observe.finish('database', 'failure', { errorClass: 'database' });
         observe.finish('repository_list', 'failure', { errorClass: 'unknown' });
         logger.warn('Sync error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to sync repositories' }, { status: 500 });
     }
 }

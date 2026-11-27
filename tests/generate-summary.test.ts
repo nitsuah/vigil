@@ -106,7 +106,7 @@ describe('Generate Summary API', () => {
     const data = await response.json();
     
     expect(response.status).toBe(500);
-    expect(data.error).toContain('GitHub access token not found');
+    expect(data.error).toBe('Failed to generate summary');
   });
   
   it('should return error when no documentation files found', async () => {

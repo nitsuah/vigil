@@ -191,7 +191,6 @@ export async function POST(
         });
     } catch (error: unknown) {
         logger.warn('Error creating PR for standards:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fix community standards' }, { status: 500 });
     }
 }

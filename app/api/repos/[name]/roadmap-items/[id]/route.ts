@@ -73,7 +73,6 @@ export async function PATCH(
         return NextResponse.json({ success: true, item: rows[0] });
     } catch (error: unknown) {
         logger.warn('Error linking roadmap item:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to update roadmap item' }, { status: 500 });
     }
 }
