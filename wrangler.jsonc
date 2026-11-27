@@ -12,6 +12,9 @@
   },
   "workers_dev": true,
   "preview_urls": false,
+  // Required by `wrangler preview`, which Workers Builds runs for non-production
+  // branches. Keep it empty: previews then get no production vars, secrets or bindings.
+  "previews": {},
   "observability": { "enabled": true },
   // Plain-text vars (GITHUB_ID, NEXTAUTH_URL, SITE_URL, AUTH_TRUST_HOST) live in the
   // dashboard; without this, `wrangler deploy` would delete them.
