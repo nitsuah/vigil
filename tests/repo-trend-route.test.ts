@@ -65,6 +65,17 @@ describe('GET /api/repo-details/[name]/trend', () => {
         expect((await call({ name: 'vigil' })).status).toBe(404);
     });
 
+    it('serves that repo by short name to a signed-in user who can see it', async () => {
+        mockAuth.mockResolvedValue({ user: { name: 'u' }, userId: 'gh-1', expires: 'x' } as Session);
+        const { db, calls } = makeDb([
+            { id: 'other', full_name: 'someone/vigil', private_repo: false, visibility_verified: true },
+        ]);
+        mockGetNeonClient.mockReturnValue(db as never);
+
+        expect((await call({ name: 'vigil' })).status).toBe(200);
+        expect(calls.at(-1)?.values).toEqual(['other']);
+    });
+
     it('returns a generic body when the database fails', async () => {
         mockGetNeonClient.mockReturnValue(
             vi.fn().mockRejectedValue(new Error('invalid input syntax for type boolean')) as never
