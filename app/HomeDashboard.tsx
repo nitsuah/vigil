@@ -119,6 +119,8 @@ export default function Dashboard() {
   const activeSyncSessionRef = useRef<string | null>(null);
   const syncAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  // Track the active run independently from the dismissible progress panel.
+  const [runActive, setRunActive] = useState(false);
 
   // Pull the freshly synced data into the table (and any expanded rows).
   const reloadAfterSync = async () => {
@@ -133,6 +135,7 @@ export default function Dashboard() {
     const controller = new AbortController();
     syncAbortRef.current = controller;
     activeSyncSessionRef.current = sessionId;
+    setRunActive(true);
     const isActive = () => activeSyncSessionRef.current === sessionId && !controller.signal.aborted;
 
     const result = await driveSync({
@@ -160,6 +163,7 @@ export default function Dashboard() {
     }
     // A stopped sync still wrote the repos it finished; show them either way.
     await reloadAfterSync();
+    if (isActive()) setRunActive(false);
     const progress = result.progress;
     const failed = progress?.failedRepos ?? 0;
     // Leave the finished panel up briefly, then swap it for a one-line summary.
@@ -186,6 +190,7 @@ export default function Dashboard() {
 
   // The loop reports its own outcomes; this only catches an unexpected throw (e.g. the reload after a run).
   const reportDriverError = () => {
+    setRunActive(false);
     setSyncProgress(null);
     setToastMessage('Sync stopped unexpectedly. Reload to continue it, or run Sync again.');
   };
@@ -343,6 +348,8 @@ export default function Dashboard() {
     );
   }
 
+  const syncRunning = syncing || runActive;
+
   return (
     <>
       <Header
@@ -352,7 +359,7 @@ export default function Dashboard() {
         addRepoType={addRepoType}
         addingRepo={addingRepo}
         showFilters={showFilters}
-        syncing={syncing}
+        syncing={syncRunning}
         isAuthenticated={!!session}
         filterType={filterType}
         filterLanguage={filterLanguage}
@@ -384,8 +391,26 @@ export default function Dashboard() {
           <div className="glass rounded-lg p-8 sm:p-12 text-center">
             <p className="text-slate-400 text-lg">No repositories found</p>
             <p className="text-slate-500 text-sm mt-2">
-              Click &quot;Sync Repos&quot; to fetch your GitHub repositories
+              {repos.length > 0
+                ? 'No repositories match the current filters.'
+                : session
+                  ? 'Sync to fetch your GitHub repositories.'
+                  : 'Sign in with GitHub to track your own repositories.'}
             </p>
+            {session ? (
+              <button
+                type="button"
+                onClick={handleSync}
+                disabled={syncRunning}
+                className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+              >
+                {syncRunning ? 'Syncing...' : 'Sync repositories'}
+              </button>
+            ) : (
+              <a href="/login" className="mt-4 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
+                Sign in with GitHub
+              </a>
+            )}
           </div>
         ) : (
           <div className="glass rounded-lg overflow-hidden">
