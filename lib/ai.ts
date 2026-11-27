@@ -1,5 +1,6 @@
 import logger from './log';
 import { generateWithFailover } from './ai-failover';
+import { finishedSummary } from './summary-text';
 import { getConfiguredModel, DEFAULT_GEMINI_MODEL } from './gemini-model-discovery';
 
 // Ensure test scripts can read the configured Gemini model name
@@ -32,7 +33,9 @@ Files provided:
     }
 
     try {
-        return (await generateWithFailover(prompt, { useShortResponse: true })).text;
+        const { text } = await generateWithFailover(prompt, { useShortResponse: true });
+        // null: nothing finished to save, so the caller keeps the old summary.
+        return finishedSummary(text);
     } catch (error) {
         logger.warn('All AI providers failed for repo summary:', error);
 

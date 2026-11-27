@@ -147,7 +147,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
             : 'bg-red-500/20 text-red-400'
         }`}
       >
-        {csHealthy}/{csTotal}
+        Community {csHealthy}/{csTotal}
       </span>
       {!details.postureHidden && (
       <span
@@ -160,7 +160,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
             : 'bg-red-500/20 text-red-400'
         }`}
       >
-        {bpHealthy}/{bpTotal}
+        Practices {bpHealthy}/{bpTotal}
       </span>
       )}
       <span
@@ -173,7 +173,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
             : 'bg-red-500/20 text-red-400'
         }`}
       >
-        {testingCount}/{testingTotal}
+        Tests {testingCount}/{testingTotal}
       </span>
       {repo.coverage_score != null && (
         <span
@@ -186,7 +186,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
               : 'bg-red-500/20 text-red-400'
           }`}
         >
-          {repo.coverage_score}%
+          Coverage {repo.coverage_score}%
         </span>
       )}
       {docHealth && (
@@ -200,7 +200,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
               : 'bg-red-500/20 text-red-400'
           }`}
         >
-          {docHealth.score}%
+          Docs {docHealth.score}%
         </span>
       )}
       {/* Security health badge */}
@@ -231,7 +231,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         title={repo.last_commit_date ? `Last commit: ${repo.last_commit_date}` : 'No commits'}
         className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getActivityColor(repo.last_commit_date)}`}
       >
-        {formatActivityTime(repo.last_commit_date)}
+        Commit {formatActivityTime(repo.last_commit_date)}
       </span>
     </>
   );

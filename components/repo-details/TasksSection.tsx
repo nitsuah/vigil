@@ -2,7 +2,7 @@
 
 import { ListTodo } from 'lucide-react';
 import { Task } from '@/types/repo';
-import { parseBoldText } from '@/lib/markdown-utils';
+import { renderInlineMarkdown } from '@/lib/markdown-utils';
 import { useState } from 'react';
 
 interface TasksSectionProps {
@@ -217,7 +217,7 @@ export function TasksSection({ tasks, tasksDocExists = false, isExpanded: isExpa
                               {statusDisplay.icon}
                             </span>
                             <span className={item.status === 'done' ? 'line-through text-slate-500' : ''}>
-                              {parseBoldText(item.title)}
+                              {renderInlineMarkdown(item.title)}
                             </span>
                           </li>
                         );

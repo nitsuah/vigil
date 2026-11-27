@@ -2,7 +2,7 @@
 
 import { Map, GitPullRequest, Bot, Link2, Sparkles, Loader2 } from 'lucide-react';
 import { RoadmapItem } from '@/types/repo';
-import { parseBoldText } from '@/lib/markdown-utils';
+import { renderInlineMarkdown } from '@/lib/markdown-utils';
 import { useState } from 'react';
 
 interface RoadmapSectionProps {
@@ -405,7 +405,7 @@ export function RoadmapSection({ roadmapItems, isExpanded: isExpandedProp, onTog
                                 {stage === 'in-review' ? '⬤' : statusDisplay.icon}
                               </span>
                               <span className={item.status === 'completed' ? 'line-through text-slate-500' : ''}>
-                                {parseBoldText(item.title)}
+                                {renderInlineMarkdown(item.title)}
                               </span>
                               {link.linked_pr_number && repoUrl && (
                                 <a
