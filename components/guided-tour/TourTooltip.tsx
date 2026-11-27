@@ -74,7 +74,6 @@ export function TourTooltip({
       tabIndex={-1}
       className="absolute bg-slate-900 border-2 border-blue-400 rounded-lg shadow-[0_0_40px_rgba(59,130,246,0.4)] p-6 w-[min(400px,calc(100vw-32px))] z-[10000] focus:outline-none"
       style={{ top: position.top, left: position.left }}
-      onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); onSkip(); } }}
     >
       <button
         onClick={onSkip}
@@ -125,7 +124,7 @@ export function TourTooltip({
           Previous
         </button>
         <div className="flex gap-2">
-          {!isLastStep && !isAutoAdvancing && !autoPlay && (
+          {!isLastStep && !autoPlay && (
             <button
               onClick={onToggleAutoPlay}
               className="px-3 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors text-sm"
@@ -141,7 +140,7 @@ export function TourTooltip({
               Full tour
             </button>
           )}
-          {!isLastStep && isAutoAdvancing && (
+          {!isLastStep && autoPlay && (
             <button
               onClick={onPauseAutoAdvance}
               className="px-4 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors text-sm"

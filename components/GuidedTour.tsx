@@ -85,14 +85,13 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
   const updateHighlight = useCallback(() => {
     const element = findTarget(step.target);
     if (!element) {
+      // Nothing on screen to point at: show the step in the middle, unhighlighted.
       setHighlightRect(null);
-      if (step.id === 'welcome') {
-        const w = Math.min(400, window.innerWidth - 32);
-        setTooltipPosition({
-          top: Math.max(100, window.innerHeight / 3 - 100),
-          left: Math.max(16, window.innerWidth / 2 - w / 2),
-        });
-      }
+      const w = Math.min(400, window.innerWidth - 32);
+      setTooltipPosition({
+        top: Math.max(100, window.innerHeight / 3 - 100),
+        left: Math.max(16, window.innerWidth / 2 - w / 2),
+      });
       return;
     }
 
@@ -126,7 +125,7 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
     top = Math.max(10, Math.min(top, window.innerHeight - tooltipHeight - 10));
     left = Math.max(10, Math.min(left, window.innerWidth - tooltipWidth - 10));
     setTooltipPosition({ top, left });
-  }, [step.target, step.id, step.position]);
+  }, [step.target, step.position]);
 
   // Keep a stable ref so handleTooltipMeasure can call the latest updateHighlight
   // without being in its dependency array (which would break memoization).
@@ -324,6 +323,20 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
     onClose();
   };
 
+  // Escape skips wherever focus is, for example after a click on the backdrop.
+  const handleSkipRef = useRef(handleSkip);
+  useEffect(() => { handleSkipRef.current = handleSkip; });
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleSkipRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const handleToggleAutoPlay = (): void => {
     clearTimers();
     setIsAutoAdvancing(false);
@@ -369,7 +382,6 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
       <TourOverlay
         highlightRect={highlightRect}
         stepId={step.id}
-        onSkip={handleSkip}
       />
       <TourTooltip
         step={step}

@@ -3,10 +3,9 @@
 interface TourOverlayProps {
   highlightRect: DOMRect | null;
   stepId: string;
-  onSkip: () => void;
 }
 
-export function TourOverlay({ highlightRect, stepId, onSkip }: TourOverlayProps) {
+export function TourOverlay({ highlightRect, stepId }: TourOverlayProps) {
   const showSpotlight = highlightRect && stepId !== 'welcome';
 
   return (
@@ -15,12 +14,6 @@ export function TourOverlay({ highlightRect, stepId, onSkip }: TourOverlayProps)
         className="absolute inset-0 bg-black/75"
         // A stray click or tap must not end the tour; Skip, close and Escape do.
         aria-hidden="true"
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            onSkip();
-          }
-        }}
         style={
           showSpotlight
             ? {
