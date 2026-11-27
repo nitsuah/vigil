@@ -1,24 +1,27 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const syncAllMetrics = vi.fn();
+const syncMetricsBatch = vi.fn();
 vi.mock('@/lib/db', () => ({ getNeonClient: vi.fn(() => ({})), ensureSchema: vi.fn() }));
 vi.mock('@/lib/log', () => ({ default: { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 vi.mock('@/lib/metrics-sync', () => ({
-    syncAllMetrics: (...a: unknown[]) => syncAllMetrics(...a),
+    syncMetricsBatch: (...a: unknown[]) => syncMetricsBatch(...a),
     createGithubFetchItems: vi.fn(() => vi.fn()),
 }));
 
 import { POST } from '@/app/api/metrics/sync/route';
 
-const req = (auth?: string) =>
-    new Request('http://localhost/api/metrics/sync', { method: 'POST', headers: auth ? { authorization: auth } : {} });
+const req = (auth?: string, query = '') =>
+    new Request(`http://localhost/api/metrics/sync${query}`, { method: 'POST', headers: auth ? { authorization: auth } : {} });
+
+const batch = (over: Record<string, unknown> = {}) =>
+    ({ synced: [{ fullName: 'o/r', more: false }], failed: [], next: null, done: true, remaining: 0, ...over });
 
 describe('POST /api/metrics/sync', () => {
     const env = { ...process.env };
     beforeEach(() => {
         process.env.METRICS_SYNC_SECRET = 'a-long-enough-secret';
         process.env.GITHUB_TOKEN = 'ghp_test';
-        syncAllMetrics.mockReset().mockResolvedValue({ synced: [{ fullName: 'o/r' }], failed: [] });
+        syncMetricsBatch.mockReset().mockResolvedValue(batch());
     });
     afterEach(() => {
         process.env = { ...env };
@@ -32,25 +35,41 @@ describe('POST /api/metrics/sync', () => {
         process.env.METRICS_SYNC_SECRET = 'a-long-enough-secret';
         delete process.env.GITHUB_TOKEN;
         expect((await POST(req('Bearer a-long-enough-secret'))).status).toBe(503);
-        expect(syncAllMetrics).not.toHaveBeenCalled();
+        expect(syncMetricsBatch).not.toHaveBeenCalled();
     });
 
     it('rejects a missing or wrong bearer token', async () => {
         expect((await POST(req())).status).toBe(401);
         expect((await POST(req('Bearer nope'))).status).toBe(401);
-        expect(syncAllMetrics).not.toHaveBeenCalled();
+        expect(syncMetricsBatch).not.toHaveBeenCalled();
     });
 
-    it('runs the sync for the right secret and reports per-repo failures', async () => {
-        syncAllMetrics.mockResolvedValue({ synced: [{ fullName: 'o/r' }], failed: [{ fullName: 'o/x', error: 'boom' }] });
+    it('runs one batch for the right secret and returns the cursor and failures', async () => {
+        const next = '00000000-0000-4000-8000-000000000001';
+        syncMetricsBatch.mockResolvedValue(batch({
+            synced: [{ fullName: 'o/r', more: false }, { fullName: 'o/big', more: true }],
+            failed: [{ repo: 'o/x', error: 'GitHub HTTP 403' }],
+            next, done: false, remaining: 7,
+        }));
         const res = await POST(req('Bearer a-long-enough-secret'));
         expect(res.status).toBe(200);
-        expect(await res.json()).toEqual({ ok: true, repos: 1, failed: [{ fullName: 'o/x', error: 'boom' }] });
+        expect(await res.json()).toEqual({ ok: false, repos: 1, failed: [{ repo: 'o/x', error: 'GitHub HTTP 403' }], next, done: false, remaining: 7 });
+        expect(syncMetricsBatch.mock.calls[0][2]).toBeNull();
     });
 
-    it('returns 502 when every repo failed', async () => {
-        syncAllMetrics.mockResolvedValue({ synced: [], failed: [{ fullName: 'o/x', error: 'boom' }] });
-        expect((await POST(req('Bearer a-long-enough-secret'))).status).toBe(502);
+    it('stays 200 when a whole batch failed, so the caller reaches the other repos', async () => {
+        syncMetricsBatch.mockResolvedValue(batch({ synced: [], failed: [{ repo: 'o/x', error: 'GitHub HTTP 403' }] }));
+        expect((await POST(req('Bearer a-long-enough-secret'))).status).toBe(200);
+    });
+
+    it('passes the cursor through and rejects one that is not a repo id', async () => {
+        const after = '00000000-0000-4000-8000-000000000001';
+        await POST(req('Bearer a-long-enough-secret', `?after=${after}`));
+        expect(syncMetricsBatch.mock.calls[0][2]).toBe(after);
+        await POST(req('Bearer a-long-enough-secret', '?after='));
+        expect(syncMetricsBatch.mock.calls[1][2]).toBeNull();
+        expect((await POST(req('Bearer a-long-enough-secret', "?after=1';--"))).status).toBe(400);
+        expect(syncMetricsBatch).toHaveBeenCalledTimes(2);
     });
 });
 
@@ -59,7 +78,7 @@ describe('POST /api/metrics/sync overlap', () => {
         process.env.METRICS_SYNC_SECRET = 'a-long-enough-secret';
         process.env.GITHUB_TOKEN = 'ghp_test';
         let release!: () => void;
-        syncAllMetrics.mockReset().mockReturnValueOnce(new Promise((r) => { release = () => r({ synced: [], failed: [] }); }));
+        syncMetricsBatch.mockReset().mockReturnValueOnce(new Promise((r) => { release = () => r(batch()); }));
         const first = POST(req('Bearer a-long-enough-secret'));
         await new Promise((r) => setTimeout(r, 0));
         expect((await POST(req('Bearer a-long-enough-secret'))).status).toBe(409);

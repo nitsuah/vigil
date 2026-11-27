@@ -17,6 +17,8 @@ updated: 2026-11-23
   - Done 2026-11-24 (#483, vigil half): `lib/metrics-digest.ts` renders the scorecard as a markdown section, served as `metrics.digest` (with `metrics.scorecard`) in the portfolio `/api/context`, so week-sotu prints the same numbers as `/metrics`.
   - Done 2026-11-24 (#482): `/metrics` page (`app/metrics/page.tsx`, `components/metrics/*`): scorecard, inline-SVG burn-up, opened/closed bars and lead-time charts, repo breakdown, and repo / label / author-type / range filters kept in the URL. Header links to it next to PMO. The app has one (dark) theme, so there is no light variant to style.
   - Done 2026-11-24 (#481): `lib/metrics-scorecard.ts` (this week vs the mean of the previous 4 weeks, good/bad deltas) and `GET /api/metrics/overview` with repo, label, author-type and weeks filters, behind the PMO access rule.
+  - Done 2026-11-26: the sync is batched to fit the Workers subrequest limit (the first configured run covered only a few repos), the workflow fails when any repo fails, and temporary advisory forks are skipped.
+  - Remaining: once the Worker has deployed the batched sync, re-enable `Metrics sync` (Actions → Metrics sync → Enable workflow, or `gh workflow enable metrics-sync.yml`) and run it once; against the old Worker it fails with "unexpected response". Then confirm a run reaches every eligible tracked repo (advisory `-ghsa-` forks are skipped). Repos the system token cannot read keep the workflow red until its access is fixed.
   - Done 2026-11-24 (#480): sync maps issues and PRs from one `issues?since=` listing, upserts idempotently, rebuilds touched weeks, and keeps a per-repo cursor. The workflow needs the `METRICS_SYNC_URL` variable and `METRICS_SYNC_SECRET` secret before it does anything.
 
 ## Todo
