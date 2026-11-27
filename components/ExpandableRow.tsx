@@ -171,7 +171,8 @@ function ExpandableRowContent({
     : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-6';
 
   return (
-    <div className="p-4 md:p-6 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 border-t border-slate-700/50">
+    // data-report marks an open report; the guided tour looks for it.
+    <div data-report className="p-4 md:p-6 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 border-t border-slate-700/50">
       {isMobile && onBack && (
         <button
           type="button"

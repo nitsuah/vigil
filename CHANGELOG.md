@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Signed-out visitors get a dismissible intro with a legend and a tour button; the tour defaults to 5 manual steps, ignores backdrop clicks, can be resumed, and highlights the copy of a control that is on screen (#536).
 - Cloudflare branch builds no longer fail at the preview step: `wrangler.jsonc` has an empty `previews` block.
 
 - The daily metrics sync now reaches every tracked repo on Workers Free, where it used to stop with "Too many subrequests" after a few. `POST /api/metrics/sync` syncs one batch within a counted budget of 40 subrequests (GitHub requests and Neon queries) and returns a repo-id cursor that `metrics-sync.yml` follows until `done`. A first backfill too large for one call resumes from the newest update it read. The workflow fails if any repo fails; because its log is public, private or unverified repos are shown by id and errors as categories (full detail stays in the Worker logs). Temporary `-ghsa-` advisory forks are no longer synced by this job or queued by the dashboard sync (#456).
