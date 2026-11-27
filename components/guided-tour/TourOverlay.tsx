@@ -13,12 +13,10 @@ export function TourOverlay({ highlightRect, stepId, onSkip }: TourOverlayProps)
     <div className="absolute inset-0">
       <div
         className="absolute inset-0 bg-black/75"
-        onClick={onSkip}
-        role="button"
-        aria-label="Skip tour"
-        tabIndex={0}
+        // A stray click or tap must not end the tour; Skip, close and Escape do.
+        aria-hidden="true"
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+          if (e.key === 'Escape') {
             e.preventDefault();
             onSkip();
           }

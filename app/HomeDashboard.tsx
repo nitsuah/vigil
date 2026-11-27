@@ -3,6 +3,7 @@
 import { Toast } from '@/components/Toast';
 import { PRPreviewModal } from '@/components/PRPreviewModal';
 import GuidedTour from '@/components/GuidedTour';
+import { VisitorIntro } from '@/components/VisitorIntro';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
@@ -55,6 +56,7 @@ export default function Dashboard() {
   const toggleHealthExpanded = () => setExpandedHealth((v) => !v);
   const toggleDocsExpanded = () => setExpandedDocs((v) => !v);
   const [showTour, setShowTour] = useState(false);
+  const [resumeTour, setResumeTour] = useState(false);
   const [chatRepoName, setChatRepoName] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -371,12 +373,13 @@ export default function Dashboard() {
         onFilterForkChange={setFilterFork}
         onFilterTierChange={setFilterTier}
         onClearFilters={clearFilters}
-        onStartTour={() => setShowTour(true)}
+        onStartTour={() => { setResumeTour(false); setShowTour(true); }}
         showHidden={showHidden}
         onToggleHidden={() => setShowHidden(!showHidden)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 space-y-4 md:space-y-6">
+        {!session && <VisitorIntro onStartTour={(resume) => { setResumeTour(resume); setShowTour(true); }} />}
         {filteredRepos.length === 0 ? (
           <div className="glass rounded-lg p-8 sm:p-12 text-center">
             <p className="text-slate-400 text-lg">No repositories found</p>
@@ -602,7 +605,7 @@ export default function Dashboard() {
           if (chatRepoName) dismissProposal(chatRepoName, messageId);
         }}
       />
-      {showTour && <GuidedTour onClose={() => setShowTour(false)} />}
+      {showTour && <GuidedTour resume={resumeTour} onClose={() => setShowTour(false)} />}
       {toastMessage && <Toast message={toastMessage} raised={!!syncProgress} onClose={() => setToastMessage(null)} />}
       {syncProgress && (
         <ProgressToast

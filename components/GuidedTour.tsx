@@ -1,16 +1,30 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { tourSteps } from './guided-tour/tour-steps';
+import { tourSteps, quickTourSteps } from './guided-tour/tour-steps';
+import { readTourState, writeTourState } from '@/lib/tour-state';
 import { TourOverlay } from './guided-tour/TourOverlay';
 import { TourTooltip } from './guided-tour/TourTooltip';
 
 interface GuidedTourProps {
   onClose: () => void;
+  /** Pick up a partial run where it stopped. */
+  resume?: boolean;
 }
 
-export default function GuidedTour({ onClose }: GuidedTourProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+/** The first match that is actually rendered: phones and desktops each have their own copy. */
+function findTarget(selector: string): Element | null {
+  const matches = Array.from(document.querySelectorAll(selector));
+  return matches.find((el) => el.getBoundingClientRect().width > 0) ?? null;
+}
+
+export default function GuidedTour({ onClose, resume = false }: GuidedTourProps) {
+  const [saved] = useState(() => (resume ? readTourState() : {}));
+  const [mode, setMode] = useState<'quick' | 'full'>(saved.mode ?? 'quick');
+  const steps = mode === 'full' ? tourSteps : quickTourSteps;
+  const [currentStep, setCurrentStep] = useState(() => Math.min(Math.max(saved.step ?? 0, 0), steps.length - 1));
+  // Steps change only on a click unless the visitor asks for auto-play.
+  const [autoPlay, setAutoPlay] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
   const [isAutoAdvancing, setIsAutoAdvancing] = useState(false);
@@ -21,12 +35,12 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
   const pendingTimersRef = useRef<NodeJS.Timeout[]>([]);
   const tooltipHeightRef = useRef(220);
 
-  const step = tourSteps[currentStep];
+  const step = steps[currentStep];
   const isFirstStep = currentStep === 0;
-  const isLastStep = currentStep === tourSteps.length - 1;
+  const isLastStep = currentStep === steps.length - 1;
 
   const startAutoAdvance = useCallback(() => {
-    if (!isFirstStep && !isLastStep) {
+    if (autoPlay && !isLastStep) {
       setIsAutoAdvancing(true);
       setCountdown(3);
 
@@ -41,7 +55,7 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
         setIsAutoAdvancing(false);
       }, 3000);
     }
-  }, [isFirstStep, isLastStep]);
+  }, [autoPlay, isLastStep]);
 
   const clearTimers = useCallback(() => {
     if (autoAdvanceTimerRef.current) {
@@ -69,8 +83,9 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
   }, []);
 
   const updateHighlight = useCallback(() => {
-    const element = document.querySelector(step.target);
+    const element = findTarget(step.target);
     if (!element) {
+      setHighlightRect(null);
       if (step.id === 'welcome') {
         const w = Math.min(400, window.innerWidth - 32);
         setTooltipPosition({
@@ -303,6 +318,24 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
     return cleanup;
   }, [currentStep, step.id, updateHighlight, startAutoAdvance, clearTimers, scheduleDelayed]);
 
+  // Leaving early remembers where, so the intro can offer to resume.
+  const handleSkip = (): void => {
+    writeTourState({ tour: 'partial', mode, step: currentStep });
+    onClose();
+  };
+
+  const handleToggleAutoPlay = (): void => {
+    clearTimers();
+    setIsAutoAdvancing(false);
+    setAutoPlay((on) => !on);
+  };
+
+  const handleFullTour = (): void => {
+    clearTimers();
+    setMode('full');
+    setCurrentStep(0);
+  };
+
   const handleNext = (): void => {
     clearTimers();
     setIsAutoAdvancing(false);
@@ -312,6 +345,7 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
         .querySelector('[data-tour="auth-status"]')
         ?.getBoundingClientRect().width;
       if (profilePicture && statusPillsVisible) (profilePicture as HTMLElement).click();
+      writeTourState({ tour: 'done' });
       onClose();
     } else {
       setCurrentStep(currentStep + 1);
@@ -327,6 +361,7 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
   const handlePauseAutoAdvance = (): void => {
     clearTimers();
     setIsAutoAdvancing(false);
+    setAutoPlay(false);
   };
 
   return (
@@ -334,12 +369,15 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
       <TourOverlay
         highlightRect={highlightRect}
         stepId={step.id}
-        onSkip={onClose}
+        onSkip={handleSkip}
       />
       <TourTooltip
         step={step}
         currentStep={currentStep}
-        totalSteps={tourSteps.length}
+        totalSteps={steps.length}
+        autoPlay={autoPlay}
+        onToggleAutoPlay={handleToggleAutoPlay}
+        onFullTour={mode === 'quick' && isLastStep ? handleFullTour : undefined}
         isFirstStep={isFirstStep}
         isLastStep={isLastStep}
         isAutoAdvancing={isAutoAdvancing}
@@ -347,7 +385,7 @@ export default function GuidedTour({ onClose }: GuidedTourProps) {
         position={tooltipPosition}
         onNext={handleNext}
         onPrevious={handlePrevious}
-        onSkip={onClose}
+        onSkip={handleSkip}
         onPauseAutoAdvance={handlePauseAutoAdvance}
         onMeasure={handleTooltipMeasure}
       />

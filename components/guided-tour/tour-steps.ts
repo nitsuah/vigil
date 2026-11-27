@@ -11,7 +11,7 @@ export const tourSteps: TourStep[] = [
     id: 'welcome',
     title: 'Welcome to Vigil',
     description:
-      "A quick tour of your repository intelligence dashboard. We'll walk through the key features automatically. Click Skip Tour anytime to exit.",
+      "A quick tour of your repository intelligence dashboard. Use Next to move through it, or Skip tour at any time.",
     target: 'header',
     position: 'bottom',
   },
@@ -169,6 +169,28 @@ export const tourSteps: TourStep[] = [
     description:
       'Click your profile picture any time to see your sign-in status, AI availability and version, restart this tour, or sign out.',
     target: '[data-tour="profile-toggle"]',
+    position: 'bottom',
+  },
+];
+
+const pick = (id: string): TourStep => {
+  const step = tourSteps.find((s) => s.id === id);
+  if (!step) throw new Error(`Unknown tour step: ${id}`);
+  return step;
+};
+
+/** The default tour. Its last step offers the full one. */
+export const quickTourSteps: TourStep[] = [
+  pick('welcome'),
+  pick('repo-name'),
+  pick('health-score'),
+  pick('docs-column'),
+  {
+    id: 'next-steps',
+    title: 'Where to go next',
+    description:
+      'Open any repository to read its report. Take the full tour to see every section, or sign in to track your own repositories.',
+    target: 'header',
     position: 'bottom',
   },
 ];

@@ -18,6 +18,10 @@ interface TourTooltipProps {
   onSkip: () => void;
   onPauseAutoAdvance: () => void;
   onMeasure?: (height: number) => void;
+  autoPlay: boolean;
+  onToggleAutoPlay: () => void;
+  /** Set on the last step of the quick tour. */
+  onFullTour?: () => void;
 }
 
 export function TourTooltip({
@@ -34,6 +38,9 @@ export function TourTooltip({
   onSkip,
   onPauseAutoAdvance,
   onMeasure,
+  autoPlay,
+  onToggleAutoPlay,
+  onFullTour,
 }: TourTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const titleId = `tour-step-title-${currentStep}`;
@@ -118,6 +125,22 @@ export function TourTooltip({
           Previous
         </button>
         <div className="flex gap-2">
+          {!isLastStep && !isAutoAdvancing && !autoPlay && (
+            <button
+              onClick={onToggleAutoPlay}
+              className="px-3 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors text-sm"
+            >
+              Play
+            </button>
+          )}
+          {onFullTour && (
+            <button
+              onClick={onFullTour}
+              className="px-3 py-2 text-blue-300 hover:text-blue-200 hover:bg-slate-700 rounded-lg transition-colors text-sm"
+            >
+              Full tour
+            </button>
+          )}
           {!isLastStep && isAutoAdvancing && (
             <button
               onClick={onPauseAutoAdvance}
