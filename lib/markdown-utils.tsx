@@ -33,41 +33,83 @@ export function parseBoldText(text: string): React.ReactNode[] {
  * raw HTML is never interpreted.
  */
 export function renderInlineMarkdown(text: string): React.ReactNode[] {
-  // Bounded, non-nesting classes keep this linear on hostile input.
-  const token = /`([^`\n]{1,500})`|\[([^\[\]\n]{1,500})\]\((https?:\/\/[^\s]{1,1000})\)|\*\*([^*\n]{1,500})\*\*/g;
   const parts: React.ReactNode[] = [];
-  let last = 0;
-  for (const match of text.matchAll(token)) {
-    const [whole, code, label, href, bold] = match;
-    if (match.index > last) parts.push(text.slice(last, match.index));
-    if (code !== undefined) {
-      parts.push(
-        <code key={match.index} className="rounded bg-slate-700/60 px-1 font-mono text-[0.9em]">{code}</code>
-      );
-    } else if (href !== undefined) {
-      // Greedy URL capture includes the Markdown closing paren; remove only
-      // unmatched trailing parens. The bounded scan is linear in URL length.
-      let safeHref = href;
-      const opens = (safeHref.match(/\(/g) ?? []).length;
-      let closes = (safeHref.match(/\)/g) ?? []).length;
-      while (closes > opens && safeHref.endsWith(')')) {
-        safeHref = safeHref.slice(0, -1);
-        closes -= 1;
-      }
-      if (opens !== closes) {
-        parts.push(whole);
-      } else {
-        parts.push(
-          <a key={match.index} href={safeHref} target="_blank" rel="noopener noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>
-            {label}
-          </a>
-        );
-      }
-    } else {
-      parts.push(<strong key={match.index}>{renderInlineMarkdown(bold)}</strong>);
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    const candidates = [
+      { kind: 'code' as const, index: text.indexOf('`', cursor) },
+      { kind: 'bold' as const, index: text.indexOf('**', cursor) },
+      { kind: 'link' as const, index: text.indexOf('[', cursor) },
+    ].filter((candidate) => candidate.index >= 0);
+    if (candidates.length === 0) {
+      parts.push(text.slice(cursor));
+      break;
     }
-    last = match.index + whole.length;
+    candidates.sort((a, b) => a.index - b.index);
+    const candidate = candidates[0];
+    if (candidate.index > cursor) parts.push(text.slice(cursor, candidate.index));
+
+    if (candidate.kind === 'code') {
+      const end = text.indexOf('`', candidate.index + 1);
+      const code = end > candidate.index ? text.slice(candidate.index + 1, end) : '';
+      if (code && code.length <= 500 && !code.includes('\n')) {
+        parts.push(<code key={candidate.index} className="rounded bg-slate-700/60 px-1 font-mono text-[0.9em]">{code}</code>);
+        cursor = end + 1;
+      } else {
+        parts.push('`');
+        cursor = candidate.index + 1;
+      }
+      continue;
+    }
+
+    if (candidate.kind === 'bold') {
+      const end = text.indexOf('**', candidate.index + 2);
+      const bold = end > candidate.index ? text.slice(candidate.index + 2, end) : '';
+      if (bold && bold.length <= 500 && !bold.includes('*') && !bold.includes('\n')) {
+        parts.push(<strong key={candidate.index}>{renderInlineMarkdown(bold)}</strong>);
+        cursor = end + 2;
+      } else {
+        parts.push('*');
+        cursor = candidate.index + 1;
+      }
+      continue;
+    }
+
+    const labelEnd = text.indexOf(']', candidate.index + 1);
+    const label = labelEnd > candidate.index ? text.slice(candidate.index + 1, labelEnd) : '';
+    const validLabel = label && label.length <= 500 && labelEnd - candidate.index <= 501;
+    const openParen = validLabel && text[labelEnd + 1] === '(';
+    const urlStart = labelEnd + 2;
+    const isHttp = openParen && (text.startsWith('https://', urlStart) || text.startsWith('http://', urlStart));
+    if (!validLabel || !isHttp) {
+      parts.push('[');
+      cursor = candidate.index + 1;
+      continue;
+    }
+
+    // Scan the URL once and track balanced parentheses. A ')' at depth zero
+    // closes the Markdown link; malformed URLs remain plain text.
+    let depth = 0;
+    let end = urlStart;
+    let closed = false;
+    while (end < text.length && end - urlStart < 1000) {
+      const char = text[end];
+      if (/\s/.test(char)) break;
+      if (char === '(') depth += 1;
+      else if (char === ')') {
+        if (depth === 0) { closed = true; break; }
+        depth -= 1;
+      }
+      end += 1;
+    }
+    if (closed && depth === 0 && end > urlStart) {
+      parts.push(<a key={candidate.index} href={text.slice(urlStart, end)} target="_blank" rel="noopener noreferrer" className="underline" onClick={(e) => e.stopPropagation()}>{label}</a>);
+      cursor = end + 1;
+    } else {
+      parts.push('[');
+      cursor = candidate.index + 1;
+    }
   }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts.length > 0 ? parts : [text];
+  return parts;
 }
