@@ -142,6 +142,9 @@ npm install
 cp .env.example .env.local
 # Edit .env.local with your credentials
 
+# Required in .env.local: GITHUB_ID, GITHUB_SECRET, NEXTAUTH_SECRET, NEXTAUTH_URL, DATABASE_URL.
+# Local OAuth callback URL: http://localhost:3000/api/auth/callback/github
+
 # Setup database
 npm run setup-db
 

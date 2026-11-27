@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Showcase page quick start lists the required settings and the local OAuth callback, splits configure from run, wraps long commands, embeds the visual-practices clip, and has readable small grey text (#537).
+- `FEATURES.md` matches the current guided-tour length and the sign-in rules for `/api/context` and `/api/mcp` (#536, #543).
+
 - Bound large-repository health-sync pagination: PR review-thread follow-ups share a five-request budget, zombie branches stop at three pages, issue labels at two pages, and contributor scans at 100 results (#494).
 
 - Repository sync no longer sticks at "Step 1 of 2" on Cloudflare Workers: it is client-driven and chunked. `POST /api/sync-repos` lists and queues the repos, `POST /api/sync-repos/batch` does the awaited work (3 repos per metadata call, 1 per health call, inside the 50-subrequest cap), and the dashboard drives the loop with one retry per batch, skip-and-record on a second failure, cancel on unmount and resume after a reload. Runs left in `metadata` by the old background sync are restartable (#305).
