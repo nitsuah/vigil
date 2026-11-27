@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { signIn } from "@/auth";
 
 export default async function LoginPage() {
@@ -44,6 +45,12 @@ export default async function LoginPage() {
                                 <span className="font-medium">Sign in with GitHub</span>
                             </button>
                         </form>
+
+                        <p className="text-sm">
+                            <Link href="/" className="text-indigo-300 underline hover:text-indigo-200">
+                                Browse the public demo
+                            </Link>
+                        </p>
 
                         <p className="text-xs text-slate-500">
                             We&apos;ll request access to your repositories to sync metadata and documentation

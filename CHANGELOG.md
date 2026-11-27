@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Signed out, the header logo is a home link and AI summaries have no clear button; the sign-in page links back to the public demo; the Tasks counter keeps one total when done items are shown (#536).
 - Showcase page quick start lists the required settings and the local OAuth callback, splits configure from run, wraps long commands, embeds the visual-practices clip, and has readable small grey text (#537).
 - `FEATURES.md` matches the current guided-tour length and the sign-in rules for `/api/context` and `/api/mcp` (#536, #543).
 - The repo health-trend lookup works again for both short and full repository names.
