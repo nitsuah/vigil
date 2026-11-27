@@ -74,6 +74,7 @@ describe('GET /api/repo-details/[name]/trend', () => {
 
     it('serves that repo by short name to a signed-in user who can see it', async () => {
         mockAuth.mockResolvedValue({ user: { name: 'u' }, userId: 'gh-1', expires: 'x' } as Session);
+        mockCanAccessRepo.mockResolvedValue(true);
         const { db, calls } = makeDb([
             { id: 'other', full_name: 'someone/vigil', private_repo: false, visibility_verified: true },
         ]);
@@ -82,7 +83,6 @@ describe('GET /api/repo-details/[name]/trend', () => {
         expect((await call({ name: 'vigil' })).status).toBe(200);
         expect(calls.at(-1)?.values).toEqual(['other']);
     });
-
 
     it('finds an accessible same-named repo beyond the first 25 candidates', async () => {
         mockAuth.mockResolvedValue({
