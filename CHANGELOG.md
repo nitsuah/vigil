@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Desktop rows have a keyboard expand button; the empty dashboard includes its own sync control; the app has a styled not-found page; reports use fewer columns below 1280 px and larger touch targets on phones (#536).
+
 - Signed-out visitors get a dismissible intro with a legend and a tour button; the tour defaults to 5 manual steps, ignores backdrop clicks, can be resumed, and highlights the copy of a control that is on screen (#536).
 - Cloudflare branch builds no longer fail at the preview step: `wrangler.jsonc` has an empty `previews` block.
 
