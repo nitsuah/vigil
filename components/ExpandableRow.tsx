@@ -168,7 +168,7 @@ function ExpandableRowContent({
   // card list.
   const sectionGridClass = isMobile
     ? 'flex flex-col gap-4'
-    : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-6';
+    : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 lg:gap-6 [&>*]:min-w-0 [&>*]:[overflow-wrap:anywhere]';
 
   return (
     // data-report marks an open report; the guided tour looks for it.
@@ -177,7 +177,7 @@ function ExpandableRowContent({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onBack(); }}
-          className="mb-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-800 hover:text-slate-100 transition-colors"
+          className="mb-4 flex min-h-[44px] min-w-[44px] items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 text-sm font-medium hover:bg-slate-800 hover:text-slate-100 transition-colors"
         >
           ← Back to repo list
         </button>

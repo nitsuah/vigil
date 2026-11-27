@@ -19,6 +19,8 @@ import {
   MessageSquare,
   GitBranch,
   ChevronsLeft,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import ExpandableRow from '@/components/ExpandableRow';
 import { Repo, RepoDetails } from '@/types/repo';
@@ -139,6 +141,19 @@ export function RepoTableRow({
         {/* Repository Name with Type and Language */}
         <td className="px-3 md:px-6 py-3 md:py-4">
           <div className="flex items-center gap-2">
+            {/* Keyboard-reachable expand control; clicking the row does the same. */}
+            <button
+              type="button"
+              aria-expanded={isExpanded}
+              aria-label={`${isExpanded ? "Hide" : "Show"} details for ${repo.name}`}
+              className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpanded();
+              }}
+            >
+              {isExpanded ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronRight className="h-4 w-4" aria-hidden="true" />}
+            </button>
             {/* Type Icon */}
             <div className={repo.is_hidden ? 'opacity-50 grayscale' : ''}>
               <TypeEditor
