@@ -170,7 +170,7 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
           return cleanup;
         }
       }
-      if (firstRow && !document.querySelector('.grid')) {
+      if (firstRow && !document.querySelector('[data-report]')) {
         firstRow.click();
         scheduleDelayed(() => {
           updateHighlight();

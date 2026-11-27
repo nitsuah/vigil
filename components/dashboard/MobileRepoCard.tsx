@@ -150,6 +150,7 @@ export function MobileRepoCard({
         */}
         <button
           type="button"
+          data-tour="repo-name"
           aria-expanded={isExpanded}
           aria-controls={`mobile-card-details-${repo.name}`}
           aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${repo.name} card details`}
@@ -180,7 +181,6 @@ export function MobileRepoCard({
                 href={repo.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                data-tour="repo-name"
                 className={`pointer-events-auto font-medium text-sm truncate hover:underline ${
                   repo.is_hidden
                     ? 'text-slate-500 hover:text-slate-400'

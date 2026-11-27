@@ -17,9 +17,9 @@ export const tourSteps: TourStep[] = [
   },
   {
     id: 'repo-name',
-    title: 'Repository Name',
+    title: 'Open a Report',
     description:
-      'Click any repository name to expand and view detailed health metrics, documentation status, and recommendations.',
+      'Select a repository row or card, away from its links, to open its health metrics, documentation status and recommendations. The name itself opens GitHub.',
     target: '[data-tour="repo-name"]',
     position: 'right',
   },

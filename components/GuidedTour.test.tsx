@@ -30,6 +30,22 @@ describe('GuidedTour', () => {
     expect(parseFloat(dialog.style.left)).toBeGreaterThanOrEqual(16);
   });
 
+  it.each([
+    ['opens the first row when only unrelated grids are on the page', <dl key="a" className="grid" />, 1],
+    ['leaves an open report alone', <div key="b" data-report />, 0],
+  ])('%s', async (_name, extra, clicks) => {
+    const onRowClick = vi.fn();
+    render(
+      <>
+        {extra}
+        <table><tbody><tr onClick={onRowClick}><td>repo</td></tr></tbody></table>
+        <GuidedTour onClose={vi.fn()} />
+      </>
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(onRowClick).toHaveBeenCalledTimes(clicks);
+  });
+
   it('offers Pause for as long as auto-play is on', () => {
     render(<GuidedTour onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Play' }));
