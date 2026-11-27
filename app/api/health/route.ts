@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import logger from '@/lib/log';
 import { getAvailableProviders } from '@/lib/ai-providers';
 import { getProviderHealthStatus } from '@/lib/ai-failover';
 import { getConfiguredModel } from '@/lib/gemini-model-discovery';
@@ -54,7 +55,8 @@ export async function GET(req: NextRequest) {
         : 'circuit_open',
       model: name === 'gemini' ? getConfiguredModel() : PROVIDER_MODELS[name],
       ...(h.unhealthyUntil         && { unhealthyUntil:         h.unhealthyUntil }),
-      ...(h.lastError               && { lastError:               h.lastError }),
+      // This route is public: say that a call failed, not what the provider said.
+      ...(h.lastError               && { lastError:               'Provider request failed' }),
       ...(h.lastSuccessAt           && { lastSuccessAt:           h.lastSuccessAt }),
       ...(h.consecutiveFailures > 0 && { consecutiveFailures:     h.consecutiveFailures }),
     };
@@ -92,7 +94,8 @@ async function runLiveProbes(
           (services['gemini'] as Record<string, unknown>).probeStatus = res.ok ? 'reachable' : `http_${res.status}`;
         } catch (e) {
           (services['gemini'] as Record<string, unknown>).probeStatus = 'unreachable';
-          (services['gemini'] as Record<string, unknown>).probeError = e instanceof Error ? e.message : String(e);
+          logger.warn('Health probe failed:', e);
+          (services['gemini'] as Record<string, unknown>).probeError = 'Probe request failed';
         }
       })()
     );
@@ -110,7 +113,8 @@ async function runLiveProbes(
           (services['openai'] as Record<string, unknown>).probeStatus = res.ok ? 'reachable' : `http_${res.status}`;
         } catch (e) {
           (services['openai'] as Record<string, unknown>).probeStatus = 'unreachable';
-          (services['openai'] as Record<string, unknown>).probeError = e instanceof Error ? e.message : String(e);
+          logger.warn('Health probe failed:', e);
+          (services['openai'] as Record<string, unknown>).probeError = 'Probe request failed';
         }
       })()
     );
@@ -128,7 +132,8 @@ async function runLiveProbes(
           (services['anthropic'] as Record<string, unknown>).probeStatus = res.ok ? 'reachable' : `http_${res.status}`;
         } catch (e) {
           (services['anthropic'] as Record<string, unknown>).probeStatus = 'unreachable';
-          (services['anthropic'] as Record<string, unknown>).probeError = e instanceof Error ? e.message : String(e);
+          logger.warn('Health probe failed:', e);
+          (services['anthropic'] as Record<string, unknown>).probeError = 'Probe request failed';
         }
       })()
     );

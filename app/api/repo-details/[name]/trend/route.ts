@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getNeonClient, ensureSchema } from '@/lib/db';
 import { DEFAULT_REPOS } from '@/lib/default-repos';
-import { canAccessRepo, type RepoAccessCheck } from '@/lib/repo-access';
+import { canAccessRepo, isDefaultRepo, type RepoAccessCheck } from '@/lib/repo-access';
 import { normalizeSnapshotRow } from '@/lib/numeric';
+import logger from '@/lib/log';
 
 export const runtime = 'nodejs';
 
@@ -39,18 +40,33 @@ export async function GET(
     // Signed in is not itself proof of access to *this* repo (CWE-639): `repos` has no
     // per-row owner. 404 (not 403) so a private repo's existence isn't
     // confirmed to a caller who can't see it.
-    const [repo] = await db`
-      SELECT id, full_name, private_repo, visibility_verified FROM repos
-      WHERE ${fullName ? `full_name = ${fullName}` : `name = ${name}`}
-      LIMIT 1
-    ` as unknown as RepoAccessCheck[];
+    // Two explicit queries: a nested template string would bind the whole
+    // condition as a single parameter.
+    // `name` is not unique across owners, so pick a row this caller may see.
+    const candidates = (fullName
+      ? await db`
+          SELECT id, full_name, private_repo, visibility_verified FROM repos
+          WHERE full_name = ${fullName}
+          LIMIT 1
+        `
+      : await db`
+          SELECT id, full_name, private_repo, visibility_verified FROM repos
+          WHERE name = ${name}
+          ORDER BY full_name
+        `) as unknown as RepoAccessCheck[];
+    let repo: RepoAccessCheck | undefined;
+    for (const row of candidates) {
+      const visible = session?.user
+        ? await canAccessRepo(db, row, session.userId, session.accessToken)
+        : isDefaultRepo(row.full_name);
+      if (visible) {
+        repo = row;
+        break;
+      }
+    }
     if (!repo) {
       return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
     }
-    if (session?.user && !(await canAccessRepo(db, repo, session.userId, session.accessToken))) {
-      return NextResponse.json({ error: 'Repo not found' }, { status: 404 });
-    }
-
     // Fetch the most recent 200 snapshots (DESC + LIMIT), then reverse to
     // chronological order for the chart. The previous ASC + LIMIT 200 always
     // returned the *oldest* 200 rows once a repo passed 200 snapshots, so the
@@ -65,7 +81,7 @@ export async function GET(
     `;
     return NextResponse.json({ success: true, snapshots: rows.reverse().map(normalizeSnapshotRow) }, { status: 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    logger.warn('Error fetching repo trend:', error);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 }

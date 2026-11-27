@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- CI: run the risk guard from the trusted base-branch workflow after bootstrap.
+
 - CI: pull requests now run the shared risk guard check (`.github/workflows/risk-guard.yml`) (#527).
 ### Added
 
@@ -24,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Showcase page quick start lists the required settings and the local OAuth callback, splits configure from run, wraps long commands, embeds the visual-practices clip, and has readable small grey text (#537).
 - `FEATURES.md` matches the current guided-tour length and the sign-in rules for `/api/context` and `/api/mcp` (#536, #543).
+- The repo health-trend lookup works again for both short and full repository names.
+- API routes return a short, fixed message when a request fails; details go to the server log.
 
 - Bound large-repository health-sync pagination: PR review-thread follow-ups share a five-request budget, zombie branches stop at three pages, issue labels at two pages, and contributor scans at 100 results (#494).
 

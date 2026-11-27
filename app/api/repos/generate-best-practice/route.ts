@@ -104,9 +104,8 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: unknown) {
     console.error('Error generating best practice fix:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to generate fix';
     return NextResponse.json(
-      { error: errorMessage },
+      { error: 'Failed to generate fix' },
       { status: 500 }
     );
   }

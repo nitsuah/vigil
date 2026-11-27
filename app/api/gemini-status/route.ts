@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import logger from '@/lib/log';
 import { getProviderHealthStatus } from '@/lib/ai-failover';
 import { getConfiguredModel, discoverWorkingModel } from '@/lib/gemini-model-discovery';
 
@@ -40,10 +41,11 @@ export async function GET() {
       ...(gemini.lastError       && { lastError: gemini.lastError }),
     });
   } catch (error) {
+    logger.warn('Gemini status check failed:', error);
     return NextResponse.json({
       healthy: false,
       model: configuredModel,
-      error: error instanceof Error ? error.message : String(error),
+      error: 'Gemini status check failed',
     });
   }
 }
