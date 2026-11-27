@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 import GuidedTour from './GuidedTour';
 import { readTourState } from '@/lib/tour-state';
 
@@ -44,6 +44,20 @@ describe('GuidedTour', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(onRowClick).toHaveBeenCalledTimes(clicks);
+  });
+
+  it('advances on its own only after Play is chosen', () => {
+    vi.useFakeTimers();
+    try {
+      render(<GuidedTour onClose={vi.fn()} />);
+      act(() => { vi.advanceTimersByTime(10_000); });
+      expect(screen.getByText('Step 1 of 5')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Play' }));
+      act(() => { vi.advanceTimersByTime(3_100); });
+      expect(screen.getByText('Step 2 of 5')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('offers Pause for as long as auto-play is on', () => {
