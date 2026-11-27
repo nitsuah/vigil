@@ -304,3 +304,22 @@ describe('RepoTableRow expand control', () => {
     expect(onToggleExpanded).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('RepoTableRow security chip', () => {
+  const chips = (expandedHealth: boolean, security_last_checked: string | undefined) => {
+    renderRow({
+      repo: { ...baseRepo, security_last_checked }, details: baseDetails, isExpanded: false,
+      expandedHealth, onToggleExpanded: vi.fn(),
+    } as unknown as Parameters<typeof RepoTableRow>[0]);
+    return screen.queryAllByTitle(/^Security health/);
+  };
+
+  it('shows the inline chip, even when the check date is absent', () => {
+    expect(chips(false, undefined)).toHaveLength(1);
+  });
+
+  it('leaves the chip to the health strip while it is open', () => {
+    // HealthShields is mocked here, so any chip left would be the inline one.
+    expect(chips(true, undefined)).toHaveLength(0);
+  });
+});

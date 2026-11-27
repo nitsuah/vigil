@@ -347,7 +347,7 @@ export function RepoTableRow({
                 <span className={`text-lg font-bold ${health.color}`}>{health.grade}</span>
               )}
               {/* Security health badge - shown inline when details available */}
-              {securityScore != null && (
+              {securityScore != null && !expandedHealth && (
                 <span
                   title={`Security health: ${securityScore}%`}
                   aria-label={`Security health: ${securityScore}%`}
@@ -362,7 +362,7 @@ export function RepoTableRow({
                   Sec {securityScore}%
                 </span>
               )}
-              {details && !details.postureHidden && repo.security_last_checked === null && (
+              {details && !expandedHealth && !details.postureHidden && repo.security_last_checked == null && (
                 <span
                   title="Security health unavailable (not checked yet)"
                   aria-label="Security health unavailable (not checked yet)"
