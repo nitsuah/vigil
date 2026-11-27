@@ -180,6 +180,21 @@ describe('syncRepoMetrics partial backfill', () => {
         expect(await cursorWritten(null, items)).toBe('2026-11-19T00:00:00.000Z');
     });
 
+    it('advances past an unmappable page using the newest raw update timestamp', async () => {
+        const since = '2026-11-16T00:00:00.000Z';
+        const { db } = fakeDb(since);
+        let written: unknown;
+        const spy: MetricsDb = (strings, ...values) => {
+            if (strings.join('?').includes('INSERT INTO metrics_sync_state')) written = values[1];
+            return db(strings, ...values);
+        };
+        const invalid = item({ created_at: '' });
+        const res = await syncRepoMetrics(spy, repo, async () => page([invalid], true), now, 1);
+
+        expect(res.more).toBe(true);
+        expect(written).toBe('2026-11-17T10:00:00.000Z');
+    });
+
     it('never moves the cursor past the time the fetch started', async () => {
         expect(await cursorWritten(null, [item({ updated_at: '2026-11-24T06:00:05Z' })])).toBe(now.toISOString());
     });
