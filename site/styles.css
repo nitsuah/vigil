@@ -11,7 +11,7 @@
     --amber: #f59e0b;
     --text: #f3f4f6;
     --muted: #9ca3af;
-    --dim: #6b7280;
+    --dim: #8b93a1;
     --heading: 'Inter', system-ui, sans-serif;
     --body: 'Inter', system-ui, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -220,3 +220,5 @@ main { padding: 0 var(--gutter); }
 .card-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .card-pair img { width: 100%; }
 @media (max-width: 560px) { .card-pair { grid-template-columns: 1fr; } }
+.install code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.shot-wide video { width: 100%; display: block; aspect-ratio: 16 / 9; border-radius: 14px; }

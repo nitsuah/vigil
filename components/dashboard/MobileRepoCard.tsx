@@ -467,6 +467,7 @@ export function MobileRepoCard({
           onGenerateSummary={onGenerateSummary}
           generatingSummary={generatingSummary === repo.name}
           securityConfig={details.securityConfig}
+          postureHidden={details.postureHidden}
           isMobile
           onBack={onToggleExpanded}
         />
