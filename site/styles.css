@@ -196,6 +196,10 @@ main { padding: 0 var(--gutter); }
     .stats li { padding: 16px; }
     .stat-num { font-size: 1.6rem; }
     .install { padding-top: 52px; }
+    #install .install {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
 }
 @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
