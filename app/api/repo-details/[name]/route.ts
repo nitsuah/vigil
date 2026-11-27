@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { canAccessRepo, isDefaultRepo } from '@/lib/repo-access';
 import { normalizeRepoRow, normalizeMetricRow } from '@/lib/numeric';
 import logger from '@/lib/log';
+import { toPublicRepoRow, publicPractices, publicStandards } from '@/lib/repo-posture';
 import type { SecurityConfig, SecurityDisplayStatus } from '@/types/repo';
 
 const toSecurityDisplayStatus = (value: unknown): SecurityDisplayStatus =>
@@ -32,7 +33,7 @@ export async function GET(
 
         let selected: (typeof candidateRows)[number] | undefined;
         for (const row of candidateRows) {
-            const visible = session
+            const visible = session?.user
                 ? await canAccessRepo(db, row as { id: string; full_name?: string; private_repo?: boolean; visibility_verified?: boolean }, session.userId, session.accessToken)
                 : isDefaultRepo(row.full_name);
             if (visible) {
@@ -80,6 +81,23 @@ export async function GET(
             value: m.value,
             unit: m.unit
         }));
+
+        // Protections and alert counts are for signed-in users only; the rows
+        // above already passed canAccessRepo for them.
+        if (!session?.user) {
+            return NextResponse.json({
+                repo: toPublicRepoRow(repo),
+                tasks,
+                roadmapItems,
+                metrics,
+                features,
+                docStatuses,
+                bestPractices: publicPractices(bestPractices as Record<string, unknown>[]),
+                communityStandards: publicStandards(communityStandards as Record<string, unknown>[]),
+                securityConfig: null,
+                postureHidden: true,
+            });
+        }
 
         // Build display security config without coercing unknown to disabled.
         const securityStatusFields = [

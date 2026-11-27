@@ -146,4 +146,6 @@ export interface RepoDetails {
   bestPractices: BestPractice[];
   communityStandards: CommunityStandard[];
   securityConfig?: SecurityConfig;
+  /** Signed-out view: protections and alert counts were left out of the response. */
+  postureHidden?: boolean;
 }

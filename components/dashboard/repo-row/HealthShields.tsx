@@ -149,6 +149,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       >
         {csHealthy}/{csTotal}
       </span>
+      {!details.postureHidden && (
       <span
         title={bpTooltip}
         className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
@@ -161,6 +162,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       >
         {bpHealthy}/{bpTotal}
       </span>
+      )}
       <span
         title={testingTooltip}
         className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
@@ -202,7 +204,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         </span>
       )}
       {/* Security health badge */}
-      {securityScore != null ? (
+      {details.postureHidden ? null : securityScore != null ? (
         <span
           title={`Security health: ${securityScore}%`}
           aria-label={`Security health: ${securityScore}%`}

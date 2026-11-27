@@ -115,7 +115,7 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
     { label: 'Documentation', score: scores.documentation, color: 'slate', weight: profile.weights.documentation },
     { label: 'Activity', score: scores.activity, color: activityColor, weight: profile.weights.activity },
     { label: 'Security', score: scores.security, color: securityColor, weight: profile.weights.security },
-  ];
+  ].filter(({ label }) => !details.postureHidden || (label !== 'Security' && label !== 'Best Practices'));
 
   const colorMap: Record<string, { text: string; bg: string; hex: string }> = {
     slate: { text: 'text-slate-400', bg: 'bg-slate-500', hex: '#64748b' },
@@ -213,7 +213,9 @@ export function HealthBreakdown({ repo, details, health, onToggle }: HealthBreak
 
           <div className="mb-3 flex items-center justify-between text-[10px] text-slate-500">
             <span>Profile weights</span>
-            <span className="text-slate-400">Security posture {scores.securityPosture}%</span>
+            <span className="text-slate-400">
+              {details.postureHidden ? 'Sign in to see security posture' : `Security posture ${scores.securityPosture}%`}
+            </span>
           </div>
 
           <div className="space-y-2.5">

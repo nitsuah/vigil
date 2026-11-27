@@ -347,7 +347,7 @@ export function RepoTableRow({
                   Sec {securityScore}%
                 </span>
               )}
-              {details && repo.security_last_checked == null && (
+              {details && !details.postureHidden && repo.security_last_checked == null && (
                 <span
                   title="Security health unavailable (not checked yet)"
                   aria-label="Security health unavailable (not checked yet)"
@@ -522,6 +522,7 @@ export function RepoTableRow({
               onGenerateSummary={onGenerateSummary}
               generatingSummary={generatingSummary === repo.name}
               securityConfig={details.securityConfig}
+              postureHidden={details.postureHidden}
             />
           </td>
         </tr>
