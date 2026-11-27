@@ -32,7 +32,7 @@ describe('GuidedTour', () => {
 
   it.each([
     ['opens the first row when only unrelated grids are on the page', <dl key="a" className="grid" />, 1],
-    ['leaves an open report alone', <div key="b" data-report />, 0],
+    ['leaves an expanded row alone, even before its report loads', <button key="b" data-report-toggle aria-expanded="true" />, 0],
   ])('%s', async (_name, extra, clicks) => {
     const onRowClick = vi.fn();
     render(

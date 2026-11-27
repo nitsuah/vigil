@@ -72,7 +72,7 @@ export function TourTooltip({
       role="dialog"
       aria-labelledby={titleId}
       tabIndex={-1}
-      className="absolute bg-slate-900 border-2 border-blue-400 rounded-lg shadow-[0_0_40px_rgba(59,130,246,0.4)] p-6 w-[min(400px,calc(100vw-32px))] z-[10000] focus:outline-none"
+      className="absolute max-h-[calc(100vh-20px)] overflow-y-auto bg-slate-900 border-2 border-blue-400 rounded-lg shadow-[0_0_40px_rgba(59,130,246,0.4)] p-6 w-[min(400px,calc(100vw-32px))] z-[10000] focus:outline-none"
       style={{ top: position.top, left: position.left }}
     >
       <button

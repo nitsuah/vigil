@@ -88,8 +88,9 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
       // Nothing on screen to point at: show the step in the middle, unhighlighted.
       setHighlightRect(null);
       const w = Math.min(400, window.innerWidth - 32);
+      const lowest = window.innerHeight - tooltipHeightRef.current - 10;
       setTooltipPosition({
-        top: Math.max(100, window.innerHeight / 3 - 100),
+        top: Math.max(10, Math.min(Math.max(100, window.innerHeight / 3 - 100), lowest)),
         left: Math.max(16, window.innerWidth / 2 - w / 2),
       });
       return;
@@ -164,13 +165,13 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
       // On mobile the Docs column is CSS-hidden; skip the step so the tour
       // doesn't highlight an invisible element.
       if (step.id === 'docs-column') {
-        const docsEl = document.querySelector('[data-tour="docs"]');
-        if (docsEl && docsEl.getBoundingClientRect().width === 0) {
+        // Skip only when no copy of the target (mobile or desktop) is on screen.
+        if (document.querySelector('[data-tour="docs"]') && !findTarget('[data-tour="docs"]')) {
           scheduleDelayed(() => setCurrentStep(prev => prev + 1), 50);
           return cleanup;
         }
       }
-      if (firstRow && !document.querySelector('[data-report]')) {
+      if (firstRow && !document.querySelector('[data-report-toggle][aria-expanded="true"]')) {
         firstRow.click();
         scheduleDelayed(() => {
           updateHighlight();

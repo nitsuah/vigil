@@ -151,6 +151,7 @@ export function MobileRepoCard({
         <button
           type="button"
           data-tour="repo-name"
+          data-report-toggle
           aria-expanded={isExpanded}
           aria-controls={`mobile-card-details-${repo.name}`}
           aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${repo.name} card details`}

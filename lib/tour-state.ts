@@ -12,10 +12,22 @@ export interface TourState {
 
 const KEY = 'vigil:tour';
 
+/** Keeps only fields with the expected shape: storage can hold anything. */
+function toTourState(value: unknown): TourState {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    const { introDismissed, tour, mode, step } = value as Record<string, unknown>;
+    return {
+        ...(typeof introDismissed === 'boolean' && { introDismissed }),
+        ...((tour === 'done' || tour === 'partial') && { tour }),
+        ...((mode === 'quick' || mode === 'full') && { mode }),
+        ...(typeof step === 'number' && Number.isInteger(step) && step >= 0 && { step }),
+    };
+}
+
 export function readTourState(): TourState {
     try {
         const parsed: unknown = JSON.parse(window.localStorage.getItem(KEY) ?? '{}');
-        return parsed && typeof parsed === 'object' ? (parsed as TourState) : {};
+        return toTourState(parsed);
     } catch {
         return {};
     }

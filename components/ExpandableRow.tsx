@@ -171,8 +171,7 @@ function ExpandableRowContent({
     : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 lg:gap-6 [&>*]:min-w-0 [&>*]:[overflow-wrap:anywhere]';
 
   return (
-    // data-report marks an open report; the guided tour looks for it.
-    <div data-report className="p-4 md:p-6 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 border-t border-slate-700/50">
+    <div className="p-4 md:p-6 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 border-t border-slate-700/50">
       {isMobile && onBack && (
         <button
           type="button"
@@ -184,7 +183,7 @@ function ExpandableRowContent({
       )}
       {/* Main Layout: Repository Stats + Issues (left sidebar) + Content Grid (right) —
           on mobile this collapses into a single stacked column (see isMobile above). */}
-      <div className={isMobile ? 'flex flex-col gap-4' : 'flex flex-col md:flex-row gap-4 md:gap-6'}>
+      <div className={isMobile ? 'report-touch flex flex-col gap-4' : 'flex flex-col md:flex-row gap-4 md:gap-6'}>
         {/* Left Sidebar: AI Summary + Repository Stats + Issues + Metrics */}
         <div className={isMobile ? 'w-full space-y-4' : 'w-full md:w-60 lg:w-72 xl:w-80 md:shrink-0 space-y-4 md:space-y-6'}>
           {/* AI Summary - First in sidebar */}

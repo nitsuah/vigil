@@ -144,6 +144,7 @@ export function RepoTableRow({
             {/* Keyboard-reachable expand control; clicking the row does the same. */}
             <button
               type="button"
+              data-report-toggle
               aria-expanded={isExpanded}
               aria-label={`${isExpanded ? "Hide" : "Show"} details for ${repo.name}`}
               className="shrink-0 rounded p-1 text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-400"
