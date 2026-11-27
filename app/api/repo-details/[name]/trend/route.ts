@@ -53,7 +53,6 @@ export async function GET(
           SELECT id, full_name, private_repo, visibility_verified FROM repos
           WHERE name = ${name}
           ORDER BY full_name
-          LIMIT 25
         `) as unknown as RepoAccessCheck[];
     let repo: RepoAccessCheck | undefined;
     for (const row of candidates) {
