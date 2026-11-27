@@ -166,6 +166,8 @@ function ExpandableRowContent({
   // to viewport width and would still kick in a 2-col layout on a
   // half-width/tablet-width screen that is otherwise showing the mobile
   // card list.
+  // Three columns only from xl (1280px): beside the sidebar, lg left each card
+  // too narrow and clipped its header controls (#534).
   const sectionGridClass = isMobile
     ? 'flex flex-col gap-4'
     : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 lg:gap-6 [&>*]:min-w-0 [&>*]:[overflow-wrap:anywhere]';

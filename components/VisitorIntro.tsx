@@ -10,6 +10,8 @@ interface VisitorIntroProps {
 /** Explains Vigil to signed-out visitors. Dismissible, and can be reopened. */
 export function VisitorIntro({ onStartTour }: VisitorIntroProps) {
   // null until storage has been read, so a dismissed panel never flashes.
+  // Storage is browser-only, so it is read once after mount: that is the one
+  // state update in an effect that the disable comment below allows.
   const [state, setState] = useState<TourState | null>(null);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setState(readTourState()), []);
