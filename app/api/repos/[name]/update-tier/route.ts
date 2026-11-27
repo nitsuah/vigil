@@ -58,7 +58,6 @@ export async function PATCH(
     return NextResponse.json({ success: true, tier });
   } catch (error: unknown) {
     logger.warn('Error updating repo tier:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update tier' }, { status: 500 });
   }
 }

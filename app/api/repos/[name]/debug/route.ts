@@ -65,7 +65,6 @@ export async function GET(
         }, { status: 200 });
     } catch (error: unknown) {
     logger.warn('Debug error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to load debug data' }, { status: 500 });
     }
 }

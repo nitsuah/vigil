@@ -63,7 +63,6 @@ export async function POST(
         return NextResponse.json({ suggestions });
     } catch (error: unknown) {
         logger.warn('Error generating roadmap suggestions:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to suggest roadmap items' }, { status: 500 });
     }
 }
