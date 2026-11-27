@@ -314,7 +314,9 @@ export async function syncRepoMetrics(
 
     let cursor = startedAt;
     if (fetched.more) {
-        const newest = Math.max(...mapped.map((m) => Date.parse(m.row.updatedAt)));
+        // Advance past every raw item read, including payloads that cannot be mapped.
+        // Using startedAt here would skip valid older items on the remaining pages.
+        const newest = Math.max(...fetched.items.map((item) => Date.parse(item.updated_at)).filter(Number.isFinite));
         // `since` is inclusive: a cursor that stays put would re-read the same pages for ever.
         if (!Number.isFinite(newest) || (since !== null && newest <= Date.parse(since))) {
             throw new Error(`Backfill cannot advance past ${since ?? 'the start'} within ${maxPages} page(s)`);
