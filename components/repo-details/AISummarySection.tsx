@@ -56,14 +56,15 @@ export function AISummarySection({
         <div className="px-4 py-3">
           {hasSummary ? (
             <div className="relative">
-              {onDismiss && (
+              {onDismiss && isAuthenticated && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onDismiss();
                   }}
                   className="absolute top-0 right-0 text-slate-400 hover:text-slate-200 transition-colors"
-                  title="Clear AI summary"
+                  title="Hide AI summary"
+                  aria-label="Hide AI summary"
                 >
                   <X className="h-3 w-3" />
                 </button>

@@ -127,16 +127,16 @@ export function TasksSection({ tasks, tasksDocExists = false, isExpanded: isExpa
           <ListTodo className="h-4 w-4 text-blue-400" />
           <h4 className="text-sm font-semibold text-slate-200">Tasks</h4>
           <span
-            title={`Tasks: ${tasks.filter(t => t.status === 'done').length}/${filteredTasks.length} completed (${filteredTasks.length} shown)`}
+            title={`Tasks: ${doneCount}/${tasks.length} completed (${filteredTasks.length} shown)`}
             className={`px-1.5 py-0.5 rounded text-[10px] font-medium ml-1 ${
-              tasks.filter(t => t.status === 'done').length === filteredTasks.length
+              doneCount === tasks.length
                 ? 'bg-green-500/20 text-green-400'
-                : tasks.filter(t => t.status === 'done').length >= filteredTasks.length / 2
+                : doneCount >= tasks.length / 2
                 ? 'bg-blue-500/20 text-blue-400'
                 : 'bg-yellow-500/20 text-yellow-400'
             }`}
           >
-            {tasks.filter(t => t.status === 'done').length}/{filteredTasks.length}
+            {doneCount}/{tasks.length}
           </span>
         </div>
         <div className="flex items-center gap-2">

@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Signed out, the header logo is a home link and AI summaries have no clear button; the sign-in page links back to the public demo; the Tasks counter keeps one total when done items are shown (#536).
+
 - Bound large-repository health-sync pagination: PR review-thread follow-ups share a five-request budget, zombie branches stop at three pages, issue labels at two pages, and contributor scans at 100 results (#494).
 
 - Repository sync no longer sticks at "Step 1 of 2" on Cloudflare Workers: it is client-driven and chunked. `POST /api/sync-repos` lists and queues the repos, `POST /api/sync-repos/batch` does the awaited work (3 repos per metadata call, 1 per health call, inside the 50-subrequest cap), and the dashboard drives the loop with one retry per batch, skip-and-record on a second failure, cancel on unmount and resume after a reload. Runs left in `metadata` by the old background sync are restartable (#305).

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { TasksSection } from './TasksSection';
 import type { Task } from '@/types/repo';
 
@@ -35,5 +35,18 @@ describe('TasksSection collapsed priority order', () => {
         expect(screen.queryByText('P3 task')).toBeNull();
         // Show all button shows count of remaining subsections
         expect(screen.getByText(/Show all \(1\)/)).toBeTruthy();
+    });
+});
+
+describe('TasksSection counter', () => {
+    it('keeps the same total when done items are shown', () => {
+        const tasks: Task[] = [
+            { id: '1', title: 'open', status: 'todo', section: 'Todo' },
+            { id: '2', title: 'shipped', status: 'done', section: 'Done' },
+        ];
+        render(<TasksSection tasks={tasks} tasksDocExists />);
+        expect(screen.getByText('1/2')).toBeTruthy();
+        fireEvent.click(screen.getByText(/Show done/));
+        expect(screen.getByText('1/2')).toBeTruthy();
     });
 });
