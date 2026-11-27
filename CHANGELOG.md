@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The repo health-trend lookup works again for both short and full repository names.
+- API routes return a short, fixed message when a request fails; details go to the server log.
+
 - Bound large-repository health-sync pagination: PR review-thread follow-ups share a five-request budget, zombie branches stop at three pages, issue labels at two pages, and contributor scans at 100 results (#494).
 
 - Repository sync no longer sticks at "Step 1 of 2" on Cloudflare Workers: it is client-driven and chunked. `POST /api/sync-repos` lists and queues the repos, `POST /api/sync-repos/batch` does the awaited work (3 repos per metadata call, 1 per health call, inside the 50-subrequest cap), and the dashboard drives the loop with one retry per batch, skip-and-record on a second failure, cancel on unmount and resume after a reload. Runs left in `metadata` by the old background sync are restartable (#305).

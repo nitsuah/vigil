@@ -81,7 +81,6 @@ export async function PATCH(
     });
   } catch (error: unknown) {
     logger.warn('Error updating health profile:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update health profile' }, { status: 500 });
   }
 }
