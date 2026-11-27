@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The repo health-trend lookup works again for both short and full repository names.
 - API routes return a short, fixed message when a request fails; details go to the server log.
+- Signed-out demo views now show a sign-in note in place of the Security and Best Practices panels.
 
 - Bound large-repository health-sync pagination: PR review-thread follow-ups share a five-request budget, zombie branches stop at three pages, issue labels at two pages, and contributor scans at 100 results (#494).
 

@@ -71,11 +71,13 @@ export function IssuesSection({ vulnAlertCount, vulnCriticalCount, vulnHighCount
             {issueCategoryCounts && !issueCategoryCounts.complete && (
               <p className="text-[10px] text-amber-400">Counts are incomplete: not every open issue page was read.</p>
             )}
-            {/* Vulnerabilities */}
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 flex items-center gap-1"><span>🔒</span>Vulnerabilities</span>
-              <span className="text-red-400 font-medium">{vulnAlertCount}</span>
-            </div>
+            {/* Vulnerabilities (not sent to signed-out visitors) */}
+            {vulnAlertCount !== undefined && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400 flex items-center gap-1"><span>🔒</span>Vulnerabilities</span>
+                <span className="text-red-400 font-medium">{vulnAlertCount}</span>
+              </div>
+            )}
             {vulnCriticalCount !== undefined && vulnCriticalCount > 0 && (
               <div className="flex items-center justify-between text-xs ml-4">
                 <span className="text-slate-500 text-[10px]">Critical</span>

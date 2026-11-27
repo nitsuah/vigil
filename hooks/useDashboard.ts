@@ -98,6 +98,7 @@ export function useRepoDetails() {
         bestPractices: data.bestPractices || [],
         communityStandards: data.communityStandards || [],
         securityConfig: data.securityConfig ?? undefined,
+        postureHidden: data.postureHidden === true,
       };
       // Update ref synchronously so callers see fresh data before the effect commits
       repoDetailsRef.current = { ...repoDetailsRef.current, [repoName]: next };
