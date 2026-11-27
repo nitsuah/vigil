@@ -88,4 +88,22 @@ describe('GET /api/repos', () => {
         expect(body[0].issue_category_counts).toEqual({ total: 2, vulnerability: 1, bug: 1, feedback: 0, other: 0, complete: true });
         expect(body[1].issue_category_counts).toBeNull();
     });
+
+    it('leaves protections and alert counts out of the signed-out list', async () => {
+        mockAuth.mockResolvedValue(null);
+        const { db } = makeDb([{ name: 'a', stars: 1, vuln_alert_count: 2, secret_scanning_enabled: false, security_last_checked: 'x' }]);
+        mockGetNeonClient.mockReturnValue(db as never);
+
+        const body = await (await GET(request())).json();
+        expect(body).toEqual([{ name: 'a', stars: 1 }]);
+    });
+
+    it('does not echo database errors', async () => {
+        mockAuth.mockResolvedValue(null);
+        mockGetNeonClient.mockReturnValue(vi.fn().mockRejectedValue(new Error('relation "repos" does not exist')) as never);
+
+        const res = await GET(request());
+        expect(res.status).toBe(500);
+        expect(await res.json()).toEqual({ error: 'Failed to fetch repositories' });
+    });
 });

@@ -98,23 +98,29 @@ export default function Header(props: HeaderProps = {}) {
         <div className="flex items-center justify-between w-full">
             {/* Left Cluster */}
             <div className="flex items-center gap-3">
-                {/* Vigil icon — doubles as sync trigger (full sync with RGB flair) */}
-                <button
-                    onClick={onSync}
-                    disabled={syncing}
-                    className="relative group/icon cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
-                    title="Sync all repositories"
-                >
-                    <div className="relative p-1.5 rounded-lg bg-gradient-to-br from-indigo-600/10 to-purple-600/10 border border-indigo-500/20 group-hover/icon:border-indigo-400/50 group-hover/icon:from-indigo-600/20 group-hover/icon:to-purple-600/20 group-hover/icon:shadow-lg group-hover/icon:shadow-indigo-500/20 transition-all duration-200">
-                        {/* RGB animated glow ring */}
-                        <div className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 opacity-0 group-hover/icon:opacity-30 transition-opacity duration-300 motion-safe:animate-[spin_3s_linear_infinite] blur" />
-                        <VigilIcon className={`h-6 w-6 text-indigo-300 group-hover/icon:text-indigo-200 transition-colors duration-200 relative z-10 ${syncing ? 'animate-spin drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' : 'motion-safe:animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_4px_rgba(168,85,247,0.4)]'}`} />
-                    </div>
-                    {/* Sync all label on hover/focus */}
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-slate-900 border border-indigo-500/30 rounded opacity-0 group-hover/icon:opacity-100 group-focus-visible/icon:opacity-100 transition-opacity duration-200 whitespace-nowrap text-indigo-300">
-                        Sync All
-                    </span>
-                </button>
+                {/* Signed-out visitors have nothing to sync: the logo is a home link. */}
+                {!session ? (
+                    <Link href="/" aria-label="Vigil home" className="p-1.5 rounded-lg bg-gradient-to-br from-indigo-600/10 to-purple-600/10 border border-indigo-500/20 hover:border-indigo-400/50 transition-colors">
+                        <VigilIcon className="h-6 w-6 text-indigo-300" />
+                    </Link>
+                ) : (
+                    <button
+                        onClick={onSync}
+                        disabled={syncing}
+                        className="relative group/icon cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
+                        title="Sync all repositories"
+                    >
+                        <div className="relative p-1.5 rounded-lg bg-gradient-to-br from-indigo-600/10 to-purple-600/10 border border-indigo-500/20 group-hover/icon:border-indigo-400/50 group-hover/icon:from-indigo-600/20 group-hover/icon:to-purple-600/20 group-hover/icon:shadow-lg group-hover/icon:shadow-indigo-500/20 transition-all duration-200">
+                            {/* RGB animated glow ring */}
+                            <div className="absolute -inset-0.5 rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 opacity-0 group-hover/icon:opacity-30 transition-opacity duration-300 motion-safe:animate-[spin_3s_linear_infinite] blur" />
+                            <VigilIcon className={`h-6 w-6 text-indigo-300 group-hover/icon:text-indigo-200 transition-colors duration-200 relative z-10 ${syncing ? 'animate-spin drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]' : 'motion-safe:animate-[pulse_2s_ease-in-out_infinite] drop-shadow-[0_0_4px_rgba(168,85,247,0.4)]'}`} />
+                        </div>
+                        {/* Sync all label on hover/focus */}
+                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-slate-900 border border-indigo-500/30 rounded opacity-0 group-hover/icon:opacity-100 group-focus-visible/icon:opacity-100 transition-opacity duration-200 whitespace-nowrap text-indigo-300">
+                            Sync All
+                        </span>
+                    </button>
+                )}
                 <div className="flex flex-col leading-none gap-0.5">
                     <h1 className="text-lg font-bold tracking-wide">
                         <span className="bg-gradient-to-r from-indigo-300 via-purple-300 to-fuchsia-300 bg-clip-text text-transparent">

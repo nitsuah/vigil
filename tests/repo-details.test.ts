@@ -218,4 +218,26 @@ describe('GET /api/repo-details/[name]', () => {
         const res = await GET(makeRequest('vigil'), { params: Promise.resolve({ name: 'vigil' }) });
         expect(res.status).toBe(401);
     });
+
+    it('leaves protections and alert counts out of a signed-out response', async () => {
+        mockAuth.mockResolvedValue(null);
+        const db = makeDb([{ ...fakeRepo, vuln_alert_count: 4, vuln_critical_count: 1, security_last_checked: '2026-01-01' }]);
+        (db as unknown as Record<string, Mock>).transaction.mockResolvedValue([
+            [], [], [], [], [],
+            [{ practice_type: 'branch_protection', status: 'missing' }, { practice_type: 'ci_cd', status: 'healthy' }],
+            [{ standard_type: 'security', status: 'missing' }, { standard_type: 'license', status: 'healthy' }],
+        ]);
+        mockGetNeonClient.mockReturnValue(db as never);
+
+        const res = await GET(makeRequest('vigil'), { params: Promise.resolve({ name: 'vigil' }) });
+        const body = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(body.postureHidden).toBe(true);
+        expect(body.securityConfig).toBeNull();
+        expect(body.bestPractices.map((p: { practice_type: string }) => p.practice_type)).toEqual(['ci_cd']);
+        expect(body.communityStandards.map((c: { standard_type: string }) => c.standard_type)).toEqual(['license']);
+        const leaked = Object.keys(body.repo).filter((k) => /security|vuln|dependabot|scanning/.test(k));
+        expect(leaked).toEqual([]);
+    });
 });

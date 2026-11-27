@@ -30,7 +30,6 @@ export async function POST(
         return NextResponse.json({ success: true });
     } catch (error: unknown) {
         logger.warn('Error hiding repo:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to hide repository' }, { status: 500 });
     }
 }

@@ -88,6 +88,8 @@ interface ExpandableRowProps {
   onGenerateSummary?: () => void;
   generatingSummary?: boolean;
   securityConfig?: SecurityConfig;
+  /** Signed-out view: show a sign-in note instead of Best Practices and Security. */
+  postureHidden?: boolean;
   /** Rendered from MobileRepoCard (below the md breakpoint). Forces a single
    * vertically-scrollable column instead of the desktop sidebar + 3-col grid
    * layout — the grid's own sm:/lg: breakpoints are viewport-width based, so
@@ -144,6 +146,7 @@ function ExpandableRowContent({
   onGenerateSummary,
   generatingSummary = false,
   securityConfig,
+  postureHidden = false,
   isMobile = false,
   onBack,
 }: ExpandableRowProps): JSX.Element {
@@ -259,16 +262,23 @@ function ExpandableRowContent({
             />
 
             {/* Best Practices */}
-            <BestPracticesSection
-              bestPractices={bestPractices}
-              repoName={repoName}
-              isAuthenticated={isAuthenticated}
-              onFixPractice={onFixPractice}
-              onFixAllPractices={onFixAllPractices}
-              isExpanded={row2Expanded}
-              onToggleExpanded={() => setRow2Expanded(!row2Expanded)}
-              data-tour="best-practices"
-            />
+            {postureHidden ? (
+              <div className="rounded-lg border border-slate-700/60 bg-slate-800/50 px-4 py-3">
+                <h4 className="text-sm font-semibold text-slate-200">Security and best practices</h4>
+                <p className="mt-1 text-xs text-slate-400">Sign in to see security posture.</p>
+              </div>
+            ) : (
+              <BestPracticesSection
+                bestPractices={bestPractices}
+                repoName={repoName}
+                isAuthenticated={isAuthenticated}
+                onFixPractice={onFixPractice}
+                onFixAllPractices={onFixAllPractices}
+                isExpanded={row2Expanded}
+                onToggleExpanded={() => setRow2Expanded(!row2Expanded)}
+                data-tour="best-practices"
+              />
+            )}
 
             {/* Testing */}
             <TestingSection
@@ -302,12 +312,14 @@ function ExpandableRowContent({
             />
 
             {/* Security */}
-            <SecuritySection
-              securityConfig={securityConfig}
-              fullName={githubFullNameFromUrl(repoUrl)}
-              isExpanded={row3Expanded}
-              onToggleExpanded={() => setRow3Expanded(!row3Expanded)}
-            />
+            {!postureHidden && (
+              <SecuritySection
+                securityConfig={securityConfig}
+                fullName={githubFullNameFromUrl(repoUrl)}
+                isExpanded={row3Expanded}
+                onToggleExpanded={() => setRow3Expanded(!row3Expanded)}
+              />
+            )}
 
             {/* Metrics */}
             {metrics && metrics.length > 0 && (

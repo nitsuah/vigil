@@ -4,6 +4,7 @@ import { getNeonClient, ensureSchema } from '@/lib/db';
 import { auth } from '@/auth';
 import { DEFAULT_REPOS } from '@/lib/default-repos';
 import { normalizeRepoRow } from '@/lib/numeric';
+import { toPublicRepoRow } from '@/lib/repo-posture';
 import { GRANT_TTL_MS, revalidateDueGrants } from '@/lib/repo-access';
 
 export async function GET(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
         const defaultRepoNames = DEFAULT_REPOS.map(r => r.fullName);
 
         // If not authenticated, only return default repos
-        if (!session) {
+        if (!session?.user) {
             const repos = await db`
                 SELECT * FROM repos
                 WHERE (is_hidden = FALSE OR is_hidden IS NULL)
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
                     stars DESC,
                     updated_at DESC
             `;
-            return NextResponse.json(repos.map(normalizeRepoRow));
+            return NextResponse.json(repos.map((r) => toPublicRepoRow(normalizeRepoRow(r))));
         }
 
         // Authenticated: `repos` is one shared table with no per-row owner, so
@@ -87,7 +88,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(repos.map(normalizeRepoRow));
     } catch (error: unknown) {
         logger.warn('Error fetching repos:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fetch repositories' }, { status: 500 });
     }
 }

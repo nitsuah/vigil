@@ -12,6 +12,8 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://nitsuah.github.io/vigil/" />
 <meta property="og:image" content="https://nitsuah.github.io/vigil/assets/og-1200x630.jpg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Vigil — keep watch over every repo" />
 <meta name="twitter:description" content="Every repo graded, every TASKS.md rolled up, and your agents can ask what to work on next." />
@@ -120,7 +122,7 @@
       <h2 id="f-visual">Screenshots, diagrams, spots. <span class="emph">Kept current.</span></h2>
       <p>Vigil grades every repo's screenshots, diagrams, videos and Pages site. If CI alone can fix a row, one click opens a PR with the recipe and a HOWTO for the next agent. If it needs a skill run, the row shows the exact <code>/promo</code> command, the repo path and the inputs. It also checks whether Actions can open the bot PRs, and spots repos running nightly <code>/journeys</code>.</p>
     </div>
-    <div class="shot shot-wide"><img src="assets/fix-modal.webp" width="1600" height="900" alt="Preview PR dialog, the same flow the visual-docs recipe PR uses" loading="lazy" /></div>
+    <div class="shot shot-wide"><video src="assets/visual-17s.mp4" poster="assets/visual-17s.jpg" controls playsinline preload="none" aria-label="17-second spot: visual best practices"></video></div>
   </section>
 
   <section class="feature feature-flip" aria-labelledby="f2">
@@ -246,19 +248,21 @@ curl -fsSL https://raw.githubusercontent.com/nitsuah/vigil/main/skills/vigil/ref
 
   <section class="install-sec" id="install" aria-labelledby="install-title">
     <h2 id="install-title">Run your own.</h2>
-    <p class="install-lead">Needs Node 22, a <a href="https://github.com/settings/developers" target="_blank" rel="noopener">GitHub OAuth app</a> and a free <a href="https://neon.tech" target="_blank" rel="noopener">Neon</a> Postgres database. Fill in <code>.env.local</code> from <code>.env.example</code>, then open <code>http://localhost:3000</code>.</p>
+    <p class="install-lead">Needs Node 22, a <a href="https://github.com/settings/developers" target="_blank" rel="noopener">GitHub OAuth app</a> and a free <a href="https://neon.tech" target="_blank" rel="noopener">Neon</a> Postgres database. For local use, set the OAuth app's callback URL to <code>http://localhost:3000/api/auth/callback/github</code>.</p>
+    <p class="install-lead">1. Get the code.</p>
     <pre class="install"><button class="copy" type="button" data-copy="git clone https://github.com/nitsuah/vigil.git
 cd vigil
 npm install
-cp .env.example .env.local
-npm run setup-db
-npm run dev">Copy</button><code><span class="prompt">$</span> git clone https://github.com/nitsuah/vigil.git
+cp .env.example .env.local">Copy</button><code><span class="prompt">$</span> git clone https://github.com/nitsuah/vigil.git
 <span class="prompt">$</span> cd vigil
 <span class="prompt">$</span> npm install
-<span class="prompt">$</span> cp .env.example .env.local   <span class="t-d"># GitHub OAuth + DATABASE_URL + MCP_API_KEY</span>
-<span class="prompt">$</span> npm run setup-db
+<span class="prompt">$</span> cp .env.example .env.local</code></pre>
+    <p class="install-lead">2. Edit <code>.env.local</code>. Required: <code>GITHUB_ID</code>, <code>GITHUB_SECRET</code>, <code>NEXTAUTH_SECRET</code>, <code>NEXTAUTH_URL</code> and <code>DATABASE_URL</code>. Optional: <code>GITHUB_TOKEN</code> (server-side GitHub reads and metrics sync), <code>GEMINI_API_KEY</code> (AI features) and <code>MCP_API_KEY</code> (agent access).</p>
+    <p class="install-lead">3. Set up the database and start, then open <code>http://localhost:3000</code>.</p>
+    <pre class="install"><button class="copy" type="button" data-copy="npm run setup-db
+npm run dev">Copy</button><code><span class="prompt">$</span> npm run setup-db
 <span class="prompt">$</span> npm run dev</code></pre>
-    <p class="install-lead">Then connect Claude Code to your deployment, and add the <a href="#skill">Vigil skill</a>:</p>
+    <p class="install-lead">Then connect Claude Code to your deployment, and add the <a href="#skill">Vigil skill</a>. <code>VIGIL_MCP_KEY</code> below is a shell variable on your machine: give it the same value as your deployment's <code>MCP_API_KEY</code>.</p>
     <pre class="install"><button class="copy" type="button" data-copy="claude mcp add --transport http --scope user vigil https://YOUR-VIGIL-HOST/api/mcp --header &quot;Authorization: Bearer $VIGIL_MCP_KEY&quot;">Copy</button><code><span class="prompt">$</span> claude mcp add --transport http --scope user vigil \
     https://YOUR-VIGIL-HOST/api/mcp \
     --header "Authorization: Bearer $VIGIL_MCP_KEY"</code></pre>

@@ -53,7 +53,6 @@ export async function GET() {
         });
     } catch (error: unknown) {
         logger.warn('Rate limit check error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: errorMessage }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to check rate limit' }, { status: 500 });
     }
 }
