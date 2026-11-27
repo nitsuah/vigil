@@ -3,7 +3,6 @@
 import { Toast } from '@/components/Toast';
 import { PRPreviewModal } from '@/components/PRPreviewModal';
 import GuidedTour from '@/components/GuidedTour';
-import { VisitorIntro } from '@/components/VisitorIntro';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
@@ -56,7 +55,6 @@ export default function Dashboard() {
   const toggleHealthExpanded = () => setExpandedHealth((v) => !v);
   const toggleDocsExpanded = () => setExpandedDocs((v) => !v);
   const [showTour, setShowTour] = useState(false);
-  const [resumeTour, setResumeTour] = useState(false);
   const [chatRepoName, setChatRepoName] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -119,8 +117,6 @@ export default function Dashboard() {
   const activeSyncSessionRef = useRef<string | null>(null);
   const syncAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
-  // Track the active run independently from the dismissible progress panel.
-  const [runActive, setRunActive] = useState(false);
 
   // Pull the freshly synced data into the table (and any expanded rows).
   const reloadAfterSync = async () => {
@@ -135,7 +131,6 @@ export default function Dashboard() {
     const controller = new AbortController();
     syncAbortRef.current = controller;
     activeSyncSessionRef.current = sessionId;
-    setRunActive(true);
     const isActive = () => activeSyncSessionRef.current === sessionId && !controller.signal.aborted;
 
     const result = await driveSync({
@@ -163,7 +158,6 @@ export default function Dashboard() {
     }
     // A stopped sync still wrote the repos it finished; show them either way.
     await reloadAfterSync();
-    if (isActive()) setRunActive(false);
     const progress = result.progress;
     const failed = progress?.failedRepos ?? 0;
     // Leave the finished panel up briefly, then swap it for a one-line summary.
@@ -190,7 +184,6 @@ export default function Dashboard() {
 
   // The loop reports its own outcomes; this only catches an unexpected throw (e.g. the reload after a run).
   const reportDriverError = () => {
-    setRunActive(false);
     setSyncProgress(null);
     setToastMessage('Sync stopped unexpectedly. Reload to continue it, or run Sync again.');
   };
@@ -348,8 +341,6 @@ export default function Dashboard() {
     );
   }
 
-  const syncRunning = syncing || runActive;
-
   return (
     <>
       <Header
@@ -359,7 +350,7 @@ export default function Dashboard() {
         addRepoType={addRepoType}
         addingRepo={addingRepo}
         showFilters={showFilters}
-        syncing={syncRunning}
+        syncing={syncing}
         isAuthenticated={!!session}
         filterType={filterType}
         filterLanguage={filterLanguage}
@@ -380,37 +371,18 @@ export default function Dashboard() {
         onFilterForkChange={setFilterFork}
         onFilterTierChange={setFilterTier}
         onClearFilters={clearFilters}
-        onStartTour={() => { setResumeTour(false); setShowTour(true); }}
+        onStartTour={() => setShowTour(true)}
         showHidden={showHidden}
         onToggleHidden={() => setShowHidden(!showHidden)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
       <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 space-y-4 md:space-y-6">
-        {!session && <VisitorIntro onStartTour={(resume) => { setResumeTour(resume); setShowTour(true); }} />}
         {filteredRepos.length === 0 ? (
           <div className="glass rounded-lg p-8 sm:p-12 text-center">
             <p className="text-slate-400 text-lg">No repositories found</p>
             <p className="text-slate-500 text-sm mt-2">
-              {repos.length > 0
-                ? 'No repositories match the current filters.'
-                : session
-                  ? 'Sync to fetch your GitHub repositories.'
-                  : 'Sign in with GitHub to track your own repositories.'}
+              Click &quot;Sync Repos&quot; to fetch your GitHub repositories
             </p>
-            {session ? (
-              <button
-                type="button"
-                onClick={handleSync}
-                disabled={syncRunning}
-                className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-              >
-                {syncRunning ? 'Syncing...' : 'Sync repositories'}
-              </button>
-            ) : (
-              <a href="/login" className="mt-4 inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">
-                Sign in with GitHub
-              </a>
-            )}
           </div>
         ) : (
           <div className="glass rounded-lg overflow-hidden">
@@ -630,7 +602,7 @@ export default function Dashboard() {
           if (chatRepoName) dismissProposal(chatRepoName, messageId);
         }}
       />
-      {showTour && <GuidedTour resume={resumeTour} onClose={() => setShowTour(false)} />}
+      {showTour && <GuidedTour onClose={() => setShowTour(false)} />}
       {toastMessage && <Toast message={toastMessage} raised={!!syncProgress} onClose={() => setToastMessage(null)} />}
       {syncProgress && (
         <ProgressToast

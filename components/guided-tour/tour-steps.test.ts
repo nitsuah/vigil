@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tourSteps, quickTourSteps } from './tour-steps';
+import { tourSteps } from './tour-steps';
 
 describe('tourSteps', () => {
   it('is not empty and first step id is welcome', () => {
@@ -56,12 +56,4 @@ describe('tourSteps', () => {
   });
 
   // Two steps may share a target — not asserted as a failure.
-});
-
-describe('quickTourSteps', () => {
-  it('starts at welcome and has at most 6 uniquely identified steps', () => {
-    expect(quickTourSteps[0].id).toBe('welcome');
-    expect(quickTourSteps.length).toBeLessThanOrEqual(6);
-    expect(new Set(quickTourSteps.map((s) => s.id)).size).toBe(quickTourSteps.length);
-  });
 });

@@ -125,7 +125,7 @@ Status guide: features listed here are shipped unless explicitly marked as plann
 
 ### 🎨 User Interface
 
-- **Guided Tour System**: a 5-step quick tour that can continue into the 21-step full tour; manual by default with optional auto-play, and signed-out visitors can start or resume it from the intro panel
+- **Guided Tour System**: 21-step interactive onboarding with spotlight overlay and auto-advance (3s per step)
 - **Smart Row Expansion**: Automatic expand/collapse during tour for proper section visibility
 - **Data-Tour Attributes**: Comprehensive element targeting with full card highlighting
 - **Tour Navigation Controls**: Skip tour, manual next/previous, pause on interaction

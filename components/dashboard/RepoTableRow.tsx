@@ -362,7 +362,7 @@ export function RepoTableRow({
                   Sec {securityScore}%
                 </span>
               )}
-              {details && !details.postureHidden && repo.security_last_checked == null && (
+              {details && !details.postureHidden && repo.security_last_checked === null && (
                 <span
                   title="Security health unavailable (not checked yet)"
                   aria-label="Security health unavailable (not checked yet)"

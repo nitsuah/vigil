@@ -291,16 +291,3 @@ describe('RepoTableRow – responsive columns', () => {
     expect(tds.length).toBeGreaterThan(3);
   });
 });
-
-describe('RepoTableRow expand control', () => {
-  it('is a focusable button that reports its state and toggles once', () => {
-    const onToggleExpanded = vi.fn();
-    renderRow({
-      repo: baseRepo, isExpanded: false, onToggleExpanded,
-    } as unknown as Parameters<typeof RepoTableRow>[0]);
-    const button = screen.getByRole('button', { name: 'Show details for my-repo' });
-    expect(button.getAttribute('aria-expanded')).toBe('false');
-    button.click();
-    expect(onToggleExpanded).toHaveBeenCalledTimes(1);
-  });
-});
