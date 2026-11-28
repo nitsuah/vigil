@@ -110,11 +110,11 @@ export const tourSteps: TourStep[] = [
     position: 'left',
   },
   {
-    id: 'issues',
-    title: 'Security Issues',
+    id: 'security',
+    title: 'Security',
     description:
-      'Monitor vulnerability alerts from Dependabot. Shows critical and high severity issues.',
-    target: '[data-tour="issues"]',
+      'Check the security policy, advisories, vulnerability reporting, Dependabot and scanning settings.',
+    target: '[data-tour="security"]',
     position: 'left',
   },
   {

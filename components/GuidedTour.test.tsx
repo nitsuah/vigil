@@ -46,6 +46,22 @@ describe('GuidedTour', () => {
     expect(onRowClick).toHaveBeenCalledTimes(clicks);
   });
 
+  it('skips steps whose targets are missing or zero-size, in both directions', () => {
+    vi.useFakeTimers();
+    try {
+      // Rendered but zero-size, like a copy hidden at this screen width.
+      render(<><div data-tour="docs" /><GuidedTour onClose={vi.fn()} /></>);
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      for (let i = 0; i < 24; i++) act(() => { vi.advanceTimersByTime(300); });
+      expect(screen.getByText('Step 5 of 5')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: /Back|Previous/ }));
+      for (let i = 0; i < 24; i++) act(() => { vi.advanceTimersByTime(300); });
+      expect(screen.getByText('Step 1 of 5')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('advances on its own only after Play is chosen', () => {
     vi.useFakeTimers();
     try {
