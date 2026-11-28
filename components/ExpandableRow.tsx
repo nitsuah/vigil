@@ -54,6 +54,7 @@ interface ExpandableRowProps {
   bestPractices?: BestPractice[];
   communityStandards?: CommunityStandard[];
   aiSummary?: string;
+  aiSummaryGeneratedAt?: string | null;
   stars?: number;
   forks?: number;
   branches?: number;
@@ -112,6 +113,7 @@ function ExpandableRowContent({
   bestPractices = [],
   communityStandards = [],
   aiSummary,
+  aiSummaryGeneratedAt,
   stars,
   forks,
   branches,
@@ -191,6 +193,7 @@ function ExpandableRowContent({
           {/* AI Summary - First in sidebar */}
           <AISummarySection
             aiSummary={aiSummaryDismissed ? undefined : aiSummary}
+            generatedAt={aiSummaryGeneratedAt}
             repoName={repoName}
             isAuthenticated={isAuthenticated}
             generatingSummary={generatingSummary}

@@ -28,6 +28,9 @@ export const SCHEMA_MIGRATIONS: readonly string[] = [
     // next sync -- private_repo's own FALSE default can't be trusted for them.
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS visibility_verified BOOLEAN DEFAULT FALSE`,
 
+    // repos: when the saved AI summary was generated. NULL = before this was recorded.
+    `ALTER TABLE repos ADD COLUMN IF NOT EXISTS ai_summary_generated_at TIMESTAMP WITH TIME ZONE`,
+
     // repos: lines-of-code metrics
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS total_loc INTEGER`,
     `ALTER TABLE repos ADD COLUMN IF NOT EXISTS avg_loc_per_file INTEGER`,

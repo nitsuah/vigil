@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { GitHubClient } from '@/lib/github';
-import { getNeonClient } from '@/lib/db';
+import { ensureSchema, getNeonClient } from '@/lib/db';
 import { generateRepoSummary } from '@/lib/ai';
 import logger from '@/lib/log';
 import { resolveWritableRepo } from '@/lib/repo-access-guard';
@@ -54,14 +54,21 @@ export async function POST(
             return NextResponse.json({ error: 'Failed to generate summary (check API key)' }, { status: 500 });
         }
 
-        // Save to DB
-        await db`
-            UPDATE repos 
-            SET ai_summary = ${summary}
-            WHERE id = ${resolved.repo.id}
-        `;
+        // A failure notice must not replace the last good summary.
+        if (summary.startsWith('Summary unavailable')) {
+            return NextResponse.json({ error: summary }, { status: 502 });
+        }
 
-        return NextResponse.json({ success: true, summary });
+        // Save to DB
+        await ensureSchema(db);
+        const saved = await db`
+            UPDATE repos 
+            SET ai_summary = ${summary}, ai_summary_generated_at = NOW()
+            WHERE id = ${resolved.repo.id}
+            RETURNING ai_summary_generated_at
+        ` as Array<{ ai_summary_generated_at: string | Date }> | undefined;
+
+        return NextResponse.json({ success: true, summary, generatedAt: saved?.[0]?.ai_summary_generated_at ?? null });
     } catch (error: unknown) {
         logger.warn('Error generating summary:', error);
         return NextResponse.json({ error: 'Failed to generate summary' }, { status: 500 });

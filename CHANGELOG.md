@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- AI summaries show when they were generated, a failed generation no longer overwrites the saved summary, and an older cut-off summary is shown up to its last whole sentence (#574).
 - Signed-out visitors at an unknown address see the styled not-found page instead of the sign-in page (#575).
 
 - Report card titles and counters no longer split mid-word on laptop-width screens; header controls wrap to a second line when space runs out (#536).

@@ -499,6 +499,7 @@ export function RepoTableRow({
               bestPractices={details.bestPractices}
               communityStandards={details.communityStandards}
               aiSummary={repo.ai_summary}
+              aiSummaryGeneratedAt={repo.ai_summary_generated_at}
               isAuthenticated={isAuthenticated}
               stars={repo.stars}
               forks={repo.forks}
