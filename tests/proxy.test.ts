@@ -53,6 +53,23 @@ describe('proxy — seed-defaults', () => {
   });
 });
 
+describe('proxy — unknown addresses', () => {
+  it('serves the 404 page without ever opening the requested path', async () => {
+    for (const path of ['/this-does-not-exist', '/pmo/hidden', '/loginx']) {
+      const res = await proxy(req(path));
+      expect(res.status).toBe(404);
+      expect(res.headers.get('x-middleware-rewrite')).toBe('http://localhost/404-not-found');
+      expect(res.headers.get('x-middleware-next')).toBeNull();
+    }
+  });
+
+  it('still sends signed-out visitors of real pages to /login', async () => {
+    for (const path of ['/metrics', '/pmo', '/test-health', '/pmo/']) {
+      expect(isRedirectToLogin(await proxy(req(path)))).toBe(true);
+    }
+  });
+});
+
 describe('proxy — matcher', () => {
   it('excludes icon.svg and og-1200x630.jpg, includes /pmo and /api/mcp', () => {
     const re = new RegExp('^' + config.matcher[0] + '$');
