@@ -145,19 +145,22 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
    * Shows the current step. A target that is still missing or zero-size after a
    * short wait (reports load lazily) skips the step instead of pointing at nothing.
    */
-  const showStep = useCallback((retries = 5): void => {
-    if (step.target !== 'header' && !findTarget(step.target)) {
-      if (retries > 0) {
-        scheduleDelayed(() => showStep(retries - 1), 300);
-        return;
+  const showStep = useCallback((): void => {
+    const attempt = (retries: number): void => {
+      if (step.target !== 'header' && !findTarget(step.target)) {
+        if (retries > 0) {
+          scheduleDelayed(() => attempt(retries - 1), 300);
+          return;
+        }
+        if (!isLastStep) {
+          setCurrentStep((prev) => Math.max(0, prev + directionRef.current));
+          return;
+        }
       }
-      if (!isLastStep) {
-        setCurrentStep((prev) => Math.max(0, prev + directionRef.current));
-        return;
-      }
-    }
-    updateHighlight();
-    startAutoAdvance();
+      updateHighlight();
+      startAutoAdvance();
+    };
+    attempt(5);
   }, [step.target, isLastStep, scheduleDelayed, updateHighlight, startAutoAdvance]);
 
   const clickAndWait = (selector: string, delay: number, then: () => void): boolean => {
