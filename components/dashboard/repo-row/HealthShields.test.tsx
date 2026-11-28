@@ -99,6 +99,14 @@ const mockBreakdown = {
 describe('HealthShields', () => {
   afterEach(cleanup);
 
+  it('updates an open explanation when the repo changes', () => {
+    vi.mocked(calculateHealthScore).mockReturnValue({ ...mockBreakdown, security: 85 });
+    const { container, rerender } = render(<HealthShields repo={{ ...baseRepo, security_last_checked: null }} details={baseDetails} docHealth={null} />);
+    fireEvent.click(screen.getByText('Sec —'));
+    rerender(<HealthShields repo={baseRepo} details={baseDetails} docHealth={null} />);
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('Security health: 85%');
+  });
+
   it('shows a chip explanation on click without opening the row', () => {
     vi.mocked(calculateHealthScore).mockReturnValue({ ...mockBreakdown, security: 85 });
     const onRow = vi.fn();

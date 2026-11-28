@@ -332,7 +332,7 @@ export function RepoTableRow({
         </td>
         <td className="px-3 md:px-6 py-3 md:py-4" data-tour="health-score">
           <div className="flex flex-col gap-2">
-            <div className={`flex items-center gap-2 ${repo.is_hidden ? 'opacity-50 grayscale' : ''}`}>
+            <div className={`flex flex-wrap items-center gap-2 ${repo.is_hidden ? 'opacity-50 grayscale' : ''}`}>
               {details ? (
                 <HealthBreakdown
                   repo={repo}

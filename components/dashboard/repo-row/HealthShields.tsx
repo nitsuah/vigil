@@ -15,33 +15,41 @@ function Chip({ panelId, id, title, open, onOpen, className, children, ...rest }
   panelId: string;
   id: string;
   title: string;
-  open: { id: string; text: string } | null;
-  onOpen: (next: { id: string; text: string } | null) => void;
+  open: string | null;
+  onOpen: (next: string | null) => void;
   className: string;
   children: React.ReactNode;
   'aria-label'?: string;
 }) {
   return (
-    <button
-      type="button"
-      title={title}
-      aria-expanded={open?.id === id}
-      aria-controls={open?.id === id ? panelId : undefined}
-      className={className}
-      onClick={(e) => {
-        e.stopPropagation();
-        onOpen(open?.id === id ? null : { id, text: title });
-      }}
-      {...rest}
-    >
-      {children}
-    </button>
+    <>
+      <button
+        type="button"
+        title={title}
+        aria-expanded={open === id}
+        aria-controls={open === id ? panelId : undefined}
+        className={className}
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen(open === id ? null : id);
+        }}
+        {...rest}
+      >
+        {children}
+      </button>
+      {/* Drawn from the current title, so a sync updates an open explanation. */}
+      {open === id && (
+        <p id={panelId} role="status" className="order-last basis-full whitespace-pre-line rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300">
+          {title}
+        </p>
+      )}
+    </>
   );
 }
 
 export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) {
   // The chip whose explanation is open: touch and keyboard users have no hover.
-  const [openChip, setOpenChip] = useState<{ id: string; text: string } | null>(null);
+  const [openChip, setOpenChip] = useState<string | null>(null);
   const panelId = useId();
   // Capture timestamp once
   const [now] = useState(() => Date.now());
@@ -296,11 +304,6 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       >
         Commit {formatActivityTime(repo.last_commit_date)}
       </Chip>
-      {openChip && (
-        <p id={panelId} role="status" className="basis-full whitespace-pre-line rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300">
-          {openChip.text}
-        </p>
-      )}
     </>
   );
 }
