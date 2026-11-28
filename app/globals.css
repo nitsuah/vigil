@@ -185,9 +185,11 @@ body {
 .report-touch button { min-height: 44px; min-width: 44px; }
 /* Report cards: long strings wrap, but titles and counters never split mid-word.
    Where a header runs out of room, its controls move to a second line. */
-.report-grid > * { overflow-wrap: break-word; }
+.report-grid > * { min-width: 0; overflow-wrap: break-word; }
 .report-grid :is(li, p, a, code) { overflow-wrap: anywhere; }
 .report-grid h4 { white-space: normal; overflow-wrap: normal; word-break: normal; }
+/* Card headers nest differently: these cover the title cluster's row and its
+   control group. Where a match is not a flex box, the declarations do nothing. */
 .report-grid :has(> div > h4),
 .report-grid :has(> div > h4) > div,
 .report-grid :has(> h4) { flex-wrap: wrap; row-gap: 0.5rem; }
