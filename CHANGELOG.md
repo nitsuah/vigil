@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Signed-out visitors at an unknown address see the styled not-found page instead of the sign-in page (#575).
+
 - Report card titles and counters no longer split mid-word on laptop-width screens; header controls wrap to a second line when space runs out (#536).
 
 - Restored the visitor intro and short tour, the row expand button and other dead-end fixes, the mobile install-command wrap and the single security chip, which an out-of-date merge had removed (#536, #537).
