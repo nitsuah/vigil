@@ -21,6 +21,14 @@ describe('finishedSummary', () => {
     expect(finishedSummary('A tool. Built for teams in the U.S.')).toBe('A tool. Built for teams in the U.S.');
     expect(finishedSummary('A tool. Built by Dr.')).toBe('A tool.');
   });
+  it('judges an abbreviation behind a closing quote', () => {
+    expect(finishedSummary('"A tool. Built by Dr."')).toBe('"A tool.');
+    expect(finishedSummary('A tool (for React, Vue, etc.)')).toBe('A tool (for React, Vue, etc.)');
+  });
+  it('treats a trailing e.g. or i.e. as unfinished', () => {
+    expect(finishedSummary('A tool. It supports frameworks, e.g.')).toBe('A tool.');
+    expect(finishedSummary('It supports frameworks, i.e.')).toBeNull();
+  });
   it('rejects text with no finished sentence', () => {
     expect(finishedSummary('A site built with Next.js and,')).toBeNull();
   });
