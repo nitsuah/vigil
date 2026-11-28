@@ -76,6 +76,26 @@ describe('GuidedTour', () => {
     }
   });
 
+  it('drops a pending retry when the visitor moves on', () => {
+    vi.useFakeTimers();
+    // Only the third step's target is on screen; the second is still being retried.
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const size = this.getAttribute('data-tour') === 'health-score' ? 50 : 0;
+      return { width: size, height: size, top: 0, left: 0, right: size, bottom: size } as DOMRect;
+    });
+    try {
+      render(<><div data-tour="health-score" /><GuidedTour onClose={vi.fn()} /></>);
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      act(() => { vi.advanceTimersByTime(600); });
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      for (let i = 0; i < 24; i++) act(() => { vi.advanceTimersByTime(300); });
+      expect(screen.getByText('Step 3 of 5')).toBeTruthy();
+    } finally {
+      rect.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it('advances on its own only after Play is chosen', () => {
     vi.useFakeTimers();
     try {
