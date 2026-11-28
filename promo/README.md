@@ -23,6 +23,8 @@ All spots share one composition: `brag-30s/compose.html` and `brag-30s/synth.py`
 
 A vertical spot (`"format": "vertical"`, `width`/`height`) has its own `compose.html`, a 1080×1920 shell that plays the base composition (staged as `inner.html`) full width, with the brand above and captions below. Its `narration` lines are spoken by Kokoro (`promo/tts/narrate.sh <spot>` writes `vo/<id>.wav` and prints each line's duration for `dur`) and mixed over the music by `tts/mix.py`. The wavs are committed, so `build.sh` stays offline.
 
+**Captions:** the landscape spots and the hero have music and sound effects only, with their text drawn on screen. Any spot with spoken `narration` must burn captions into the picture, as `health-17s-vert` does. Add a `<track>` only if a video ever carries speech that isn't drawn on screen.
+
 ## Re-run
 
 ```bash

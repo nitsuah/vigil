@@ -19,7 +19,7 @@ const full = (n: string) => `${OWNER}/${n}`;
 const repoRows = REPOS.map((r, i) => ({
     id: r.name, name: r.name, full_name: full(r.name), url: `https://github.com/${full(r.name)}`,
     description: r.description, language: r.language, repo_type: r.type, health_score: r.health,
-    homepage: null, topics: [], is_fork: false, is_hidden: false, is_archived: false,
+    homepage: null, topics: [], tier: r.tier ?? null, is_fork: false, is_hidden: false, is_archived: false,
     stars: 3 + i, forks: 1, open_issues: 1, open_prs: r.prs ?? 0, branches_count: 3, contributor_count: 2, bus_factor: 1,
     commit_frequency: '9.5', avg_pr_merge_time_hours: '14.2', token_density: '7.9', comment_to_code_ratio: '0.16',
     total_loc: 12000 + i * 3100, coverage_score: String(60 + (r.health % 30)),
@@ -77,7 +77,14 @@ const RELS = {
 async function mockApi(page: Page): Promise<void> {
     const json = (b: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(b) });
     await page.route('**/api/repos?*', (r) => r.fulfill(json(repoRows)));
-    await page.route('**/api/repo-details/*/trend', (r) => r.fulfill(json({ success: true, snapshots: [] })));
+    await page.route('**/api/repo-details/*/trend*', (r) => r.fulfill(json({
+        success: true,
+        snapshots: [58, 61, 60, 66, 69, 68, 73, 76].map((health_score, i) => ({ health_score, captured_at: `2026-09-${10 + i * 2}T00:00:00Z` })),
+    })));
+    await page.route('**/api/repos/*/improve-doc', (r) => r.fulfill(json({
+        original: '# mobile-app\n\nThe app.\n\n## Setup\n\nRun it.\n',
+        improved: '# mobile-app\n\niOS and Android client for the acme shop.\n\n## Setup\n\n1. `npm install`\n2. `npm run ios` or `npm run android`\n',
+    })));
     await page.route('**/api/repo-details/*', (r) => {
         const name = decodeURIComponent(new URL(r.request().url()).pathname.split('/').pop() ?? '');
         const repo = repoRows.find((x) => x.name === name) ?? repoRows[0];
@@ -144,6 +151,13 @@ test('capture', async ({ page }) => {
 
     await page.goto('/');
     await expect(page.locator('table tbody')).toContainText('storefront', { timeout: 60_000 });
+    // The first visit compiles the details route, and a row whose fetch fails keeps
+    // its sync time, so reload until every row has its doc status.
+    await expect(async () => {
+        await page.reload();
+        await expect(page.locator('table tbody')).toContainText('storefront');
+        await expect(page.locator('table tbody')).not.toContainText('12h ago', { timeout: 10_000 });
+    }).toPass({ timeout: 60_000 });
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${OUT}/crops/dashboard.png`, clip: { x: 0, y: 0, width: 1600, height: 900 } });
 
@@ -213,6 +227,10 @@ test('capture', async ({ page }) => {
         await page.screenshot({ path: `${OUT}/crops/${file}.png`, fullPage: true, clip: await cardRect(name) });
     }
 
+    // Health trend, on the stats card.
+    await expect(page.getByText('Health Trend').first()).toBeVisible({ timeout: 15_000 });
+    await page.screenshot({ path: `${OUT}/crops/health-trend.png`, fullPage: true, clip: await cardRect('Repository Stats') });
+
     // One click to fix: Best Practices → Fix All opens the real PR preview.
     const practicesFix = page.getByRole('button', { name: /^Fix All/ }).nth(1); // Documentation, Best Practices, Community Standards
     const practicesRect = await cardRect('Best Practices');
@@ -227,6 +245,13 @@ test('capture', async ({ page }) => {
     const createPr = { x: prBox.x + prBox.width / 2, y: prBox.y + prBox.height / 2 };
     await page.keyboard.press('Escape');
 
+    // AI Improve: the before/after preview inside the Documentation card.
+    await page.getByTitle('AI-improve README').first().click();
+    await page.getByRole('button', { name: 'Generate', exact: true }).last().click();
+    await expect(page.getByText('AI-Improved Preview')).toBeVisible({ timeout: 15_000 });
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${OUT}/crops/ai-diff.png`, fullPage: true, clip: await cardRect('Documentation') });
+
     // Per-repo chat: the slide-in panel with the seeded thread and its proposal card.
     await page.goto('/');
     await expect(page.locator('table tbody')).toContainText('docs-site', { timeout: 60_000 });
@@ -239,6 +264,15 @@ test('capture', async ({ page }) => {
     const chatApply = { x: applyBox.x + applyBox.width / 2, y: applyBox.y + applyBox.height / 2 };
     const panelBox = (await chat.boundingBox())!;
     const chatPanel = { x: panelBox.x, y: panelBox.y, width: panelBox.width, height: panelBox.height };
+
+    // Tier filter: the dashboard narrowed to the T1 repos.
+    await page.goto('/');
+    await expect(page.locator('table tbody')).toContainText('docs-site', { timeout: 60_000 });
+    await page.getByRole('button', { name: 'Filters' }).first().click();
+    await page.locator('select:has(option[value="T1"]):visible').first().selectOption('T1');
+    await expect(page.locator('table tbody')).not.toContainText('docs-site');
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: `${OUT}/crops/tier-filter.png`, clip: { x: 0, y: 0, width: 1600, height: 520 } });
 
     const p01 = rollup(new URLSearchParams({ priority: 'P0,P1' }));
     const all = rollup(new URLSearchParams());
