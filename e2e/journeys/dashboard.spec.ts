@@ -11,6 +11,10 @@ test(
       await expect(vigil).toContainText('A');
     }, { docs: 'modern-dashboard' });
 
+    // Keep the visitor-intro baseline on the first step; later screenshots focus on the table.
+    await page.getByRole('button', { name: 'Dismiss' }).click();
+    await settle(page);
+
     await step(page, 'sort the healthiest repo to the top', async () => {
       // The button's name gains the sort arrow ("Health ↑") after a click, so locate it by its column.
       const health = page.locator('thead th', { hasText: /^Health/ }).getByRole('button');
@@ -20,6 +24,6 @@ test(
       await expect(page.locator('table tbody tr').first()).toContainText('vigil');
       await expect(page.locator('table tbody tr').last()).toContainText('skyview');
       await settle(page);
-    }, { docs: 'filtering-sorting', mask: [page.locator('section[aria-labelledby="intro-title"]')] });
+    }, { docs: 'filtering-sorting' });
   },
 );
