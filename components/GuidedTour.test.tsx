@@ -62,6 +62,20 @@ describe('GuidedTour', () => {
     }
   });
 
+  it('skips a target that has width but no height', () => {
+    vi.useFakeTimers();
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 0, top: 0, left: 0, right: 100, bottom: 0 } as DOMRect);
+    try {
+      render(<><div data-tour="repo-name" /><GuidedTour onClose={vi.fn()} /></>);
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      for (let i = 0; i < 24; i++) act(() => { vi.advanceTimersByTime(300); });
+      expect(screen.getByText('Step 5 of 5')).toBeTruthy();
+    } finally {
+      rect.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it('advances on its own only after Play is chosen', () => {
     vi.useFakeTimers();
     try {

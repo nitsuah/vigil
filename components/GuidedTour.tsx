@@ -15,7 +15,10 @@ interface GuidedTourProps {
 /** The first match that is actually rendered: phones and desktops each have their own copy. */
 function findTarget(selector: string): Element | null {
   const matches = Array.from(document.querySelectorAll(selector));
-  return matches.find((el) => el.getBoundingClientRect().width > 0) ?? null;
+  return matches.find((el) => {
+    const { width, height } = el.getBoundingClientRect();
+    return width > 0 && height > 0;
+  }) ?? null;
 }
 
 export default function GuidedTour({ onClose, resume = false }: GuidedTourProps) {
@@ -204,7 +207,7 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
         );
         if (clicked) return cleanup;
       }
-      showStep(); // eslint-disable-line react-hooks/set-state-in-effect
+      showStep();
       return cleanup;
     }
 
