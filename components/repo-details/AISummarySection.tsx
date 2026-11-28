@@ -2,9 +2,11 @@
 
 import { Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
+import { finishedSummary } from '@/lib/summary-text';
 
 interface AISummarySectionProps {
   aiSummary?: string;
+  generatedAt?: string | null;
   repoName?: string;
   isAuthenticated?: boolean;
   generatingSummary?: boolean;
@@ -14,6 +16,7 @@ interface AISummarySectionProps {
 
 export function AISummarySection({
   aiSummary,
+  generatedAt,
   repoName,
   isAuthenticated = true,
   generatingSummary = false,
@@ -23,6 +26,12 @@ export function AISummarySection({
   const [isExpanded, setIsExpanded] = useState(true); // Expanded by default
 
   const hasSummary = aiSummary && aiSummary.trim() && !aiSummary.startsWith('Summary unavailable');
+
+  // Summaries saved before cut-off generations were rejected may end mid-sentence.
+  const shown = hasSummary ? (finishedSummary(aiSummary) ?? aiSummary) : null;
+  const generated = generatedAt && !Number.isNaN(Date.parse(generatedAt))
+    ? new Date(generatedAt).toISOString().slice(0, 10)
+    : null;
 
   return (
     <div className="bg-gradient-to-br from-purple-900/30 via-slate-800/50 to-purple-800/20 rounded-lg overflow-hidden border border-purple-500/40 shadow-lg shadow-purple-500/10 hover:border-purple-400/50 transition-colors">
@@ -69,7 +78,10 @@ export function AISummarySection({
                   <X className="h-3 w-3" />
                 </button>
               )}
-              <p className="text-sm text-slate-200 leading-relaxed pr-6">{aiSummary}</p>
+              <p className="text-sm text-slate-200 leading-relaxed pr-6">{shown}</p>
+              <p className="mt-1 text-[11px] text-slate-400">
+                {generated ? `Generated ${generated}` : 'Generation date not recorded'}
+              </p>
             </div>
           ) : (
             <p className="text-sm text-slate-400 italic">No AI summary generated yet.</p>

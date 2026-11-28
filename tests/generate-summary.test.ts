@@ -16,6 +16,7 @@ vi.mock('@/auth', () => ({
 
 vi.mock('@/lib/db', () => ({
   getNeonClient: vi.fn(),
+  ensureSchema: vi.fn(),
 }));
 
 // Per-repo access is covered in repo-access-guard.test.ts.
@@ -203,6 +204,26 @@ describe('Generate Summary API', () => {
     
     expect(response.status).toBe(500);
     expect(data.error).toBe('Failed to generate summary (check API key)');
+  });
+
+  it('does not save a failure notice over the old summary', async () => {
+    mockAuth.mockResolvedValue({
+      user: { name: 'testuser' },
+      accessToken: 'mock-token',
+      expires: new Date(Date.now() + 86400000).toISOString(),
+    });
+    const mockDb = vi.fn();
+    mockGetNeonClient.mockReturnValue(mockDb as never);
+    mockGitHubClient.mockImplementation(function(this: Record<string, unknown>) {
+      this.getFileContent = vi.fn().mockResolvedValue('# Test Repo');
+    } as never);
+    mockGenerateRepoSummary.mockResolvedValue('Summary unavailable (AI Service Error)');
+
+    const request = new NextRequest('http://localhost:3000/api/repos/repo/generate-summary', { method: 'POST' });
+    const response = await POST(request, { params: Promise.resolve({ name: 'repo' }) });
+
+    expect(response.status).toBe(502);
+    expect(mockDb).not.toHaveBeenCalled();
   });
 });
 

@@ -95,6 +95,7 @@ export interface Repo {
   testing_status?: string;
   coverage_score?: number;
   ai_summary?: string;
+  ai_summary_generated_at?: string | null;
   last_commit_date?: string | null;
   open_prs?: number;
   prs_ready_count?: number;

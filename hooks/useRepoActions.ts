@@ -425,7 +425,7 @@ export function useRepoActions(
       if (res.ok) {
         const data = await res.json();
         setRepos((prev) =>
-          prev.map((r) => (r.name === repoName ? { ...r, ai_summary: data.summary } : r))
+          prev.map((r) => (r.name === repoName ? { ...r, ai_summary: data.summary, ai_summary_generated_at: new Date().toISOString() } : r))
         );
         setToastMessage(`AI summary generated for ${repoName}.`);
       } else {

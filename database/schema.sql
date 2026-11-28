@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS repos (
   is_hidden BOOLEAN DEFAULT FALSE,
   repo_type TEXT CHECK (repo_type IN ('web-app', 'game', 'tool', 'library', 'bot', 'research', 'other')) DEFAULT 'other',
   ai_summary TEXT,
+  ai_summary_generated_at TIMESTAMP WITH TIME ZONE,
   health_score INTEGER DEFAULT 0,
   health_profile TEXT NOT NULL DEFAULT 'production' CHECK (health_profile IN ('starter', 'production', 'enterprise')),
   -- User-assigned importance tier (lib/repo-tier.ts); NULL = untiered.
