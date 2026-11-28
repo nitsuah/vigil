@@ -411,6 +411,7 @@ export function MobileRepoCard({
                 type="button"
                 data-tour="docs"
                 aria-expanded={showDocs}
+                aria-controls={showDocs ? `mobile-doc-status-${repo.name}` : undefined}
                 aria-label={showDocs ? 'Hide document status' : 'Show document status'}
                 onClick={() => setShowDocs((open) => !open)}
                 className="pointer-events-auto flex min-h-11 items-center gap-1 ml-auto px-1"
@@ -425,7 +426,7 @@ export function MobileRepoCard({
           </div>
 
           {showDocs && details && (
-            <div className="pointer-events-auto rounded border border-slate-700 bg-slate-900/80 px-2 py-1">
+            <div id={`mobile-doc-status-${repo.name}`} className="pointer-events-auto rounded border border-slate-700 bg-slate-900/80 px-2 py-1">
               <DocStatusList docStatuses={details.docStatuses} />
             </div>
           )}

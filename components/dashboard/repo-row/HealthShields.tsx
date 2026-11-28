@@ -11,10 +11,11 @@ interface HealthShieldsProps {
   docHealth: { score: number } | null;
 }
 
-function Chip({ title, open, onOpen, className, children, ...rest }: {
+function Chip({ id, title, open, onOpen, className, children, ...rest }: {
+  id: string;
   title: string;
-  open: string | null;
-  onOpen: (next: string | null) => void;
+  open: { id: string; text: string } | null;
+  onOpen: (next: { id: string; text: string } | null) => void;
   className: string;
   children: React.ReactNode;
   'aria-label'?: string;
@@ -23,11 +24,11 @@ function Chip({ title, open, onOpen, className, children, ...rest }: {
     <button
       type="button"
       title={title}
-      aria-expanded={open === title}
+      aria-expanded={open?.id === id}
       className={className}
       onClick={(e) => {
         e.stopPropagation();
-        onOpen(open === title ? null : title);
+        onOpen(open?.id === id ? null : { id, text: title });
       }}
       {...rest}
     >
@@ -38,7 +39,7 @@ function Chip({ title, open, onOpen, className, children, ...rest }: {
 
 export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) {
   // The chip whose explanation is open: touch and keyboard users have no hover.
-  const [openChip, setOpenChip] = useState<string | null>(null);
+  const [openChip, setOpenChip] = useState<{ id: string; text: string } | null>(null);
   // Capture timestamp once
   const [now] = useState(() => Date.now());
 
@@ -165,6 +166,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
   return (
     <>
       <Chip
+        id="community"
         open={openChip}
         onOpen={setOpenChip}
         title={csTooltip}
@@ -180,6 +182,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       </Chip>
       {!details.postureHidden && (
       <Chip
+        id="practices"
         open={openChip}
         onOpen={setOpenChip}
         title={bpTooltip}
@@ -195,6 +198,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       </Chip>
       )}
       <Chip
+        id="testing"
         open={openChip}
         onOpen={setOpenChip}
         title={testingTooltip}
@@ -210,6 +214,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       </Chip>
       {repo.coverage_score != null && (
         <Chip
+          id="coverage"
           open={openChip}
           onOpen={setOpenChip}
           title={`Test Coverage: ${repo.coverage_score}%`}
@@ -226,6 +231,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       )}
       {docHealth && (
         <Chip
+          id="docs"
           open={openChip}
           onOpen={setOpenChip}
           title={docHealthTooltip}
@@ -243,6 +249,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       {/* Security health badge */}
       {details.postureHidden ? null : securityScore != null ? (
         <Chip
+          id="security"
           open={openChip}
           onOpen={setOpenChip}
           title={`Security health: ${securityScore}%`}
@@ -259,6 +266,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         </Chip>
       ) : (
         <Chip
+          id="security"
           open={openChip}
           onOpen={setOpenChip}
           title="Security health unavailable (not checked yet)"
@@ -269,6 +277,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         </Chip>
       )}
       <Chip
+        id="commit"
         open={openChip}
         onOpen={setOpenChip}
         title={repo.last_commit_date ? `Last commit: ${repo.last_commit_date}` : 'No commits'}
@@ -278,7 +287,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       </Chip>
       {openChip && (
         <p role="status" className="basis-full whitespace-pre-line rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300">
-          {openChip}
+          {openChip.text}
         </p>
       )}
     </>
