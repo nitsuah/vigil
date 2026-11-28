@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A cut-off AI summary keeps a complete sentence that ends in an abbreviation such as "U.S." or "etc." (#574).
 - AI summaries show when they were generated, a failed generation no longer overwrites the saved summary, and an older cut-off summary is shown up to its last whole sentence (#574).
 - Signed-out visitors at an unknown address see the styled not-found page instead of the sign-in page (#575).
 

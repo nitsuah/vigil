@@ -12,11 +12,13 @@ export function finishedSummary(text: string): string | null {
     // Judge the word itself, without any closing quote or bracket after it.
     const bare = prefix.replace(/["')\]*_`]+$/, '');
     const abbreviation = /(?:\b[A-Za-z]\.){2,}$|\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|No|Fig)\.$/i.test(bare);
-    // "etc." or "U.S." can also close the last sentence; a title, "vs.", "e.g." or "i.e." cannot.
-    const closesText = prefix.length === trimmed.length
-      && /(?:\b[A-Za-z]\.){2,}$|\betc\.$/i.test(bare)
+    // "etc." or "U.S." can also close a sentence; a title, "vs.", "e.g." or "i.e." cannot.
+    // It does so at the end of the text, or when a usual sentence opener follows.
+    const canClose = /(?:\b[A-Za-z]\.){2,}$|\betc\.$/i.test(bare)
       && !/\b(?:e\.g|i\.e)\.$/i.test(bare);
-    if (!abbreviation || closesText) end = match.index + match[0].length;
+    const rest = trimmed.slice(prefix.length);
+    const closes = canClose && (rest === '' || /^\s+(?:It|Its|This|These|The|They)\b/.test(rest));
+    if (!abbreviation || closes) end = match.index + match[0].length;
   }
   return end > 0 ? trimmed.slice(0, end) : null;
 }
