@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Desktop rows have a keyboard expand button; the empty dashboard includes its own sync control; the app has a styled not-found page; reports use fewer columns below 1280 px and larger touch targets on phones (#536).
 
 - Signed-out visitors get a dismissible intro with a legend and a tour button; the tour defaults to 5 manual steps, ignores backdrop clicks, can be resumed, and highlights the copy of a control that is on screen (#536).
+
+- Health strip chips explain themselves on tap or keyboard; document status shows each name and state in words, on phones too; the Metrics card says its values are self-reported from METRICS.md, counts them as values, and keeps full dates instead of the year (full dates appear after each repo's next sync) (#570, #571, #572, #573).
 - Cloudflare branch builds no longer fail at the preview step: `wrangler.jsonc` has an empty `previews` block.
 
 - The daily metrics sync now reaches every tracked repo on Workers Free, where it used to stop with "Too many subrequests" after a few. `POST /api/metrics/sync` syncs one batch within a counted budget of 40 subrequests (GitHub requests and Neon queries) and returns a repo-id cursor that `metrics-sync.yml` follows until `done`. A first backfill too large for one call resumes from the newest update it read. The workflow fails if any repo fails; because its log is public, private or unverified repos are shown by id and errors as categories (full detail stays in the Worker logs). Temporary `-ghsa-` advisory forks are no longer synced by this job or queued by the dashboard sync (#456).

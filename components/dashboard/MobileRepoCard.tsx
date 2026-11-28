@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Fragment, useEffect, useMemo, useRef } from 'react';
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   GitPullRequest,
   AlertCircle,
@@ -25,6 +25,7 @@ import { calculateDocHealth } from '@/lib/doc-health';
 import { getHealthGrade } from '@/lib/dashboard-utils';
 import { detectActivityState, ActivityState, MAINTENANCE_MODE_DAYS } from '@/lib/repo-signals';
 import { HealthBreakdown } from './repo-row/HealthBreakdown';
+import { DocStatusList } from './repo-row/DocStatusList';
 import { TypeEditor } from './repo-row/TypeEditor';
 import { TierEditor } from './repo-row/TierEditor';
 import type { RepoTier } from '@/lib/repo-tier';
@@ -104,6 +105,7 @@ export function MobileRepoCard({
   }, [details]);
 
   const blocked = repo.prs_blocked_count ?? 0;
+  const [showDocs, setShowDocs] = useState(false);
 
   // Mobile/half-width sync is a long-press on the refresh icon rather than a
   // plain tap — the actions row is dense enough here that a stray tap
@@ -405,19 +407,29 @@ export function MobileRepoCard({
               </div>
             )}
             {docIconState && (
-              <div
+              <button
+                type="button"
                 data-tour="docs"
-                className="pointer-events-auto flex items-center gap-1 ml-auto"
-                title={docHealth ? `Doc health: ${docHealth.score}%` : 'Doc status'}
+                aria-expanded={showDocs}
+                aria-controls={showDocs ? `mobile-doc-status-${repo.name}` : undefined}
+                aria-label={showDocs ? 'Hide document status' : 'Show document status'}
+                onClick={() => setShowDocs((open) => !open)}
+                className="pointer-events-auto flex min-h-11 items-center gap-1 ml-auto px-1"
+                title={showDocs ? 'Hide document status' : docHealth ? `Doc health: ${docHealth.score}%` : 'Doc status'}
               >
-                {docIconState.map(({ type, Icon, label, color, exists, healthState }) => (
-                  <span key={type} title={`${label}: ${healthState}`}>
-                    <Icon className={`h-3.5 w-3.5 ${exists ? color : 'opacity-20'}`} />
-                  </span>
+                {docIconState.map(({ type, Icon, color, exists }) => (
+                  <Icon key={type} className={`h-3.5 w-3.5 ${exists ? color : 'opacity-20'}`} />
                 ))}
-              </div>
+                <span className="text-[11px] text-slate-400">Docs {showDocs ? '▲' : '▼'}</span>
+              </button>
             )}
           </div>
+
+          {showDocs && details && (
+            <div id={`mobile-doc-status-${repo.name}`} className="pointer-events-auto rounded border border-slate-700 bg-slate-900/80 px-2 py-1">
+              <DocStatusList docStatuses={details.docStatuses} />
+            </div>
+          )}
 
           {repo.description && !repo.is_hidden && (
             <p className="text-xs text-slate-500 truncate">{repo.description}</p>

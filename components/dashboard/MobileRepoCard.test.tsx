@@ -88,6 +88,19 @@ afterEach(cleanup);
 // ── Collapsed rendering ───────────────────────────────────────────────────────
 
 describe('MobileRepoCard – collapsed', () => {
+  it('lists each document state in words after a tap', () => {
+    const onToggleExpanded = vi.fn();
+    const { rerender } = render(<MobileRepoCard {...baseProps({ details: baseDetails, onToggleExpanded })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Show document status' }));
+    const list = () => screen.getByRole('list', { name: 'Document status' }).textContent;
+    expect(list()).toContain('Roadmapmissing');
+    const changed = { ...baseDetails, docStatuses: [{ doc_type: 'roadmap', exists: true, health_state: 'dormant' as const }] };
+    rerender(<MobileRepoCard {...baseProps({ details: changed, onToggleExpanded })} />);
+    expect(list()).toContain('Roadmapdormant');
+    expect(list()).toContain('READMEmissing');
+    expect(onToggleExpanded).not.toHaveBeenCalled();
+  });
+
   it('shows the repo name', () => {
     render(<MobileRepoCard {...baseProps()} />);
     expect(screen.getByText('my-repo')).toBeTruthy();

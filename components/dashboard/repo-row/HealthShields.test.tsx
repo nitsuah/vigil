@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { HealthShields } from './HealthShields';
 import { Repo, RepoDetails } from '@/types/repo';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 // Mock calculateHealthScore to control outputs
 vi.mock('@/lib/health-score', () => ({
@@ -97,6 +97,29 @@ const mockBreakdown = {
 };
 
 describe('HealthShields', () => {
+  afterEach(cleanup);
+
+  it('updates an open explanation when the repo changes', () => {
+    vi.mocked(calculateHealthScore).mockReturnValue({ ...mockBreakdown, security: 85 });
+    const { container, rerender } = render(<HealthShields repo={{ ...baseRepo, security_last_checked: null }} details={baseDetails} docHealth={null} />);
+    fireEvent.click(screen.getByText('Sec —'));
+    rerender(<HealthShields repo={baseRepo} details={baseDetails} docHealth={null} />);
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('Security health: 85%');
+  });
+
+  it('shows a chip explanation on click without opening the row', () => {
+    vi.mocked(calculateHealthScore).mockReturnValue({ ...mockBreakdown, security: 85 });
+    const onRow = vi.fn();
+    const { container } = render(<div onClick={onRow}><HealthShields repo={baseRepo} details={baseDetails} docHealth={null} /></div>);
+    const chip = container.querySelector('button[title^="Testing:"]') as HTMLElement;
+    fireEvent.click(chip);
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('Testing Framework: healthy');
+    expect(chip.getAttribute('aria-controls')).toBe(container.querySelector('[role="status"]')?.id);
+    fireEvent.click(chip);
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(onRow).not.toHaveBeenCalled();
+  });
+
   it('displays the calculated security score when checked', () => {
     vi.mocked(calculateHealthScore).mockReturnValue({ ...mockBreakdown, security: 85 });
     render(<HealthShields repo={baseRepo} details={baseDetails} docHealth={null} />);

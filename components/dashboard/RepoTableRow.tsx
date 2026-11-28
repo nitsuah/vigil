@@ -4,10 +4,6 @@ import React, { Fragment, useMemo, useState } from 'react';
 import {
   GitPullRequest,
   AlertCircle,
-  Activity,
-  Map,
-  ListTodo,
-  Sparkles,
   Play,
   X,
   RefreshCw,
@@ -15,7 +11,6 @@ import {
   CheckCircle2,
   XCircle,
   HelpCircle,
-  BookOpen,
   MessageSquare,
   GitBranch,
   ChevronsLeft,
@@ -37,6 +32,7 @@ import { getLanguageIcon } from '@/lib/language-colors';
 import { detectActivityState, ActivityState, MAINTENANCE_MODE_DAYS } from '@/lib/repo-signals';
 import { HealthBreakdown } from './repo-row/HealthBreakdown';
 import { HealthShields } from './repo-row/HealthShields';
+import { DocStatusList } from './repo-row/DocStatusList';
 import { TypeEditor } from './repo-row/TypeEditor';
 import { TierEditor } from './repo-row/TierEditor';
 import type { RepoTier } from '@/lib/repo-tier';
@@ -336,7 +332,7 @@ export function RepoTableRow({
         </td>
         <td className="px-3 md:px-6 py-3 md:py-4" data-tour="health-score">
           <div className="flex flex-col gap-2">
-            <div className={`flex items-center gap-2 ${repo.is_hidden ? 'opacity-50 grayscale' : ''}`}>
+            <div className={`flex flex-wrap items-center gap-2 ${repo.is_hidden ? 'opacity-50 grayscale' : ''}`}>
               {details ? (
                 <HealthBreakdown
                   repo={repo}
@@ -620,40 +616,6 @@ function DocStatusDisplay({
     );
   }
 
-  const getIconInfo = (docType: string) => {
-    const doc = details.docStatuses.find((d) => d.doc_type === docType);
-    const exists = doc && doc.exists;
-    const healthState = doc?.health_state || (exists ? 'healthy' : 'missing');
-    const colorMap: Record<string, string> = {
-      roadmap: 'purple',
-      tasks: 'blue',
-      metrics: 'green',
-      features: 'yellow',
-      readme: 'cyan',
-    };
-    const color = colorMap[docType] || 'slate';
-    const iconColor =
-      healthState === 'healthy'
-        ? `text-${color}-400`
-        : healthState === 'dormant'
-          ? 'text-yellow-400'
-          : healthState === 'malformed'
-            ? 'text-orange-400'
-            : 'text-slate-600';
-
-    // Build tooltip with health status
-    const healthLabel = healthState.charAt(0).toUpperCase() + healthState.slice(1);
-    const tooltip = `${docType.toUpperCase()}: ${healthLabel}`;
-
-    return { exists, iconColor, title: tooltip };
-  };
-
-  const roadmap = getIconInfo('roadmap');
-  const tasks = getIconInfo('tasks');
-  const metrics = getIconInfo('metrics');
-  const features = getIconInfo('features');
-  const readme = getIconInfo('readme');
-
   const coreDocs = ['readme', 'roadmap', 'tasks', 'metrics', 'features'];
   const allDocsPresent = coreDocs.every((docType) =>
     details.docStatuses.find((d) => d.doc_type === docType && d.exists)
@@ -727,21 +689,7 @@ function DocStatusDisplay({
       >
         <ChevronsLeft className="h-3.5 w-3.5" />
       </button>
-      <span title={readme.title}>
-        <BookOpen className={`h-4 w-4 ${readme.exists ? readme.iconColor : 'opacity-20'}`} />
-      </span>
-      <span title={roadmap.title}>
-        <Map className={`h-4 w-4 ${roadmap.exists ? roadmap.iconColor : 'opacity-20'}`} />
-      </span>
-      <span title={tasks.title}>
-        <ListTodo className={`h-4 w-4 ${tasks.exists ? tasks.iconColor : 'opacity-20'}`} />
-      </span>
-      <span title={metrics.title}>
-        <Activity className={`h-4 w-4 ${metrics.exists ? metrics.iconColor : 'opacity-20'}`} />
-      </span>
-      <span title={features.title}>
-        <Sparkles className={`h-4 w-4 ${features.exists ? features.iconColor : 'opacity-20'}`} />
-      </span>
+      <DocStatusList docStatuses={details.docStatuses} />
       {isAuthenticated && !allDocsPresent && docHealth && docHealth.score < 100 && (
         <button
           onClick={(e) => {
