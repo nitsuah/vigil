@@ -20,7 +20,7 @@ const counts = { total: 0, vulnerability: 0, bug: 0, feedback: 0, other: 0 };
 const seen = new Set();
 
 function category(labels) {
-    const names = new Set(labels.map((label) => label.name.trim().toLowerCase()));
+    const names = new Set(labels.map((label) => (typeof label === 'string' ? label : label?.name).trim().toLowerCase()));
     for (const name of categories.vulnerability) if (names.has(name)) return 'vulnerability';
     for (const name of categories.bug) if (names.has(name)) return 'bug';
     for (const name of categories.feedback) if (names.has(name)) return 'feedback';
