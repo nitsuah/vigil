@@ -20,6 +20,6 @@ test(
       await expect(page.locator('table tbody tr').first()).toContainText('vigil');
       await expect(page.locator('table tbody tr').last()).toContainText('skyview');
       await settle(page);
-    }, { docs: 'filtering-sorting' });
+    }, { docs: 'filtering-sorting', mask: [page.locator('section[aria-labelledby="intro-title"]')] });
   },
 );
