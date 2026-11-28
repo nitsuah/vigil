@@ -1,0 +1,112 @@
+name: Deploy
+
+# Deploys the Cloudflare Worker (vigil.nitsuah.io) after tests pass on main.
+# Skips the deploy (warning, job still green) when CLOUDFLARE_API_TOKEN is
+# not configured, so the workflow can merge before the owner adds the token.
+# Uses repo secrets CLOUDFLARE_API_TOKEN (Workers Scripts: Edit) and
+# CLOUDFLARE_ACCOUNT_ID. Worker secrets and plain-text vars stay in the
+# Cloudflare dashboard; wrangler.jsonc has keep_vars: true so a deploy does
+# not delete them. The vigil.nitsuah.io custom domain is attached in the
+# dashboard, not in wrangler.jsonc.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    name: Deploy Worker
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Check deploy credentials
+        id: credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::warning::CLOUDFLARE_API_TOKEN is not configured; skipping deployment until the owner adds it (Cloudflare dashboard > API tokens: Workers Scripts:Edit + Account:Read, then repo Settings > Secrets). Worker secrets stay in Cloudflare."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check this run is the main tip
+        id: tip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tip=$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)
+          if [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "::notice::Skipping deploy: $GITHUB_SHA is not the current main tip ($tip)"
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.tip.outputs.current == 'true' && steps.credentials.outputs.available == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - if: steps.tip.outputs.current == 'true' && steps.credentials.outputs.available == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - if: steps.tip.outputs.current == 'true' && steps.credentials.outputs.available == 'true'
+        run: npm ci
+
+      - name: OpenNext build + wrangler deploy
+        if: steps.tip.outputs.current == 'true' && steps.credentials.outputs.available == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run cf:deploy
+
+      - name: Smoke check (including a cookie-bearing request)
+        if: steps.tip.outputs.current == 'true' && steps.credentials.outputs.available == 'true'
+        run: |
+          # 200 on / with a Cookie header means the OpenNext cookie-parse
+          # regression (#499) has not come back. /api/health may be 503
+          # until GEMINI_API_KEY is set; anything else is a failed deploy.
+          code=none
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            code=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' -H 'cookie: qa=1' https://vigil.nitsuah.io/ || echo none)
+            [ "$code" = "200" ] && break
+            sleep 10
+          done
+          if [ "$code" != "200" ]; then
+            echo "::error::GET / with cookie returned $code after deploy"
+            exit 1
+          fi
+          ver=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' -H 'cookie: qa=1' https://vigil.nitsuah.io/api/version || echo none)
+          if [ "$ver" != "200" ]; then
+            echo "::error::GET /api/version with cookie returned $ver after deploy"
+            exit 1
+          fi
