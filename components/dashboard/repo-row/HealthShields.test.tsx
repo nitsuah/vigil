@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { HealthShields } from './HealthShields';
 import { Repo, RepoDetails } from '@/types/repo';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 // Mock calculateHealthScore to control outputs
 vi.mock('@/lib/health-score', () => ({
@@ -97,6 +97,20 @@ const mockBreakdown = {
 };
 
 describe('HealthShields', () => {
+  afterEach(cleanup);
+
+  it('shows a chip explanation on click without opening the row', () => {
+    vi.mocked(calculateHealthScore).mockReturnValue({ ...mockBreakdown, security: 85 });
+    const onRow = vi.fn();
+    const { container } = render(<div onClick={onRow}><HealthShields repo={baseRepo} details={baseDetails} docHealth={null} /></div>);
+    const chip = container.querySelector('button[title^="Testing:"]') as HTMLElement;
+    fireEvent.click(chip);
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('Testing Framework: healthy');
+    fireEvent.click(chip);
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(onRow).not.toHaveBeenCalled();
+  });
+
   it('displays the calculated security score when checked', () => {
     vi.mocked(calculateHealthScore).mockReturnValue({ ...mockBreakdown, security: 85 });
     render(<HealthShields repo={baseRepo} details={baseDetails} docHealth={null} />);

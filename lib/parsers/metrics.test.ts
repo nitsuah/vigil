@@ -3,6 +3,11 @@ import { describe, it, expect } from 'vitest';
 import { parseMetrics } from './metrics';
 
 describe('parseMetrics', () => {
+    it('keeps a whole ISO date instead of only its year', () => {
+        const { metrics } = parseMetrics('| Metric | Value |\n| --- | --- |\n| Last Updated | 2026-09-24 |\n');
+        expect(metrics).toEqual([{ name: 'Last Updated', value: 20260924, unit: 'date' }]);
+    });
+
     it('should parse metrics from frontmatter', () => {
         const content = `---
 metrics:

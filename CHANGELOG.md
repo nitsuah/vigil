@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Health strip chips explain themselves on tap or keyboard; document status shows each name and state in words, on phones too; the Metrics card says its values are self-reported from METRICS.md, counts them as values, and keeps full dates instead of the year (full dates appear after each repo's next sync) (#570, #571, #572, #573).
+
 - Report card titles and counters no longer split mid-word on laptop-width screens; header controls wrap to a second line when space runs out (#536).
 
 - Restored the visitor intro and short tour, the row expand button and other dead-end fixes, the mobile install-command wrap and the single security chip, which an out-of-date merge had removed (#536, #537).

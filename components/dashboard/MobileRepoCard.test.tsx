@@ -88,6 +88,14 @@ afterEach(cleanup);
 // ── Collapsed rendering ───────────────────────────────────────────────────────
 
 describe('MobileRepoCard – collapsed', () => {
+  it('lists each document state in words after a tap', () => {
+    const onToggleExpanded = vi.fn();
+    render(<MobileRepoCard {...baseProps({ details: baseDetails, onToggleExpanded })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Show document status' }));
+    expect(screen.getByRole('list', { name: 'Document status' }).textContent).toContain('Roadmapmissing');
+    expect(onToggleExpanded).not.toHaveBeenCalled();
+  });
+
   it('shows the repo name', () => {
     render(<MobileRepoCard {...baseProps()} />);
     expect(screen.getByText('my-repo')).toBeTruthy();

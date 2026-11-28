@@ -11,7 +11,34 @@ interface HealthShieldsProps {
   docHealth: { score: number } | null;
 }
 
+function Chip({ title, open, onOpen, className, children, ...rest }: {
+  title: string;
+  open: string | null;
+  onOpen: (next: string | null) => void;
+  className: string;
+  children: React.ReactNode;
+  'aria-label'?: string;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-expanded={open === title}
+      className={className}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen(open === title ? null : title);
+      }}
+      {...rest}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) {
+  // The chip whose explanation is open: touch and keyboard users have no hover.
+  const [openChip, setOpenChip] = useState<string | null>(null);
   // Capture timestamp once
   const [now] = useState(() => Date.now());
 
@@ -137,7 +164,9 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
 
   return (
     <>
-      <span
+      <Chip
+        open={openChip}
+        onOpen={setOpenChip}
         title={csTooltip}
         className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
           csPercentage >= 70
@@ -148,9 +177,11 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         }`}
       >
         Community {csHealthy}/{csTotal}
-      </span>
+      </Chip>
       {!details.postureHidden && (
-      <span
+      <Chip
+        open={openChip}
+        onOpen={setOpenChip}
         title={bpTooltip}
         className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
           bpPercentage >= 70
@@ -161,9 +192,11 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         }`}
       >
         Practices {bpHealthy}/{bpTotal}
-      </span>
+      </Chip>
       )}
-      <span
+      <Chip
+        open={openChip}
+        onOpen={setOpenChip}
         title={testingTooltip}
         className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
           testingCount === 3
@@ -174,9 +207,11 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         }`}
       >
         Tests {testingCount}/{testingTotal}
-      </span>
+      </Chip>
       {repo.coverage_score != null && (
-        <span
+        <Chip
+          open={openChip}
+          onOpen={setOpenChip}
           title={`Test Coverage: ${repo.coverage_score}%`}
           className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
             repo.coverage_score >= 80
@@ -187,10 +222,12 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
           }`}
         >
           Coverage {repo.coverage_score}%
-        </span>
+        </Chip>
       )}
       {docHealth && (
-        <span
+        <Chip
+          open={openChip}
+          onOpen={setOpenChip}
           title={docHealthTooltip}
           className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
             docHealth.score === 100
@@ -201,11 +238,13 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
           }`}
         >
           Docs {docHealth.score}%
-        </span>
+        </Chip>
       )}
       {/* Security health badge */}
       {details.postureHidden ? null : securityScore != null ? (
-        <span
+        <Chip
+          open={openChip}
+          onOpen={setOpenChip}
           title={`Security health: ${securityScore}%`}
           aria-label={`Security health: ${securityScore}%`}
           className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
@@ -217,22 +256,31 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
           }`}
         >
           Sec {securityScore}%
-        </span>
+        </Chip>
       ) : (
-        <span
+        <Chip
+          open={openChip}
+          onOpen={setOpenChip}
           title="Security health unavailable (not checked yet)"
           aria-label="Security health unavailable (not checked yet)"
           className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/50 text-slate-500"
         >
           Sec —
-        </span>
+        </Chip>
       )}
-      <span
+      <Chip
+        open={openChip}
+        onOpen={setOpenChip}
         title={repo.last_commit_date ? `Last commit: ${repo.last_commit_date}` : 'No commits'}
         className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getActivityColor(repo.last_commit_date)}`}
       >
         Commit {formatActivityTime(repo.last_commit_date)}
-      </span>
+      </Chip>
+      {openChip && (
+        <p role="status" className="basis-full whitespace-pre-line rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300">
+          {openChip}
+        </p>
+      )}
     </>
   );
 }

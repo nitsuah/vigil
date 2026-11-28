@@ -44,7 +44,9 @@ export function MetricsSection({ metrics, isExpanded: isExpandedProp, onToggleEx
 
   const otherMetrics = metrics.filter((m) => {
     const lowerName = m.name.toLowerCase();
-    return !excludeKeywords.some((keyword) => lowerName.includes(keyword));
+    // Rows synced before dates were kept whole hold only the year; hide them until the next sync.
+    const bareYear = /updated|date/.test(lowerName) && m.unit !== 'date' && /^(19|20)\d\d$/.test(`${m.value}`);
+    return !bareYear && !excludeKeywords.some((keyword) => lowerName.includes(keyword));
   });
 
   if (otherMetrics.length === 0) return null;
@@ -60,14 +62,13 @@ export function MetricsSection({ metrics, isExpanded: isExpandedProp, onToggleEx
             <TrendingUp className="h-4 w-4 text-green-400" />
             <h4 className="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
               Metrics
-              <span title="Self-Reported" className="text-xs font-normal text-slate-400">⚠️</span>
               <span className="text-xs font-normal text-slate-400">Self-reported</span>
             </h4>
             <span
               title={`Metrics: ${otherMetrics.length} tracked`}
               className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-400 ml-1"
             >
-              {otherMetrics.length}
+              {otherMetrics.length} {otherMetrics.length === 1 ? 'value' : 'values'}
             </span>
           </div>
           <span className="text-slate-500 text-xs">{isExpanded ? '▼' : '▶'}</span>
@@ -75,10 +76,13 @@ export function MetricsSection({ metrics, isExpanded: isExpandedProp, onToggleEx
       </button>
       {isExpanded && (
         <div className="px-4 py-3">
+          <p className="mb-2 text-[11px] text-slate-400">
+            Copied from this repository&apos;s METRICS.md. Vigil does not verify them, so they can differ from its own health grade.
+          </p>
           <div className="space-y-2">
             {otherMetrics.map((metric, index) => (
               <div key={`${metric.name}-${index}`} className="flex items-center justify-between text-xs">
-                <span className="min-w-0 [overflow-wrap:anywhere] text-slate-400">{metric.name}</span>
+                <span className="min-w-0 [overflow-wrap:anywhere] text-slate-400">{/health score/i.test(metric.name) ? `${metric.name} (self-reported)` : metric.name}</span>
                 <span className="min-w-0 [overflow-wrap:anywhere] text-slate-200 font-medium">
                   {joinMetricValue(metric.value, metric.unit)}
                 </span>

@@ -69,7 +69,12 @@ export function parseMetrics(content: string): MetricsData {
                 let unit: string | null = null;
                 
                 // Check if value contains a percent sign
-                if (rawValue.includes('%')) {
+                const isoDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(rawValue);
+                if (isoDate) {
+                    // The value column is numeric: keep the whole date as YYYYMMDD.
+                    value = Number(isoDate.slice(1).join(''));
+                    unit = 'date';
+                } else if (rawValue.includes('%')) {
                     const numStr = rawValue.replace(/[^0-9.-]/g, '');
                     value = parseFloat(numStr);
                     unit = '%';
