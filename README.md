@@ -319,6 +319,8 @@ POST /api/sync-repos
 # Hide / restore a repository
 POST /api/repos/[name]/hide
 POST /api/repos/[name]/unhide
+# Permanently delete a hidden repository from Vigil
+POST /api/repos/[name]/delete
 
 # Per-repo settings (write grant required for tier/profile)
 PATCH /api/repos/[name]/update-type            { "type": "web-app" | "game" | "tool" | "library" | "bot" | "research" | "unknown" }

@@ -173,6 +173,60 @@ export async function revalidateGrant(
 }
 
 /**
+ * Creates a grant when the caller's own token shows push access to the repo.
+ * Hidden repos are left out of sync, the usual source of grants, so without
+ * this a hidden repo with no grant could never be restored or deleted. Push
+ * access is required: merely being able to read a public repo is not enough to
+ * change its shared row.
+ */
+export async function claimRepoGrant(
+    db: RepoAccessDb,
+    fullName: string | null | undefined,
+    githubUserId: string | undefined,
+    accessToken: string | undefined,
+    fetchImpl: typeof fetch = fetch
+): Promise<boolean> {
+    if (!githubUserId || !accessToken || !fullName || !/^[\w.-]+\/[\w.-]+$/.test(fullName)) return false;
+    try {
+        const res = await fetchImpl(`https://api.github.com/repos/${fullName}`, {
+            headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/vnd.github+json', 'User-Agent': 'vigil' },
+            signal: AbortSignal.timeout(REVALIDATE_TIMEOUT_MS),
+        });
+        if (res.status !== 200) return false;
+        const body = (await res.json()) as { permissions?: { push?: boolean } };
+        if (body.permissions?.push !== true) return false;
+    } catch {
+        return false;
+    }
+    await grantRepoAccess(db, fullName, githubUserId);
+    return true;
+}
+
+/**
+ * True if `owner/repo` sits in the caller's own GitHub account, as reported for
+ * their token. Covers a repo that no longer exists on GitHub, which nothing can
+ * resolve any more but its owner must still be able to delete.
+ */
+export async function isOwnNamespace(
+    fullName: string | null | undefined,
+    accessToken: string | undefined,
+    fetchImpl: typeof fetch = fetch
+): Promise<boolean> {
+    if (!fullName || !accessToken) return false;
+    try {
+        const res = await fetchImpl('https://api.github.com/user', {
+            headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/vnd.github+json', 'User-Agent': 'vigil' },
+            signal: AbortSignal.timeout(REVALIDATE_TIMEOUT_MS),
+        });
+        if (res.status !== 200) return false;
+        const { login } = (await res.json()) as { login?: string };
+        return !!login && fullName.split('/')[0].toLowerCase() === login.toLowerCase();
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Re-checks this user's grants that are due (older than GRANT_REVALIDATE_AFTER_MS),
  * a bounded handful per call, oldest first. Meant to run on a regular listing
  * request so active users keep their access current without a full sync.

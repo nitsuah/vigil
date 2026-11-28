@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Signed-out visitors at an unknown address see the styled not-found page instead of the sign-in page (#575).
 
+- Sync no longer stalls on health checks. One repo's check needed more outbound requests than a Cloudflare Workers invocation allows, so it now runs as three requests, reads files in bulk and batches database writes. Stale-branch counts work again.
+
+- Hidden repos can be restored again: push access confirmed by your GitHub token now grants it, since hidden repos are skipped by the sync that used to be the only source of grants.
+
+- Hidden repos have a Delete button that permanently removes them and their stored data from Vigil (GitHub is untouched; the next sync adds a still-existing repo back).
+
 - Report card titles and counters no longer split mid-word on laptop-width screens; header controls wrap to a second line when space runs out (#536).
 
 - Restored the visitor intro and short tour, the row expand button and other dead-end fixes, the mobile install-command wrap and the single security chip, which an out-of-date merge had removed (#536, #537).

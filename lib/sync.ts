@@ -12,8 +12,19 @@ import { buildHealthScoreInputs, type RepoHealthFields, type RepoHealthRows } fr
 import { isTestFile, parseTestFile } from './parsers/test-cases';
 import { aggregateCodeDensity } from './parsers/code-density';
 import { ensureSchema } from './db';
+import { HEALTH_STEPS, type HealthStep } from './sync-batch';
 import { summarizeOpenIssues, type IssueCategorySnapshot } from './issue-categories';
 import logger from './log';
+
+const MAX_TEST_FILES = 150;
+// Code only: fixtures and screenshots under test directories hold no test cases.
+const TESTABLE_SOURCE = /\.([cm]?[jt]sx?|py|go|rs|java|rb|php|cs|swift|kt|scala)$/i;
+const SOURCE_FILE = /\.(ts|tsx|js|jsx|py|go|rs|java|rb|php|c|h|cpp|hpp|cs|swift|kt|scala|sh|sql)$/i;
+const DOC_PATHS = [
+    'ROADMAP.md', 'roadmap.md', 'docs/ROADMAP.md', 'TASKS.md', 'docs/TASKS.md', 'METRICS.md', 'docs/METRICS.md',
+    'FEATURES.md', 'docs/FEATURES.md', 'README.md', 'LICENSE.md', 'CHANGELOG.md', 'docs/CHANGELOG.md',
+    'CONTRIBUTING.md', '.github/CONTRIBUTING.md', 'docs/CONTRIBUTING.md',
+];
 
 const ORG_GITHUB_FALLBACK_CACHE = new Map<string, { files: string[]; expiresAt: number }>();
 const FALLBACK_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -76,11 +87,32 @@ function finiteOrNull(n: number | null | undefined): number | null {
  */
 export type SyncRepoResult = { partialSteps: number };
 
+/**
+ * Full health sync of one repo. With `step`, runs only that part, so that each
+ * part fits in one Workers invocation; without it, runs them all in order.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any): Promise<SyncRepoResult> {
-    let partialSteps = 0;
+export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any, step?: HealthStep): Promise<SyncRepoResult> {
     await ensureSchema(db);
+    let partialSteps = 0;
+    for (const current of step ? [step] : HEALTH_STEPS) {
+        if (current === 'metrics') await syncRepoStats(repo, github, db);
+        else if (current === 'docs') await syncRepoContent(repo, github, db);
+        else partialSteps += await syncRepoPractices(repo, github, db);
+    }
+    return { partialSteps };
+}
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function findRepoId(repo: RepoMetadata, db: any): Promise<string> {
+    const rows = await db`SELECT id FROM repos WHERE full_name = ${repo.fullName}`;
+    if (!rows[0]) throw new Error('Repo row missing; run the metrics step first');
+    return rows[0].id;
+}
+
+/** GitHub-side metrics, written to the repo row. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncRepoStats(repo: RepoMetadata, github: GitHubClient, db: any): Promise<void> {
     const owner = repo.fullName.split('/')[0];
 
     // Fetch additional metrics
@@ -251,7 +283,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
     }
 
     // Upsert repo with new metrics
-    const repoRows = await db`
+    await db`
         INSERT INTO repos (
             name, full_name, description, language, stars, forks, open_issues, url, homepage, topics,
             last_synced, updated_at, last_commit_date, open_prs, prs_ready_count, prs_blocked_count, stale_review_count, stale_review_pr_numbers, branches_count, zombie_branch_count, readme_last_updated,
@@ -324,10 +356,15 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
           security_last_checked = EXCLUDED.security_last_checked,
           open_issues_count = EXCLUDED.open_issues_count,
           stale_issues_count = EXCLUDED.stale_issues_count,
-          issue_category_counts = EXCLUDED.issue_category_counts
-        RETURNING id;
+          issue_category_counts = EXCLUDED.issue_category_counts;
     `;
-    const repoId = repoRows[0].id;
+}
+
+/** File-derived data: test counts, code density and the tracked docs. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncRepoContent(repo: RepoMetadata, github: GitHubClient, db: any): Promise<void> {
+    const owner = repo.fullName.split('/')[0];
+    const repoId = await findRepoId(repo, db);
 
     // Get file list for best practices and community standards checks
     let fileList: string[] = [];
@@ -337,22 +374,28 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         console.warn(`Failed to fetch file list for ${repo.fullName}`, e);
     }
 
-    // Count test cases from test files
+    // Test files and a sample of source files (up to 40), plus every doc
+    // candidate, all read in a few bulk requests: one request per file ran past
+    // the per-invocation subrequest limit. A failed read throws, so docs are
+    // never recorded as missing just because GitHub couldn't be reached.
+    const testFiles = fileList.filter((f) => TESTABLE_SOURCE.test(f) && isTestFile(f)).slice(0, MAX_TEST_FILES);
+    const sampledFiles = fileList.filter((f) => SOURCE_FILE.test(f)).slice(0, 40);
+    const contents = await github.getFileContents(repo.name, [...new Set([...DOC_PATHS, ...testFiles, ...sampledFiles])], owner);
+    const read = (path: string): string | null => contents.get(path) ?? null;
+    const firstOf = (...paths: string[]): string | null => paths.map(read).find((c) => !!c) ?? null;
+
+    // Every write below is collected and sent as one transaction.
+    const writes: unknown[] = [];
+
     let testCaseCount = 0;
     let testDescribeCount = 0;
     try {
-        const testFiles = fileList.filter(isTestFile);
         for (const testFile of testFiles) {
-            try {
-                const content = await github.getFileContent(repo.name, testFile, owner);
-                if (content) {
-                    const stats = parseTestFile(content);
-                    testCaseCount += stats.tests;
-                    testDescribeCount += stats.describes;
-                }
-            } catch {
-                // Skip files that can't be fetched
-                console.warn(`Failed to fetch test file ${testFile} for ${repo.fullName}`);
+            const content = read(testFile);
+            if (content) {
+                const stats = parseTestFile(content);
+                testCaseCount += stats.tests;
+                testDescribeCount += stats.describes;
             }
         }
     } catch (e) {
@@ -360,27 +403,20 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
     }
 
     // Update repo with test case counts
-    await db`
+    writes.push(db`
         UPDATE repos 
         SET test_case_count = ${testCaseCount}, test_describe_count = ${testDescribeCount}
         WHERE id = ${repoId}
-    `;
+    `);
 
     // Compute token density + comment-to-code ratio from source files.
-    // Sample up to 40 source files to bound GitHub API calls.
-    const sourceFiles = fileList.filter((f) => /\.(ts|tsx|js|jsx|py|go|rs|java|rb|php|c|h|cpp|hpp|cs|swift|kt|scala|sh|sql)$/i.test(f));
-    const sampledFiles = sourceFiles.slice(0, 40);
     let tokenDensity: number | null = null;
     let commentToCodeRatio: number | null = null;
     try {
         const analyzed: { path: string; content: string }[] = [];
         for (const file of sampledFiles) {
-            try {
-                const content = await github.getFileContent(repo.name, file, owner);
-                if (content) analyzed.push({ path: file, content });
-            } catch {
-                // Skip files that can't be fetched
-            }
+            const content = read(file);
+            if (content) analyzed.push({ path: file, content });
         }
         const density = aggregateCodeDensity(analyzed);
         tokenDensity = density.tokenDensity;
@@ -389,21 +425,15 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         console.warn(`Failed to compute code density for ${repo.fullName}`, e);
     }
 
-    await db`
+    writes.push(db`
         UPDATE repos 
         SET token_density = ${finiteOrNull(tokenDensity)},
             comment_to_code_ratio = ${finiteOrNull(commentToCodeRatio)}
         WHERE id = ${repoId}
-    `;
+    `);
 
     // ROADMAP.md (try uppercase, lowercase, then docs/ subdirectory)
-    let roadmapContent = await github.getFileContent(repo.name, 'ROADMAP.md', owner).catch(() => null);
-    if (!roadmapContent) {
-        roadmapContent = await github.getFileContent(repo.name, 'roadmap.md', owner).catch(() => null);
-    }
-    if (!roadmapContent) {
-        roadmapContent = await github.getFileContent(repo.name, 'docs/ROADMAP.md', owner).catch(() => null);
-    }
+    const roadmapContent = firstOf('ROADMAP.md', 'roadmap.md', 'docs/ROADMAP.md');
     // Core docs should be in root - no template comparison
     const roadmapHealthState = calculateDocHealthState(!!roadmapContent, roadmapContent, null);
     if (roadmapContent) {
@@ -418,23 +448,23 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         const existingItems = await db`SELECT id, title FROM roadmap_items WHERE repo_id = ${repoId}`;
         const plan = diffRoadmapItems(existingItems, roadmapData.items);
         for (const item of plan.toUpdate) {
-            await db`
+            writes.push(db`
                 UPDATE roadmap_items
                 SET quarter = ${item.quarter}, status = ${item.status}, updated_at = NOW()
                 WHERE id = ${item.id}
-            `;
+            `);
         }
         for (const item of plan.toInsert) {
-            await db`
+            writes.push(db`
                 INSERT INTO roadmap_items (repo_id, title, quarter, status)
                 VALUES (${repoId}, ${item.title}, ${item.quarter}, ${item.status})
-            `;
+            `);
         }
         for (const staleId of plan.toDeleteIds) {
-            await db`DELETE FROM roadmap_items WHERE id = ${staleId}`;
+            writes.push(db`DELETE FROM roadmap_items WHERE id = ${staleId}`);
         }
     }
-    await db`
+    writes.push(db`
         INSERT INTO doc_status (repo_id, doc_type, exists, health_state, content_hash, template_version, last_checked)
         VALUES (
             ${repoId}, 'roadmap', ${!!roadmapContent}, ${roadmapHealthState}, ${roadmapContent ? hashContent(roadmapContent) : null}, NULL, NOW()
@@ -445,13 +475,10 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             content_hash = EXCLUDED.content_hash,
             template_version = EXCLUDED.template_version,
             last_checked = EXCLUDED.last_checked
-    `;
+    `);
 
     // TASKS.md (try root then docs/ subdirectory)
-    let tasksContent = await github.getFileContent(repo.name, 'TASKS.md', owner).catch(() => null);
-    if (!tasksContent) {
-        tasksContent = await github.getFileContent(repo.name, 'docs/TASKS.md', owner).catch(() => null);
-    }
+    const tasksContent = firstOf('TASKS.md', 'docs/TASKS.md');
     // Core docs should be in root - no template comparison
     const tasksHealthState = calculateDocHealthState(!!tasksContent, tasksContent, null);
     if (tasksContent) {
@@ -460,7 +487,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         if (tasksData.tasks.length === 0) {
             logger.debug(`[SYNC] ${repo.name} - Tasks content preview:`, tasksContent.substring(0, 200));
         }
-        await db`DELETE FROM tasks WHERE repo_id = ${repoId}`;
+        writes.push(db`DELETE FROM tasks WHERE repo_id = ${repoId}`);
 
         // Track seen task IDs to handle duplicates
         const seenTaskIds = new Set<string>();
@@ -476,14 +503,14 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             }
             seenTaskIds.add(taskId);
 
-            await db`
+            writes.push(db`
                 INSERT INTO tasks (repo_id, task_id, title, status, section, subsection, priority, owner)
                 VALUES (${repoId}, ${taskId}, ${task.title}, ${task.status}, ${task.section}, ${task.subsection},
                         ${task.priority ?? null}, ${task.owner ?? null})
-            `;
+            `);
         }
     }
-    await db`
+    writes.push(db`
         INSERT INTO doc_status (repo_id, doc_type, exists, health_state, content_hash, template_version, last_checked)
         VALUES (
             ${repoId}, 'tasks', ${!!tasksContent}, ${tasksHealthState}, ${tasksContent ? hashContent(tasksContent) : null}, NULL, NOW()
@@ -494,13 +521,10 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             content_hash = EXCLUDED.content_hash,
             template_version = EXCLUDED.template_version,
             last_checked = EXCLUDED.last_checked
-    `;
+    `);
 
     // METRICS.md (try root then docs/ subdirectory)
-    let metricsContent = await github.getFileContent(repo.name, 'METRICS.md', owner).catch(() => null);
-    if (!metricsContent) {
-        metricsContent = await github.getFileContent(repo.name, 'docs/METRICS.md', owner).catch(() => null);
-    }
+    const metricsContent = firstOf('METRICS.md', 'docs/METRICS.md');
     const metricsHealthState = calculateDocHealthState(!!metricsContent, metricsContent, null);
     let coverageScore: number | null = null;
     if (metricsContent) {
@@ -510,12 +534,12 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         if (metricsData.metrics.length === 0) {
             logger.debug(`[SYNC] ${repo.name} - Metrics content preview:`, metricsContent.substring(0, 200));
         }
-        await db`DELETE FROM metrics WHERE repo_id = ${repoId}`;
+        writes.push(db`DELETE FROM metrics WHERE repo_id = ${repoId}`);
         for (const metric of metricsData.metrics) {
-            await db`
+            writes.push(db`
                 INSERT INTO metrics (repo_id, metric_name, value, unit, timestamp)
                 VALUES (${repoId}, ${metric.name}, ${metric.value}, ${metric.unit}, NOW())
-            `;
+            `);
             // Extract coverage metric for repos table
             if (metric.name.toLowerCase().includes('coverage') && metric.unit === '%') {
                 // Value is already normalized to 0-100 range by parser
@@ -525,12 +549,12 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
     }
 
     // Always update coverage_score (set to NULL if no coverage found)
-    await db`
+    writes.push(db`
         UPDATE repos 
         SET coverage_score = ${finiteOrNull(coverageScore)}
         WHERE id = ${repoId}
-    `;
-    await db`
+    `);
+    writes.push(db`
         INSERT INTO doc_status (repo_id, doc_type, exists, health_state, content_hash, last_checked)
         VALUES (${repoId}, 'metrics', ${!!metricsContent}, ${metricsHealthState}, ${metricsContent ? hashContent(metricsContent) : null}, NOW())
         ON CONFLICT (repo_id, doc_type) DO UPDATE SET 
@@ -538,13 +562,10 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             health_state = EXCLUDED.health_state,
             content_hash = EXCLUDED.content_hash,
             last_checked = EXCLUDED.last_checked
-    `;
+    `);
 
     // FEATURES.md (try root then docs/ subdirectory)
-    let featuresContent = await github.getFileContent(repo.name, 'FEATURES.md', owner).catch(() => null);
-    if (!featuresContent) {
-        featuresContent = await github.getFileContent(repo.name, 'docs/FEATURES.md', owner).catch(() => null);
-    }
+    const featuresContent = firstOf('FEATURES.md', 'docs/FEATURES.md');
     const featuresHealthState = calculateDocHealthState(!!featuresContent, featuresContent, null);
     if (featuresContent) {
         const featuresData = parseFeatures(featuresContent);
@@ -552,15 +573,15 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         if (featuresData.categories.length === 0) {
             logger.debug(`[SYNC] ${repo.name} - Features content preview:`, featuresContent.substring(0, 200));
         }
-        await db`DELETE FROM features WHERE repo_id = ${repoId}`;
+        writes.push(db`DELETE FROM features WHERE repo_id = ${repoId}`);
         for (const category of featuresData.categories) {
-            await db`
+            writes.push(db`
                 INSERT INTO features (repo_id, category, title, description, items)
                 VALUES (${repoId}, ${category.name}, ${category.name}, ${category.description || ''}, ${category.items})
-            `;
+            `);
         }
     }
-    await db`
+    writes.push(db`
         INSERT INTO doc_status (repo_id, doc_type, exists, health_state, content_hash, last_checked)
         VALUES (${repoId}, 'features', ${!!featuresContent}, ${featuresHealthState}, ${featuresContent ? hashContent(featuresContent) : null}, NOW())
         ON CONFLICT (repo_id, doc_type) DO UPDATE SET 
@@ -568,14 +589,14 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             health_state = EXCLUDED.health_state,
             content_hash = EXCLUDED.content_hash,
             last_checked = EXCLUDED.last_checked
-    `;
+    `);
 
     // Other docs (README, LICENSE — root only; CHANGELOG, CONTRIBUTING — also check docs/)
     for (const docFile of ['README.md', 'LICENSE.md']) {
-        const content = await github.getFileContent(repo.name, docFile, owner).catch(() => null);
+        const content = read(docFile);
         const docType = docFile.replace('.md', '').toLowerCase();
         const healthState = calculateDocHealthState(!!content, content, null);
-        await db`
+        writes.push(db`
             INSERT INTO doc_status (repo_id, doc_type, exists, health_state, content_hash, last_checked)
             VALUES (${repoId}, ${docType}, ${content !== null}, ${healthState}, ${content ? hashContent(content) : null}, NOW())
             ON CONFLICT (repo_id, doc_type) DO UPDATE SET
@@ -583,16 +604,13 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
                 health_state = EXCLUDED.health_state,
                 content_hash = EXCLUDED.content_hash,
                 last_checked = EXCLUDED.last_checked
-        `;
+        `);
     }
 
     // CHANGELOG.md (try root then docs/ subdirectory)
-    let changelogContent = await github.getFileContent(repo.name, 'CHANGELOG.md', owner).catch(() => null);
-    if (!changelogContent) {
-        changelogContent = await github.getFileContent(repo.name, 'docs/CHANGELOG.md', owner).catch(() => null);
-    }
+    const changelogContent = firstOf('CHANGELOG.md', 'docs/CHANGELOG.md');
     const changelogHealthState = calculateDocHealthState(!!changelogContent, changelogContent, null);
-    await db`
+    writes.push(db`
         INSERT INTO doc_status (repo_id, doc_type, exists, health_state, content_hash, last_checked)
         VALUES (${repoId}, 'changelog', ${changelogContent !== null}, ${changelogHealthState}, ${changelogContent ? hashContent(changelogContent) : null}, NOW())
         ON CONFLICT (repo_id, doc_type) DO UPDATE SET
@@ -600,18 +618,12 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             health_state = EXCLUDED.health_state,
             content_hash = EXCLUDED.content_hash,
             last_checked = EXCLUDED.last_checked
-    `;
+    `);
 
     // CONTRIBUTING.md (try root, then .github/, then docs/ — matches community-standards.ts order)
-    let contributingContent = await github.getFileContent(repo.name, 'CONTRIBUTING.md', owner).catch(() => null);
-    if (!contributingContent) {
-        contributingContent = await github.getFileContent(repo.name, '.github/CONTRIBUTING.md', owner).catch(() => null);
-    }
-    if (!contributingContent) {
-        contributingContent = await github.getFileContent(repo.name, 'docs/CONTRIBUTING.md', owner).catch(() => null);
-    }
+    const contributingContent = firstOf('CONTRIBUTING.md', '.github/CONTRIBUTING.md', 'docs/CONTRIBUTING.md');
     const contributingHealthState = calculateDocHealthState(!!contributingContent, contributingContent, null);
-    await db`
+    writes.push(db`
         INSERT INTO doc_status (repo_id, doc_type, exists, health_state, content_hash, last_checked)
         VALUES (${repoId}, 'contributing', ${contributingContent !== null}, ${contributingHealthState}, ${contributingContent ? hashContent(contributingContent) : null}, NOW())
         ON CONFLICT (repo_id, doc_type) DO UPDATE SET
@@ -619,20 +631,37 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             health_state = EXCLUDED.health_state,
             content_hash = EXCLUDED.content_hash,
             last_checked = EXCLUDED.last_checked
-    `;
+    `);
+
+    await db.transaction(writes);
+}
+
+/** Best practices, community standards and the health score. Returns the number of failed steps. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function syncRepoPractices(repo: RepoMetadata, github: GitHubClient, db: any): Promise<number> {
+    const owner = repo.fullName.split('/')[0];
+    const repoId = await findRepoId(repo, db);
+    let partialSteps = 0;
+
+    let fileList: string[] = [];
+    try {
+        fileList = await github.getRepoFileList(repo.name, owner);
+    } catch (e) {
+        console.warn(`Failed to fetch file list for ${repo.fullName}`, e);
+    }
 
     // Best Practices Detection
     try {
         const readmeContent = await github.getFileContent(repo.name, 'README.md', owner);
         const bestPracticesResult = await checkBestPractices(owner, repo.name, github.getOctokit(), fileList, readmeContent || undefined);
 
-        await db`DELETE FROM best_practices WHERE repo_id = ${repoId}`;
-        for (const practice of bestPracticesResult.practices) {
-            await db`
+        await db.transaction([
+            db`DELETE FROM best_practices WHERE repo_id = ${repoId}`,
+            ...bestPracticesResult.practices.map((practice) => db`
                 INSERT INTO best_practices (repo_id, practice_type, status, details, last_checked)
                 VALUES (${repoId}, ${practice.type}, ${practice.status}, ${JSON.stringify(practice.details)}, NOW())
-            `;
-        }
+            `),
+        ]);
     } catch (e) {
         console.warn(`Failed to check best practices for ${repo.fullName}`, e);
         partialSteps++;
@@ -646,13 +675,13 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
             fallbackRepo: `${owner}/.github`,
         });
 
-        await db`DELETE FROM community_standards WHERE repo_id = ${repoId}`;
-        for (const standard of communityStandardsResult.standards) {
-            await db`
+        await db.transaction([
+            db`DELETE FROM community_standards WHERE repo_id = ${repoId}`,
+            ...communityStandardsResult.standards.map((standard) => db`
                 INSERT INTO community_standards (repo_id, standard_type, status, details, last_checked)
                 VALUES (${repoId}, ${standard.type}, ${standard.status}, ${JSON.stringify(standard.details)}, NOW())
-            `;
-        }
+            `),
+        ]);
     } catch (e) {
         console.warn(`Failed to check community standards for ${repo.fullName}`, e);
         partialSteps++;
@@ -663,13 +692,14 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         // Score from the persisted rows (the upsert above wrote every repo
         // column the score reads) so a later profile change or dashboard
         // recompute lands on the same number.
-        const [repoRow] = await db`SELECT * FROM repos WHERE id = ${repoId} LIMIT 1`;
-        const [docStatuses, bestPractices, communityStandards, metrics] = await Promise.all([
+        const [repoRows, docStatuses, bestPractices, communityStandards, metrics] = await db.transaction([
+            db`SELECT * FROM repos WHERE id = ${repoId} LIMIT 1`,
             db`SELECT * FROM doc_status WHERE repo_id = ${repoId}`,
             db`SELECT * FROM best_practices WHERE repo_id = ${repoId}`,
             db`SELECT * FROM community_standards WHERE repo_id = ${repoId}`,
             db`SELECT * FROM metrics WHERE repo_id = ${repoId} ORDER BY timestamp DESC`,
         ]);
+        const repoRow = repoRows[0];
 
         const healthScore = calculateHealthScore(
             buildHealthScoreInputs(repoRow as RepoHealthFields, {
@@ -695,8 +725,8 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
                     health_score, open_prs, total_loc
                 )
                 VALUES (
-                    ${repoId}, ${finiteOrNull(commitFrequency)}, ${finiteOrNull(avgPrMergeTimeHours)},
-                    ${healthScore.total}, ${openPrs}, ${totalLoc}
+                    ${repoId}, ${repoRow.commit_frequency ?? null}, ${repoRow.avg_pr_merge_time_hours ?? null},
+                    ${healthScore.total}, ${repoRow.open_prs ?? 0}, ${repoRow.total_loc ?? 0}
                 )
             `;
         } catch (snapshotError) {
@@ -709,7 +739,7 @@ export async function syncRepo(repo: RepoMetadata, github: GitHubClient, db: any
         partialSteps++;
     }
 
-    return { partialSteps };
+    return partialSteps;
 }
 
 // Wrapper function to sync a single repo by name

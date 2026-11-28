@@ -4,6 +4,7 @@ import { GitHubClient } from '@/lib/github';
 import { getNeonClient } from '@/lib/db';
 import logger from '@/lib/log';
 import { syncRepo } from '@/lib/sync';
+import { HEALTH_STEPS, type HealthStep } from '@/lib/sync-batch';
 import { grantRepoAccess } from '@/lib/repo-access';
 import { normalizeRepoRow } from '@/lib/numeric';
 
@@ -30,7 +31,13 @@ export async function POST(
             return NextResponse.json({ error: 'Repo name required' }, { status: 400 });
         }
 
-        // Fetch GitHub user
+        // The dashboard sends one request per step so each fits the Workers subrequest limit.
+        const requested = new URL(request.url).searchParams.get('step');
+        if (requested !== null && !(HEALTH_STEPS as readonly string[]).includes(requested)) {
+            return NextResponse.json({ error: 'Invalid step' }, { status: 400 });
+        }
+        const step = (requested ?? undefined) as HealthStep | undefined;
+
         // Fetch GitHub user
         const { createOctokitClient } = await import('@/lib/githubClient');
         const octokit = createOctokitClient(accessToken);
@@ -62,7 +69,7 @@ export async function POST(
         }
 
         // Sync the repo
-        await syncRepo(repo, github, db);
+        await syncRepo(repo, github, db, step);
 
         // `repo` was just fetched with this user's own GitHub token, so
         // GitHub itself confirmed they can see it -- record that (CWE-639).

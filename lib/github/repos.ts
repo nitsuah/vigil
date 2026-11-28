@@ -122,6 +122,40 @@ export async function getFileContent(
   }
 }
 
+const FILES_PER_QUERY = 50;
+
+/**
+ * Text of many default-branch files, FILES_PER_QUERY per GraphQL request. A
+ * path that doesn't exist (or is binary) maps to null. Request errors throw, so
+ * callers can't mistake an unreachable file for a missing one.
+ */
+export async function getFileContents(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  paths: string[]
+): Promise<Map<string, string | null>> {
+  const contents = new Map<string, string | null>();
+  for (let start = 0; start < paths.length; start += FILES_PER_QUERY) {
+    const chunk = paths.slice(start, start + FILES_PER_QUERY);
+    // Paths come from the repo's own tree, so they travel as variables, never in the query text.
+    const declarations = chunk.map((_, i) => `$e${i}: String!`).join(', ');
+    const fields = chunk.map((_, i) => `f${i}: object(expression: $e${i}) { ... on Blob { text } }`).join('\n');
+    const variables = Object.fromEntries(chunk.map((path, i) => [`e${i}`, `HEAD:${path}`]));
+    const result = await octokit.graphql<{ repository: Record<string, { text?: string | null } | null> | null }>(
+      `query($owner: String!, $repo: String!, ${declarations}) {
+        repository(owner: $owner, name: $repo) {
+          ${fields}
+        }
+      }`,
+      { owner, repo, ...variables }
+    );
+    if (!result.repository) throw new Error('Repository contents unavailable');
+    chunk.forEach((path, i) => contents.set(path, result.repository?.[`f${i}`]?.text ?? null));
+  }
+  return contents;
+}
+
 export async function getBranches(
   octokit: Octokit,
   owner: string,
@@ -174,12 +208,8 @@ interface RefsPage {
   } | null;
 }
 
-// Refs are ordered by COMMIT_DATE DESC (most-recently-committed first), so the
-// stale/zombie branches we actually care about sit at the *tail* of the
-// connection — we can't stop early and must walk every page to avoid
-// under-reporting. Cap at 20 pages (2,000 branches) purely as a runaway-repo
-// safety net; any repo with that many live branches has bigger problems than
-// this dashboard.
+// GitHub can't order branch refs by commit date, so stale branches can be on any
+// page. Pages are capped to keep one sync step within its subrequest budget.
 export const MAX_REFS_PAGES = 3;
 
 /**
@@ -204,7 +234,7 @@ export async function getZombieBranches(
       const result: RefsPage = await octokit.graphql<RefsPage>(
         `query($owner: String!, $repo: String!, $cursor: String) {
           repository(owner: $owner, name: $repo) {
-            refs(refPrefix: "refs/heads/", first: 100, after: $cursor, orderBy: { field: COMMIT_DATE, direction: DESC }) {
+            refs(refPrefix: "refs/heads/", first: 100, after: $cursor) {
               nodes {
                 name
                 target {
