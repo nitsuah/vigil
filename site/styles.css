@@ -171,6 +171,13 @@ main { padding: 0 var(--gutter); }
 .priv-grid > div { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 26px; }
 .priv-grid p { color: var(--muted); margin-top: 10px; font-size: 0.95rem; }
 
+/* ---------- Extra stills ---------- */
+.still { margin: 0; }
+.still img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+.still figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 8px; }
+.still-wide { margin-top: 28px; }
+.still-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 20px; align-items: start; margin: 28px auto 0; max-width: 900px; }
+
 /* ---------- Install ---------- */
 .install-sec { max-width: 860px; margin: clamp(80px, 11vw, 140px) auto 0; text-align: center; }
 .install-lead { color: var(--muted); margin: 16px auto 0; max-width: 40em; }
