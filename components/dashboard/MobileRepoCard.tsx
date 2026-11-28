@@ -50,6 +50,7 @@ interface MobileRepoCardProps {
   onGenerateSummary: () => void;
   onSyncSingleRepo: () => void;
   onUnhide?: () => void;
+  onDelete?: () => void;
   onOpenChat?: () => void;
   /** Writes a tier change into the dashboard's shared repo list. */
   onTierChange?: (tier: RepoTier | null) => void;
@@ -83,6 +84,7 @@ export function MobileRepoCard({
   onGenerateSummary,
   onSyncSingleRepo,
   onUnhide,
+  onDelete,
   onOpenChat,
   onTierChange,
 }: MobileRepoCardProps) {
@@ -235,6 +237,7 @@ export function MobileRepoCard({
                 </a>
               )}
               {repo.is_hidden ? (
+                <>
                 <button
                   type="button"
                   onClick={() => onUnhide?.()}
@@ -243,6 +246,15 @@ export function MobileRepoCard({
                   <RefreshCw className="h-3 w-3" />
                   Restore
                 </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete?.()}
+                  className="pointer-events-auto px-2 py-0.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded text-xs font-bold transition-colors"
+                  title="Permanently delete this repository from Vigil"
+                >
+                  Delete
+                </button>
+                </>
               ) : (
                 <>
                   {onOpenChat && (

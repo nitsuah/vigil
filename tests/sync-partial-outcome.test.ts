@@ -26,14 +26,19 @@ function fakeGithub(): GitHubClient {
       if (prop === 'getOctokit') return () => ({});
       if (prop === 'getFileContent') return async () => null;
       if (prop === 'getRepoFileList') return async () => [];
+      if (prop === 'getFileContents') return async () => new Map();
       return async () => [];
     },
   };
   return new Proxy({}, handler) as unknown as GitHubClient;
 }
 
+function withTransaction<T extends object>(db: T): T {
+  return Object.assign(db, { transaction: async (queries: unknown[]) => Promise.all(queries) });
+}
+
 function fakeDb() {
-  const db = vi.fn(async () => [{ id: 1 }]);
+  const db = withTransaction(vi.fn(async () => [{ id: 1 }]));
   return db as unknown as Parameters<typeof syncRepo>[2];
 }
 
@@ -90,10 +95,10 @@ describe('syncRepo partial outcome', () => {
 
   it('persists is_archived in the health upsert, so a skipped metadata batch cannot leave it stale', async () => {
     const calls: Array<{ sql: string; values: unknown[] }> = [];
-    const db = vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+    const db = withTransaction(vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
       calls.push({ sql: strings.join('?'), values });
       return [{ id: 1 }];
-    }) as unknown as Parameters<typeof syncRepo>[2];
+    })) as unknown as Parameters<typeof syncRepo>[2];
     await syncRepo({ ...repo, archived: true } as unknown as RepoMetadata, fakeGithub(), db);
     const upsert = calls.find((c) => c.sql.includes('INSERT INTO repos'))!;
     expect(upsert.sql).toContain('is_archived');

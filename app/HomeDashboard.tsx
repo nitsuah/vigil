@@ -84,6 +84,7 @@ export default function Dashboard() {
     handleAddRepo,
     handleRemoveRepo,
     handleRestoreRepo,
+    handleDeleteRepo,
     handleFixAllDocs,
     handleFixDoc,
     handleFixStandard,
@@ -438,6 +439,7 @@ export default function Dashboard() {
                   onGenerateSummary={() => handleGenerateSummary(repo.name)}
                   onSyncSingleRepo={() => handleSyncAndRefresh(repo.name)}
                   onUnhide={() => handleRestoreRepo(repo.name)}
+                  onDelete={() => handleDeleteRepo(repo.name)}
                   onOpenChat={session ? () => setChatRepoName(repo.name) : undefined}
                   onTierChange={(tier) => handleTierChange(repo.id, tier)}
                 />
@@ -527,6 +529,7 @@ export default function Dashboard() {
                       onGenerateSummary={() => handleGenerateSummary(repo.name)}
                       onSyncSingleRepo={() => handleSyncAndRefresh(repo.name)}
                       onUnhide={() => handleRestoreRepo(repo.name)}
+                      onDelete={() => handleDeleteRepo(repo.name)}
                       onOpenChat={session ? () => setChatRepoName(repo.name) : undefined}
                       onTierChange={(tier) => handleTierChange(repo.id, tier)}
                     />

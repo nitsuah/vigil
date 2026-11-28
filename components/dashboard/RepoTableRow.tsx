@@ -66,6 +66,7 @@ interface RepoTableRowProps {
   onGenerateSummary: () => void;
   onSyncSingleRepo: () => void;
   onUnhide?: () => void;
+  onDelete?: () => void;
   onOpenChat?: () => void;
   /** Writes a tier change into the dashboard's shared repo list. */
   onTierChange?: (tier: RepoTier | null) => void;
@@ -95,6 +96,7 @@ export function RepoTableRow({
   onGenerateSummary,
   onSyncSingleRepo,
   onUnhide,
+  onDelete,
   onOpenChat,
   onTierChange,
 }: RepoTableRowProps) {
@@ -401,6 +403,7 @@ export function RepoTableRow({
           <div className="flex items-center gap-2">
             {/* If repo is hidden, show Restore button, else show standard actions */}
             {repo.is_hidden ? (
+              <>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -412,6 +415,18 @@ export function RepoTableRow({
                 <RefreshCw className="h-3 w-3" />
                 Restore
               </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.();
+                }}
+                className="p-1 px-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded transition-colors text-xs font-bold"
+                title="Permanently delete this repository from Vigil"
+              >
+                Delete
+              </button>
+              </>
             ) : (
               <>
                 {onOpenChat && (

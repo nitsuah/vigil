@@ -7,15 +7,15 @@ import { syncRepo, syncRepoMetadata } from '@/lib/sync';
 import { grantRepoAccess } from '@/lib/repo-access';
 import { rateLimitExhausted } from '@/lib/rate-limit-headers';
 import { advanceSyncSession, failSyncSession, getSyncSession, type SyncSession } from '@/lib/sync-progress';
-import { planAdvance, sliceBatch, type BatchPhase, type QueueItem } from '@/lib/sync-batch';
+import { healthStepAt, planAdvance, sliceBatch, stepsLeftInRepo, type BatchPhase, type HealthStep, type QueueItem } from '@/lib/sync-batch';
 
 const RATE_LIMIT_THRESHOLD = 200; // Stop below this many remaining GitHub calls
 
 // One awaited unit of a sync run (#305). The dashboard calls this until the run
 // is complete. Everything happens before the response: on Workers nothing may
 // run afterwards, and a single invocation is limited to 50 subrequests, which
-// is why a batch is 3 repos for the metadata pass and 1 for health checks
-// (see lib/sync-batch.ts).
+// is why a batch is 3 repos for the metadata pass, and one step of one repo for
+// health checks (see lib/sync-batch.ts).
 
 function progressBody(s: Pick<SyncSession, 'sessionId' | 'totalRepos' | 'completedRepos' | 'currentRepo' | 'phase' | 'failedRepos' | 'cursor'>, extra: Record<string, unknown> = {}) {
     return {
@@ -100,6 +100,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const batch = sliceBatch(session.queue, session.cursor, phase);
         const db = getNeonClient();
         let failedDelta = 0;
+        const step = phase === 'health' ? healthStepAt(session.cursor) : undefined;
+        // Set when a health step fails: the repo's remaining steps are dropped, so it counts once.
+        let abandonRepo = skip;
         let currentRepo = batch[batch.length - 1]?.fullName ?? '';
 
         if (skip) {
@@ -133,11 +136,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                     const quota = rateLimitExhausted(error);
                     if (quota) return await stopForRateLimit(session, phase, quota.minutes);
                     if (!expectedMiss && phase === 'health') failedDelta++;
+                    abandonRepo = true;
                     logger.warn(`Sync batch: could not fetch ${item.name}:`, error instanceof Error ? error.message : 'Unknown error');
                     continue;
                 }
                 try {
-                    const partialSteps = await syncOne(repo, item, phase, client, db, userId);
+                    const partialSteps = await syncOne(repo, item, phase, step, client, db, userId);
                     // A health pass that finished but could not refresh a step (best practices, standards,
                     // health score) is an incomplete repo: count it once so the run doesn't read as clean.
                     if (phase === 'health' && partialSteps > 0) failedDelta++;
@@ -146,6 +150,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                     if (quota) return await stopForRateLimit(session, phase, quota.minutes);
                     // A write failure is a real failure even for a default repo.
                     if (phase === 'health') failedDelta++;
+                    abandonRepo = true;
                     logger.warn(`Sync batch: ${phase} failed for ${item.name}:`, error instanceof Error ? error.message : 'Unknown error');
                 }
             }
@@ -153,7 +158,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
         // Stamp last_sync_at before completing the run, and never move it backwards, so a retry
         // after a failure here repeats this write instead of finding a run already complete.
-        const to = planAdvance({ phase, cursor: session.cursor, queueLength: session.queue.length, consumed: batch.length });
+        const consumed = phase === 'health'
+            ? (abandonRepo ? stepsLeftInRepo(session.cursor) : 1)
+            : batch.length;
+        const to = planAdvance({ phase, cursor: session.cursor, queueLength: session.queue.length, consumed });
         if (to.phase === 'complete') {
             const startedAt = session.startedAt.toISOString();
             await db.transaction([
@@ -185,6 +193,7 @@ async function syncOne(
     repo: RepoMetadata,
     item: QueueItem,
     phase: BatchPhase,
+    step: HealthStep | undefined,
     github: GitHubClient,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     db: any,
@@ -197,7 +206,7 @@ async function syncOne(
         if (!item.isDefault) await grantRepoAccess(db, repo.fullName, githubUserId);
         return 0;
     }
-    const result = await syncRepo(repo, github, db);
+    const result = await syncRepo(repo, github, db, step);
     // Re-grant here too (idempotent): a skipped or failed metadata batch must not leave a
     // private repo inaccessible behind a successful health check.
     if (!item.isDefault) await grantRepoAccess(db, repo.fullName, githubUserId);

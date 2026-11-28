@@ -14,11 +14,26 @@ export interface QueueItem {
 
 export type BatchPhase = 'metadata' | 'health';
 
+// One repo's health pass needs more subrequests than a single invocation gets,
+// so it runs as these steps, one per request. In the health phase the run's
+// cursor counts steps, not repos.
+export const HEALTH_STEPS = ['metrics', 'docs', 'practices'] as const;
+export type HealthStep = (typeof HEALTH_STEPS)[number];
+
+export function healthStepAt(cursor: number): HealthStep {
+    return HEALTH_STEPS[Math.max(0, cursor) % HEALTH_STEPS.length];
+}
+
+/** Steps left for the repo at this cursor, including the current one. */
+export function stepsLeftInRepo(cursor: number): number {
+    return HEALTH_STEPS.length - (Math.max(0, cursor) % HEALTH_STEPS.length);
+}
+
 // Stay well under the 50-subrequest cap: headroom for the auth check, the
 // rate-limit probe and the progress write that every batch also makes.
 export const SUBREQUEST_BUDGET = 40;
 // Rough per-repo subrequest cost: getRepo + metadata upsert + access grant,
-// vs. the detailed health pass (about a dozen GitHub calls plus DB writes).
+// vs. one step of the detailed health pass (the metrics step is the largest).
 export const COST_PER_REPO: Record<BatchPhase, number> = { metadata: 6, health: 35 };
 // Calls every batch request makes besides the repo work: schema check, run state
 // read and advance, quota probe, and the final timestamp write.
@@ -31,7 +46,9 @@ export function batchSizeFor(phase: BatchPhase): number {
 }
 
 export function sliceBatch(queue: readonly QueueItem[], cursor: number, phase: BatchPhase): QueueItem[] {
-    const start = Math.max(0, cursor);
+    const start = phase === 'health'
+        ? Math.floor(Math.max(0, cursor) / HEALTH_STEPS.length)
+        : Math.max(0, cursor);
     return queue.slice(start, start + batchSizeFor(phase));
 }
 
@@ -39,7 +56,7 @@ export interface AdvanceInput {
     phase: BatchPhase;
     cursor: number;
     queueLength: number;
-    /** Repos the batch consumed (worked on or skipped). */
+    /** Units the batch consumed (worked on or skipped): repos for metadata, steps for health. */
     consumed: number;
 }
 
@@ -51,15 +68,17 @@ export interface AdvanceResult {
 }
 
 export function planAdvance({ phase, cursor, queueLength, consumed }: AdvanceInput): AdvanceResult {
-    const next = Math.min(queueLength, Math.max(0, cursor) + Math.max(0, consumed));
+    const total = phase === 'health' ? queueLength * HEALTH_STEPS.length : queueLength;
+    const next = Math.min(total, Math.max(0, cursor) + Math.max(0, consumed));
     if (phase === 'metadata') {
         return next >= queueLength
             ? { phase: 'health', cursor: 0, completedRepos: 0 }
             : { phase: 'metadata', cursor: next, completedRepos: 0 };
     }
-    return next >= queueLength
-        ? { phase: 'complete', cursor: next, completedRepos: next }
-        : { phase: 'health', cursor: next, completedRepos: next };
+    const completedRepos = Math.floor(next / HEALTH_STEPS.length);
+    return next >= total
+        ? { phase: 'complete', cursor: next, completedRepos }
+        : { phase: 'health', cursor: next, completedRepos };
 }
 
 /** A stored queue is only trusted if every entry has the expected shape. */

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-    batchSizeFor, sliceBatch, planAdvance, parseQueue,
+    batchSizeFor, healthStepAt, HEALTH_STEPS, sliceBatch, planAdvance, parseQueue,
     SUBREQUEST_BUDGET, COST_PER_REPO, MAX_BATCH, ROUTE_OVERHEAD, type QueueItem,
 } from '@/lib/sync-batch';
 
@@ -29,8 +29,10 @@ describe('batch sizing', () => {
     it('slices the queue at the cursor', () => {
         expect(sliceBatch(q(7), 0, 'metadata').map((r) => r.name)).toEqual(['r0', 'r1', 'r2']);
         expect(sliceBatch(q(7), 6, 'metadata').map((r) => r.name)).toEqual(['r6']);
-        expect(sliceBatch(q(7), 3, 'health').map((r) => r.name)).toEqual(['r3']);
-        expect(sliceBatch(q(7), 7, 'health')).toEqual([]);
+        // In the health phase the cursor counts steps: three per repo.
+        expect(sliceBatch(q(7), 9, 'health').map((r) => r.name)).toEqual(['r3']);
+        expect(sliceBatch(q(7), 11, 'health').map((r) => r.name)).toEqual(['r3']);
+        expect(sliceBatch(q(7), 21, 'health')).toEqual([]);
         expect(sliceBatch(q(7), -4, 'metadata')).toHaveLength(3);
         expect(sliceBatch([], 0, 'metadata')).toEqual([]);
     });
@@ -45,14 +47,16 @@ describe('progress advance', () => {
     });
 
     it('counts finished health checks and completes on the last one', () => {
-        expect(planAdvance({ phase: 'health', cursor: 2, queueLength: 4, consumed: 1 }))
-            .toEqual({ phase: 'health', cursor: 3, completedRepos: 3 });
-        expect(planAdvance({ phase: 'health', cursor: 3, queueLength: 4, consumed: 1 }))
-            .toEqual({ phase: 'complete', cursor: 4, completedRepos: 4 });
+        expect(planAdvance({ phase: 'health', cursor: 7, queueLength: 4, consumed: 1 }))
+            .toEqual({ phase: 'health', cursor: 8, completedRepos: 2 });
+        expect(planAdvance({ phase: 'health', cursor: 8, queueLength: 4, consumed: 1 }))
+            .toEqual({ phase: 'health', cursor: 9, completedRepos: 3 });
+        expect(planAdvance({ phase: 'health', cursor: 11, queueLength: 4, consumed: 1 }))
+            .toEqual({ phase: 'complete', cursor: 12, completedRepos: 4 });
     });
 
     it('never moves past the end or backwards', () => {
-        expect(planAdvance({ phase: 'health', cursor: 3, queueLength: 4, consumed: 99 }).cursor).toBe(4);
+        expect(planAdvance({ phase: 'health', cursor: 3, queueLength: 4, consumed: 99 }).cursor).toBe(12);
         expect(planAdvance({ phase: 'health', cursor: 1, queueLength: 4, consumed: -5 }).cursor).toBe(1);
     });
 
@@ -68,15 +72,16 @@ describe('progress advance', () => {
         let cursor = 0;
         let guard = 0;
         while (phase !== 'complete' && guard++ < 50) {
+            const step = phase === 'health' ? healthStepAt(cursor) : '';
             const batch = sliceBatch(queue, cursor, phase);
-            seen[phase].push(...batch.map((b) => b.name));
+            seen[phase].push(...batch.map((b) => (step ? `${b.name}:${step}` : b.name)));
             const next = planAdvance({ phase, cursor, queueLength: queue.length, consumed: batch.length });
             phase = next.phase;
             cursor = next.cursor;
         }
         expect(phase).toBe('complete');
         expect(seen.metadata).toEqual(queue.map((r) => r.name));
-        expect(seen.health).toEqual(queue.map((r) => r.name));
+        expect(seen.health).toEqual(queue.flatMap((r) => HEALTH_STEPS.map((s) => `${r.name}:${s}`)));
     });
 });
 

@@ -109,6 +109,10 @@ export class GitHubClient {
     return Repos.getFileLastModified(this.octokit, owner || this.owner, repo, path);
   }
 
+  getFileContents(repo: string, paths: string[], owner?: string): Promise<Map<string, string | null>> {
+    return Repos.getFileContents(this.octokit, owner || this.owner, repo, paths);
+  }
+
   async getRepoFileList(repo: string, owner?: string): Promise<string[]> {
     const files = await this.fileSet(owner || this.owner, repo);
     return files ? [...files] : Repos.getRepoFileList(this.octokit, owner || this.owner, repo);

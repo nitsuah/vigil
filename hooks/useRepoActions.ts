@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Repo, BestPractice } from '@/types/repo';
+import { HEALTH_STEPS } from '@/lib/sync-batch';
 
 interface FilePreview {
   path: string;
@@ -83,6 +84,26 @@ export function useRepoActions(
     } catch (error) {
       console.error('Failed to restore repo:', error);
       setToastMessage('Failed to restore repo');
+    }
+  };
+
+  const handleDeleteRepo = async (repoName: string) => {
+    const confirmed = window.confirm(
+      `Permanently delete ${repoName} from Vigil?\n\nIts stored health data, tasks and history are removed and cannot be recovered. The GitHub repository is not touched. If GitHub still lists it, the next sync adds it back as new.`
+    );
+    if (!confirmed) return;
+    try {
+      const res = await fetch(`/api/repos/${repoName}/delete`, { method: 'POST' });
+      if (res.ok) {
+        await refetchRepos();
+        setToastMessage(`Deleted ${repoName} from Vigil`);
+      } else {
+        const err = await res.json();
+        setToastMessage(`Failed to delete repo: ${err.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to delete repo:', error);
+      setToastMessage('Failed to delete repo');
     }
   };
 
@@ -443,7 +464,12 @@ export function useRepoActions(
   const handleSyncSingleRepo = async (repoName: string, onSuccess?: () => void) => {
     try {
       setSyncingRepo(repoName);
-      const res = await fetch(`/api/repos/${repoName}/sync`, { method: 'POST' });
+      // One request per step: a whole repo doesn't fit in one Workers invocation.
+      let res!: Response;
+      for (const step of HEALTH_STEPS) {
+        res = await fetch(`/api/repos/${repoName}/sync?step=${step}`, { method: 'POST' });
+        if (!res.ok) break;
+      }
       if (res.ok) {
         const data = await res.json();
         // Patch only this repo in the list — avoids a disruptive full refetch
@@ -651,6 +677,7 @@ export function useRepoActions(
     handleAddRepo,
     handleRemoveRepo,
     handleRestoreRepo,
+    handleDeleteRepo,
     handleFixAllDocs,
     handleFixDoc,
     handleFixStandard,

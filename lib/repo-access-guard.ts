@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getNeonClient, ensureSchema } from '@/lib/db';
-import { canAccessRepo, hasRepoGrant, type RepoAccessCheck } from '@/lib/repo-access';
+import { canAccessRepo, claimRepoGrant, hasRepoGrant, type RepoAccessCheck } from '@/lib/repo-access';
 
 interface SessionLike {
     userId?: string;
@@ -99,6 +99,11 @@ export async function resolveWritableRepo(
     const writable: WritableRepo[] = [];
     for (const row of candidates) {
         if (await hasRepoGrant(db, row.id, session?.userId, session?.accessToken)) writable.push(row);
+    }
+    if (writable.length === 0) {
+        for (const row of candidates) {
+            if (await claimRepoGrant(db, row.full_name, session?.userId, session?.accessToken)) writable.push(row);
+        }
     }
     if (writable.length === 0) {
         return { response: NextResponse.json({ error: 'Repo not found' }, { status: 404 }) };
