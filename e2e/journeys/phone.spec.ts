@@ -12,6 +12,10 @@ test(
       await settle(page);
     }, { docs: 'responsive-design' });
 
+    // The intro is covered by the dashboard screenshot; dismiss it for the card-detail shot.
+    await page.getByRole('button', { name: 'Dismiss' }).click();
+    await settle(page);
+
     await step(page, 'expand vigil', async () => {
       await page.getByRole('button', { name: 'Expand vigil card details' }).click();
       await expect(page.getByRole('button', { name: /Back to repo list/ })).toBeVisible();
