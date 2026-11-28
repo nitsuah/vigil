@@ -246,8 +246,9 @@ test('capture', async ({ page }) => {
     await page.keyboard.press('Escape');
 
     // AI Improve: the before/after preview inside the Documentation card.
-    await page.getByTitle('AI-improve README').first().click();
-    await page.getByRole('button', { name: 'Generate', exact: true }).last().click();
+    const docsCard = page.locator('[data-tour="documentation"]:visible').first();
+    await docsCard.getByTitle('AI-improve README').click();
+    await docsCard.getByRole('button', { name: 'Generate', exact: true }).click();
     await expect(page.getByText('AI-Improved Preview')).toBeVisible({ timeout: 15_000 });
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${OUT}/crops/ai-diff.png`, fullPage: true, clip: await cardRect('Documentation') });
