@@ -101,6 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Changed:** skip all Netlify builds (site kept as rollback only; Cloudflare is primary) (#565).
 - **Changed:** dependencies refreshed (2026-11-13): the Dependabot minor/patch group (#441), then `next` and `eslint-config-next` 16.4.6 plus in-range minor/patch lockfile updates (`@anthropic-ai/sdk` 1.8, `openai` 7.56, `lucide-react` 1.72, `@playwright/test` 1.65 (journeys image moved to `playwright:v1.65.0-jammy` to match), Tailwind 4.3.5 and others). `npm audit` reports 0 vulnerabilities. Major bumps (ESLint 10, TypeScript 7, jsdom 31) are deferred.
 - Tests lock in that the visual-docs recipe PR is diagrams-only safe for repos with no UI.
 - **Changed:** `.nvmrc` is now `22`, matching `engines.node` (22.x), CI and the Dockerfile. Netlify builds read `.nvmrc`, so the production server handler was still being built and run on Node 20, which is end-of-life.
