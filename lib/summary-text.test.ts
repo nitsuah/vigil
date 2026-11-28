@@ -21,6 +21,15 @@ describe('finishedSummary', () => {
     expect(finishedSummary('A tool. Built for teams in the U.S.')).toBe('A tool. Built for teams in the U.S.');
     expect(finishedSummary('A tool. Built by Dr.')).toBe('A tool.');
   });
+  it('keeps a mid-text abbreviation that closes a sentence before a cut-off tail', () => {
+    expect(finishedSummary('A tool. Built for teams in the U.S. It supports')).toBe('A tool. Built for teams in the U.S.');
+    expect(finishedSummary('A tool. Supports React, Vue, etc. The next')).toBe('A tool. Supports React, Vue, etc.');
+  });
+  it('does not end a sentence at an abbreviation that continues it', () => {
+    expect(finishedSummary('A tool. Built by Dr. The')).toBe('A tool.');
+    expect(finishedSummary('A tool. It serves the U.S. Army and')).toBe('A tool.');
+    expect(finishedSummary('A tool. It supports hosts, e.g. The')).toBe('A tool.');
+  });
   it('judges an abbreviation behind a closing quote', () => {
     expect(finishedSummary('"A tool. Built by Dr."')).toBe('"A tool.');
     expect(finishedSummary('A tool (for React, Vue, etc.)')).toBe('A tool (for React, Vue, etc.)');
