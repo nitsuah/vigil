@@ -146,8 +146,7 @@ describe('Generate Summary API', () => {
     
     // Mock db as a function with multiple calls (SELECT then UPDATE)
     const mockDb = vi.fn()
-      .mockResolvedValueOnce([{ full_name: 'owner/repo' }]) // SELECT query
-      .mockResolvedValueOnce(undefined); // UPDATE query
+      .mockResolvedValue([{ ai_summary_generated_at: '2026-11-28T00:00:00.000Z' }]); // UPDATE query
     mockGetNeonClient.mockReturnValue(mockDb as never);
     
     // Mock GitHubClient to return README
@@ -171,6 +170,7 @@ describe('Generate Summary API', () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.summary).toBe('This is a test repository for unit testing.');
+    expect(data.generatedAt).toBe('2026-11-28T00:00:00.000Z');
     expect(mockGenerateRepoSummary).toHaveBeenCalledWith('repo', {
       'README.md': '# Test Repo\n\nA test repository',
     });

@@ -10,7 +10,9 @@ export function finishedSummary(text: string): string | null {
   for (const match of trimmed.matchAll(/[.!?]["')\]*_`]{0,4}(?=\s|$)/g)) {
     const prefix = trimmed.slice(0, match.index + match[0].length);
     const abbreviation = /(?:\b[A-Za-z]\.){2,}$|\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|etc|No|Fig)\.$/i.test(prefix);
-    if (!abbreviation) end = match.index + match[0].length;
+    // "etc." or "U.S." can also close the last sentence; a title or "vs." cannot.
+    const closesText = prefix.length === trimmed.length && /(?:\b[A-Za-z]\.){2,}$|\betc\.$/i.test(prefix);
+    if (!abbreviation || closesText) end = match.index + match[0].length;
   }
   return end > 0 ? trimmed.slice(0, end) : null;
 }

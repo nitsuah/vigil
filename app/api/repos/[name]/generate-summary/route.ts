@@ -61,13 +61,14 @@ export async function POST(
 
         // Save to DB
         await ensureSchema(db);
-        await db`
+        const saved = await db`
             UPDATE repos 
             SET ai_summary = ${summary}, ai_summary_generated_at = NOW()
             WHERE id = ${resolved.repo.id}
-        `;
+            RETURNING ai_summary_generated_at
+        ` as Array<{ ai_summary_generated_at: string | Date }> | undefined;
 
-        return NextResponse.json({ success: true, summary });
+        return NextResponse.json({ success: true, summary, generatedAt: saved?.[0]?.ai_summary_generated_at ?? null });
     } catch (error: unknown) {
         logger.warn('Error generating summary:', error);
         return NextResponse.json({ error: 'Failed to generate summary' }, { status: 500 });
