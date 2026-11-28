@@ -106,6 +106,7 @@ describe('HealthShields', () => {
     const chip = container.querySelector('button[title^="Testing:"]') as HTMLElement;
     fireEvent.click(chip);
     expect(container.querySelector('[role="status"]')?.textContent).toContain('Testing Framework: healthy');
+    expect(chip.getAttribute('aria-controls')).toBe(container.querySelector('[role="status"]')?.id);
     fireEvent.click(chip);
     expect(container.querySelector('[role="status"]')).toBeNull();
     expect(onRow).not.toHaveBeenCalled();

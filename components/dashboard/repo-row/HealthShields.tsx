@@ -1,6 +1,6 @@
 // Health shields component showing compact badges for various metrics
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Repo, RepoDetails } from '@/types/repo';
 import { calculateHealthScore } from '@/lib/health-score';
 import { buildHealthScoreInputs } from '@/lib/health-score-inputs';
@@ -11,7 +11,8 @@ interface HealthShieldsProps {
   docHealth: { score: number } | null;
 }
 
-function Chip({ id, title, open, onOpen, className, children, ...rest }: {
+function Chip({ panelId, id, title, open, onOpen, className, children, ...rest }: {
+  panelId: string;
   id: string;
   title: string;
   open: { id: string; text: string } | null;
@@ -25,6 +26,7 @@ function Chip({ id, title, open, onOpen, className, children, ...rest }: {
       type="button"
       title={title}
       aria-expanded={open?.id === id}
+      aria-controls={open?.id === id ? panelId : undefined}
       className={className}
       onClick={(e) => {
         e.stopPropagation();
@@ -40,6 +42,7 @@ function Chip({ id, title, open, onOpen, className, children, ...rest }: {
 export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) {
   // The chip whose explanation is open: touch and keyboard users have no hover.
   const [openChip, setOpenChip] = useState<{ id: string; text: string } | null>(null);
+  const panelId = useId();
   // Capture timestamp once
   const [now] = useState(() => Date.now());
 
@@ -166,6 +169,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
   return (
     <>
       <Chip
+        panelId={panelId}
         id="community"
         open={openChip}
         onOpen={setOpenChip}
@@ -182,6 +186,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       </Chip>
       {!details.postureHidden && (
       <Chip
+        panelId={panelId}
         id="practices"
         open={openChip}
         onOpen={setOpenChip}
@@ -198,6 +203,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       </Chip>
       )}
       <Chip
+        panelId={panelId}
         id="testing"
         open={openChip}
         onOpen={setOpenChip}
@@ -214,6 +220,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       </Chip>
       {repo.coverage_score != null && (
         <Chip
+          panelId={panelId}
           id="coverage"
           open={openChip}
           onOpen={setOpenChip}
@@ -231,6 +238,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       )}
       {docHealth && (
         <Chip
+          panelId={panelId}
           id="docs"
           open={openChip}
           onOpen={setOpenChip}
@@ -249,6 +257,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
       {/* Security health badge */}
       {details.postureHidden ? null : securityScore != null ? (
         <Chip
+          panelId={panelId}
           id="security"
           open={openChip}
           onOpen={setOpenChip}
@@ -266,6 +275,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         </Chip>
       ) : (
         <Chip
+          panelId={panelId}
           id="security"
           open={openChip}
           onOpen={setOpenChip}
@@ -277,6 +287,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         </Chip>
       )}
       <Chip
+        panelId={panelId}
         id="commit"
         open={openChip}
         onOpen={setOpenChip}
@@ -286,7 +297,7 @@ export function HealthShields({ details, repo, docHealth }: HealthShieldsProps) 
         Commit {formatActivityTime(repo.last_commit_date)}
       </Chip>
       {openChip && (
-        <p role="status" className="basis-full whitespace-pre-line rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300">
+        <p id={panelId} role="status" className="basis-full whitespace-pre-line rounded border border-slate-700 bg-slate-900/80 px-2 py-1 text-[11px] text-slate-300">
           {openChip.text}
         </p>
       )}

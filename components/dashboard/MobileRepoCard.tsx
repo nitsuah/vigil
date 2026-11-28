@@ -415,7 +415,7 @@ export function MobileRepoCard({
                 aria-label={showDocs ? 'Hide document status' : 'Show document status'}
                 onClick={() => setShowDocs((open) => !open)}
                 className="pointer-events-auto flex min-h-11 items-center gap-1 ml-auto px-1"
-                title={docHealth ? `Doc health: ${docHealth.score}%` : 'Doc status'}
+                title={showDocs ? 'Hide document status' : docHealth ? `Doc health: ${docHealth.score}%` : 'Doc status'}
               >
                 {docIconState.map(({ type, Icon, color, exists }) => (
                   <Icon key={type} className={`h-3.5 w-3.5 ${exists ? color : 'opacity-20'}`} />
