@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- CI: add a gated Cloudflare Workers deploy workflow (skipped unless `CLOUDFLARE_API_TOKEN` is set). YAML lives at `docs/github-workflows/deploy.yml` until a `workflow`-scoped token can install it under `.github/workflows/` (#581).
+
 - CI: run the risk guard from the trusted base-branch workflow after bootstrap.
 
 - CI: pull requests now run the shared risk guard check (`.github/workflows/risk-guard.yml`) (#527).
