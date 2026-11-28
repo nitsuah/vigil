@@ -16,7 +16,7 @@ test(
       await expect(page.getByText('48.2K')).toBeVisible();
       await expect(page.getByText('14.2h')).toBeVisible();
       await expect(page.getByText('7.9 tok/line')).toBeVisible();
-    }, { docs: 'repository-stats' });
+    }, { docs: 'repository-stats', mask: [page.locator('section[aria-labelledby="intro-title"]')] });
 
     await step(page, 'check the roadmap and tasks', async () => {
       await expect(page.getByRole('table').getByText('AI-assisted roadmap management')).toBeVisible();
