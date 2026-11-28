@@ -48,68 +48,6 @@ export const tourSteps: TourStep[] = [
     position: 'left',
   },
   {
-    id: 'features',
-    title: 'Features Section',
-    description: 'View parsed features from your FEATURES.md file. Track what your project offers.',
-    target: '[data-tour="features-section"]',
-    position: 'left',
-  },
-  {
-    id: 'roadmap',
-    title: 'Roadmap Section',
-    description:
-      'Monitor project roadmap items parsed from ROADMAP.md. Track progress and upcoming work.',
-    target: '[data-tour="roadmap-section"]',
-    position: 'left',
-  },
-  {
-    id: 'tasks',
-    title: 'Tasks Section',
-    description: 'View and manage tasks from TASKS.md. Track high-priority items and subsections.',
-    target: '[data-tour="tasks-section"]',
-    position: 'left',
-  },
-  {
-    id: 'documentation',
-    title: 'Documentation',
-    description:
-      'Track core documentation files: README, ROADMAP, TASKS, METRICS, and FEATURES. Fix missing docs with AI.',
-    target: '[data-tour="documentation"]',
-    position: 'left',
-  },
-  {
-    id: 'best-practices',
-    title: 'Best Practices',
-    description:
-      'Monitor development practices: CI/CD, testing, linting, Dependabot, Docker, and deployment badges.',
-    target: '[data-tour="best-practices"]',
-    position: 'left',
-  },
-  {
-    id: 'testing',
-    title: 'Testing',
-    description:
-      "View test coverage, test counts, and testing infrastructure. Track your project's test quality.",
-    target: '[data-tour="testing"]',
-    position: 'left',
-  },
-  {
-    id: 'community',
-    title: 'Community Standards',
-    description:
-      'Monitor community health files: CODE_OF_CONDUCT, CONTRIBUTING, SECURITY, LICENSE, and templates.',
-    target: '[data-tour="community"]',
-    position: 'left',
-  },
-  {
-    id: 'metrics',
-    title: 'Custom Metrics',
-    description:
-      'Track custom repository metrics from METRICS.md. Self-reported data for project-specific measurements.',
-    target: '[data-tour="metrics"]',
-    position: 'left',
-  },
-  {
     id: 'issues',
     title: 'Security Issues',
     description:
@@ -145,31 +83,45 @@ export const tourSteps: TourStep[] = [
     title: 'Authentication Status',
     description:
       "Shows your GitHub authentication status. Green checkmark means you're authenticated and can access private repos.",
-    target: '[data-tour="auth-status"]',
-    position: 'bottom',
+      target: '[data-tour="auth-status"]',
+      position: 'bottom',
   },
   {
     id: 'gemini-status',
     title: 'AI Status',
     description:
       'Indicates Gemini AI availability. Green means AI-powered features like summaries and auto-fixes are working.',
-    target: '[data-tour="gemini-status"]',
-    position: 'bottom',
+      target: '[data-tour="gemini-status"]',
+      position: 'bottom',
   },
   {
     id: 'version-info',
     title: 'Version Info',
     description: 'Current Vigil version. Useful for debugging and checking for updates.',
-    target: '[data-tour="version-info"]',
-    position: 'bottom',
+      target: '[data-tour="version-info"]',
+      position: 'bottom',
   },
   {
     id: 'profile-close',
     title: 'Tour Complete!',
     description:
       'Click your profile picture any time to see your sign-in status, AI availability and version, restart this tour, or sign out.',
-    target: '[data-tour="profile-toggle"]',
-    position: 'bottom',
+      target: '[data-tour="profile-toggle"]',
+      position: 'bottom',
+  },
+  {
+    id: 'priority-tasks-card',
+    title: 'Priority-First Tasks Card',
+    description: 'View and manage high‑priority tasks from TASKS.md with a dedicated card.',
+    target: '[data-tour="priority-tasks"]',
+    position: 'left',
+  },
+  {
+    id: 'nightly-journeys',
+    title: 'Nightly Journeys',
+    description: 'Monitor scheduled journeys that run nightly to review progress and updates.',
+    target: '[data-tour="nightly-journeys"]',
+    position: 'left',
   },
 ];
 
@@ -179,18 +131,9 @@ const pick = (id: string): TourStep => {
   return step;
 };
 
-/** The default tour. Its last step offers the full one. */
 export const quickTourSteps: TourStep[] = [
   pick('welcome'),
   pick('repo-name'),
   pick('health-score'),
   pick('docs-column'),
-  {
-    id: 'next-steps',
-    title: 'Where to go next',
-    description:
-      'Open any repository to read its report. Take the full tour to see every section, or sign in to track your own repositories.',
-    target: 'header',
-    position: 'bottom',
-  },
 ];

@@ -40,8 +40,6 @@ describe('tourSteps', () => {
   });
 
   it('every target is either exactly "header" or matches /^\[data-tour="[a-z0-9-]+"\]$/', () => {
-    // Note: step with id 'sync-all' has a malformed target in source (target: target: ...).
-    // The actual runtime value satisfies the pattern; this test asserts the expected format.
     const pattern = /^\[data-tour="[a-z0-9-]+"\]$/;
     for (const step of tourSteps) {
       if (step.target === 'header') continue;
@@ -56,6 +54,48 @@ describe('tourSteps', () => {
   });
 
   // Two steps may share a target — not asserted as a failure.
+
+  it('has approximately 15 steps (trimmed feature set)', () => {
+    expect(tourSteps.length).toBe(15);
+  });
+
+  it('includes Priority-First Tasks Card', () => {
+    const step = tourSteps.find((s) => s.id === 'priority-tasks-card');
+    expect(step).toBeDefined();
+    expect(step?.title).toBe('Priority-First Tasks Card');
+    expect(step?.target).toBe('[data-tour="priority-tasks"]');
+  });
+
+  it('includes Nightly Journeys', () => {
+    const step = tourSteps.find((s) => s.id === 'nightly-journeys');
+    expect(step).toBeDefined();
+    expect(step?.title).toBe('Nightly Journeys');
+    expect(step?.target).toBe('[data-tour="nightly-journeys"]');
+  });
+
+  it('excludes doc filename entries', () => {
+    const docFilenames = ['ROADMAP.md', 'TASKS.md', 'FEATURES.md', 'METRICS.md', 'CHANGELOG.md'];
+    for (const filename of docFilenames) {
+      const step = tourSteps.find((s) => s.title === filename);
+      expect(step).toBeUndefined();
+    }
+  });
+
+  it('excludes community standard entries', () => {
+    const communityFiles = ['CONTRIBUTING.md', 'CODE_OF_CONDUCT.md', 'SECURITY.md', 'SUPPORT.md'];
+    for (const filename of communityFiles) {
+      const step = tourSteps.find((s) => s.title === filename || s.description.includes(filename));
+      expect(step).toBeUndefined();
+    }
+  });
+
+  it('excludes tech stack entries', () => {
+    const techTerms = ['React', 'TypeScript', 'Node.js', 'Next.js', 'Vercel', 'GitHub Actions'];
+    for (const term of techTerms) {
+      const step = tourSteps.find((s) => s.title === term || s.description.includes(term));
+      expect(step).toBeUndefined();
+    }
+  });
 });
 
 describe('quickTourSteps', () => {
