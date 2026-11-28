@@ -78,8 +78,8 @@ export function MetricsSection({ metrics, isExpanded: isExpandedProp, onToggleEx
           <div className="space-y-2">
             {otherMetrics.map((metric, index) => (
               <div key={`${metric.name}-${index}`} className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">{metric.name}</span>
-                <span className="text-slate-200 font-medium">
+                <span className="min-w-0 [overflow-wrap:anywhere] text-slate-400">{metric.name}</span>
+                <span className="min-w-0 [overflow-wrap:anywhere] text-slate-200 font-medium">
                   {joinMetricValue(metric.value, metric.unit)}
                 </span>
               </div>
