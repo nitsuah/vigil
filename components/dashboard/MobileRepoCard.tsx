@@ -218,7 +218,7 @@ export function MobileRepoCard({
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div data-tour="actions" className="flex items-center gap-1.5 shrink-0">
               {repo.ci_status && repo.ci_status !== 'unknown' && (
                 <a
                   href={`${repo.url}/actions`}

@@ -7,19 +7,19 @@
 
 export const OWNER = 'acme';
 
-type Grade = { name: string; description: string; language: string; type: string; health: number; ci?: string; prs?: number };
+type Grade = { name: string; description: string; language: string; type: string; health: number; ci?: string; prs?: number; tier?: 'T1' | 'T2' | 'T3' | 'T4' };
 
 export const REPOS: Grade[] = [
-    { name: 'storefront', description: 'Customer-facing web shop', language: 'TypeScript', type: 'web-app', health: 94, prs: 2 },
-    { name: 'api-gateway', description: 'Public REST + webhook edge', language: 'Go', type: 'tool', health: 88, prs: 1 },
-    { name: 'auth-service', description: 'Sessions, SSO and API keys', language: 'Go', type: 'tool', health: 91 },
-    { name: 'mobile-app', description: 'iOS + Android client', language: 'TypeScript', type: 'web-app', health: 76, prs: 3 },
-    { name: 'design-system', description: 'Shared React components', language: 'TypeScript', type: 'library', health: 97 },
-    { name: 'billing', description: 'Invoices, plans and dunning', language: 'Python', type: 'tool', health: 68, ci: 'failing', prs: 1 },
-    { name: 'analytics', description: 'Event pipeline and dashboards', language: 'Python', type: 'research', health: 82 },
-    { name: 'infra', description: 'Terraform and deploy pipelines', language: 'HCL', type: 'tool', health: 85 },
-    { name: 'docs-site', description: 'Developer documentation', language: 'MDX', type: 'web-app', health: 58 },
-    { name: 'cli', description: 'Command-line client', language: 'Rust', type: 'tool', health: 90 },
+    { name: 'storefront', description: 'Customer-facing web shop', language: 'TypeScript', type: 'web-app', health: 94, prs: 2, tier: 'T1' },
+    { name: 'api-gateway', description: 'Public REST + webhook edge', language: 'Go', type: 'tool', health: 88, prs: 1, tier: 'T1' },
+    { name: 'auth-service', description: 'Sessions, SSO and API keys', language: 'Go', type: 'tool', health: 91, tier: 'T1' },
+    { name: 'mobile-app', description: 'iOS + Android client', language: 'TypeScript', type: 'web-app', health: 76, prs: 3, tier: 'T2' },
+    { name: 'design-system', description: 'Shared React components', language: 'TypeScript', type: 'library', health: 97, tier: 'T2' },
+    { name: 'billing', description: 'Invoices, plans and dunning', language: 'Python', type: 'tool', health: 68, ci: 'failing', prs: 1, tier: 'T1' },
+    { name: 'analytics', description: 'Event pipeline and dashboards', language: 'Python', type: 'research', health: 82, tier: 'T3' },
+    { name: 'infra', description: 'Terraform and deploy pipelines', language: 'HCL', type: 'tool', health: 85, tier: 'T2' },
+    { name: 'docs-site', description: 'Developer documentation', language: 'MDX', type: 'web-app', health: 58, tier: 'T3' },
+    { name: 'cli', description: 'Command-line client', language: 'Rust', type: 'tool', health: 90, tier: 'T4' },
 ];
 
 type T = [repo: string, title: string, priority: 'P0' | 'P1' | 'P2' | 'P3' | null, status?: 'todo' | 'in-progress'];

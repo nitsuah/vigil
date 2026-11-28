@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: pull requests now run the shared risk guard check (`.github/workflows/risk-guard.yml`) (#527).
 ### Added
 
+- Tests for the read-only open-issue snapshot collector, and `docs/ISSUE-COUNT-VERIFICATION.md` with the command to run it (#567).
 - Unit tests for `lib/ai-failover.ts`.
 - Unit tests for `lib/language-colors.ts`.
 - Unit tests for `lib/expandable-row-utils.ts`.
@@ -30,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Restored the visitor intro and short tour, the row expand button and other dead-end fixes, the mobile install-command wrap and the single security chip, which an out-of-date merge had removed (#536, #537).
 
+- The guided tour skips steps whose target is missing or hidden, finds the sync-all button and the mobile card's actions, and its security step points at the Security card (#569).
+
 - The health strip labels each value and shows one security chip; roadmap and task items render inline code and links; an AI summary cut off mid-sentence is no longer saved as finished (#536).
 - Desktop rows have a keyboard expand button; the empty dashboard includes its own sync control; the app has a styled not-found page; reports use fewer columns below 1280 px and larger touch targets on phones (#536).
 
@@ -40,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The daily metrics sync now reaches every tracked repo on Workers Free, where it used to stop with "Too many subrequests" after a few. `POST /api/metrics/sync` syncs one batch within a counted budget of 40 subrequests (GitHub requests and Neon queries) and returns a repo-id cursor that `metrics-sync.yml` follows until `done`. A first backfill too large for one call resumes from the newest update it read. The workflow fails if any repo fails; because its log is public, private or unverified repos are shown by id and errors as categories (full detail stays in the Worker logs). Temporary `-ghsa-` advisory forks are no longer synced by this job or queued by the dashboard sync (#456).
 - Signed out, the header logo is a home link and AI summaries have no clear button; the sign-in page links back to the public demo; the Tasks counter keeps one total when done items are shown (#536).
+
+- Showcase page: stills recaptured with repo tiers; new stills for tier filtering, the AI before/after preview and the health trend; the videos' lack of speech and the vertical cut's burned-in captions are stated (#577, #579, #580).
 - Showcase page quick start lists the required settings and the local OAuth callback, splits configure from run, wraps long commands, embeds the visual-practices clip, and has readable small grey text (#537).
 - `FEATURES.md` matches the current guided-tour length and the sign-in rules for `/api/context` and `/api/mcp` (#536, #543).
 - The repo health-trend lookup works again for both short and full repository names.

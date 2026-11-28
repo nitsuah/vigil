@@ -46,6 +46,56 @@ describe('GuidedTour', () => {
     expect(onRowClick).toHaveBeenCalledTimes(clicks);
   });
 
+  it('skips steps whose targets are missing or zero-size, in both directions', () => {
+    vi.useFakeTimers();
+    try {
+      // Rendered but zero-size, like a copy hidden at this screen width.
+      render(<><div data-tour="docs" /><GuidedTour onClose={vi.fn()} /></>);
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      for (let i = 0; i < 24; i++) act(() => { vi.advanceTimersByTime(300); });
+      expect(screen.getByText('Step 5 of 5')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: /Back|Previous/ }));
+      for (let i = 0; i < 24; i++) act(() => { vi.advanceTimersByTime(300); });
+      expect(screen.getByText('Step 1 of 5')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('skips a target that has width but no height', () => {
+    vi.useFakeTimers();
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 0, top: 0, left: 0, right: 100, bottom: 0 } as DOMRect);
+    try {
+      render(<><div data-tour="repo-name" /><GuidedTour onClose={vi.fn()} /></>);
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      for (let i = 0; i < 24; i++) act(() => { vi.advanceTimersByTime(300); });
+      expect(screen.getByText('Step 5 of 5')).toBeTruthy();
+    } finally {
+      rect.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('drops a pending retry when the visitor moves on', () => {
+    vi.useFakeTimers();
+    // Only the third step's target is on screen; the second is still being retried.
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const size = this.getAttribute('data-tour') === 'health-score' ? 50 : 0;
+      return { width: size, height: size, top: 0, left: 0, right: size, bottom: size } as DOMRect;
+    });
+    try {
+      render(<><div data-tour="health-score" /><GuidedTour onClose={vi.fn()} /></>);
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      act(() => { vi.advanceTimersByTime(600); });
+      fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+      for (let i = 0; i < 24; i++) act(() => { vi.advanceTimersByTime(300); });
+      expect(screen.getByText('Step 3 of 5')).toBeTruthy();
+    } finally {
+      rect.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it('advances on its own only after Play is chosen', () => {
     vi.useFakeTimers();
     try {
