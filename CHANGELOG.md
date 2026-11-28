@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: pull requests now run the shared risk guard check (`.github/workflows/risk-guard.yml`) (#527).
 ### Added
 
+- Tests for the read-only open-issue snapshot collector, and `docs/ISSUE-COUNT-VERIFICATION.md` with the command to run it (#567).
 - Unit tests for `lib/ai-failover.ts`.
 - Unit tests for `lib/language-colors.ts`.
 - Unit tests for `lib/expandable-row-utils.ts`.
@@ -25,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - AI summaries show when they were generated, a failed generation no longer overwrites the saved summary, and an older cut-off summary is shown up to its last whole sentence (#574).
+- Signed-out visitors at an unknown address see the styled not-found page instead of the sign-in page (#575).
 
 - Report card titles and counters no longer split mid-word on laptop-width screens; header controls wrap to a second line when space runs out (#536).
 
@@ -38,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The daily metrics sync now reaches every tracked repo on Workers Free, where it used to stop with "Too many subrequests" after a few. `POST /api/metrics/sync` syncs one batch within a counted budget of 40 subrequests (GitHub requests and Neon queries) and returns a repo-id cursor that `metrics-sync.yml` follows until `done`. A first backfill too large for one call resumes from the newest update it read. The workflow fails if any repo fails; because its log is public, private or unverified repos are shown by id and errors as categories (full detail stays in the Worker logs). Temporary `-ghsa-` advisory forks are no longer synced by this job or queued by the dashboard sync (#456).
 - Signed out, the header logo is a home link and AI summaries have no clear button; the sign-in page links back to the public demo; the Tasks counter keeps one total when done items are shown (#536).
+
+- Showcase page: stills recaptured with repo tiers; new stills for tier filtering, the AI before/after preview and the health trend; the videos' lack of speech and the vertical cut's burned-in captions are stated (#577, #579, #580).
 - Showcase page quick start lists the required settings and the local OAuth callback, splits configure from run, wraps long commands, embeds the visual-practices clip, and has readable small grey text (#537).
 - `FEATURES.md` matches the current guided-tour length and the sign-in rules for `/api/context` and `/api/mcp` (#536, #543).
 - The repo health-trend lookup works again for both short and full repository names.

@@ -11,7 +11,7 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         exclude: ['**/node_modules/**', '**/*.spec.ts', '**/.claude/**'],
-        include: ['**/*.test.{ts,tsx}'],
+        include: ['**/*.test.{ts,tsx}', 'scripts/**/*.test.mjs'],
         alias: {
             '@': path.resolve(__dirname, '../'),
         },

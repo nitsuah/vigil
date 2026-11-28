@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { auth } from '@/auth';
 
+/** Pages that exist but need a session: signed-out visitors go to sign-in. */
+const SIGNED_IN_PAGES = ['/metrics', '/pmo', '/test-health'];
+
 export async function proxy(request: NextRequest) {
   const session = await auth();
   const { pathname } = request.nextUrl;
@@ -57,6 +60,12 @@ export async function proxy(request: NextRequest) {
       },
       { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } }
     );
+  }
+
+  // A signed-out visitor at an address that is not a known page sees the styled
+  // 404. This rewrites to a path with no route, so an unlisted page stays closed.
+  if (!session && !pathname.startsWith('/api/') && !SIGNED_IN_PAGES.includes(pathname.replace(/\/$/, ''))) {
+    return NextResponse.rewrite(new URL('/404-not-found', request.url), { status: 404 });
   }
 
   // Redirect to login if not authenticated
