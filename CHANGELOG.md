@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: pull requests now run the shared risk guard check (`.github/workflows/risk-guard.yml`) (#527).
 ### Added
 
+- Tests for the read-only open-issue snapshot collector, and `docs/ISSUE-COUNT-VERIFICATION.md` with the command to run it (#567).
 - Unit tests for `lib/ai-failover.ts`.
 - Unit tests for `lib/language-colors.ts`.
 - Unit tests for `lib/expandable-row-utils.ts`.
