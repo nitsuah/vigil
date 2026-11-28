@@ -27,8 +27,9 @@ export function AISummarySection({
 
   const hasSummary = aiSummary && aiSummary.trim() && !aiSummary.startsWith('Summary unavailable');
 
-  // Summaries saved before cut-off generations were rejected may end mid-sentence.
-  const shown = hasSummary ? (finishedSummary(aiSummary) ?? aiSummary) : null;
+  // Summaries saved before cut-off generations were rejected may end mid-sentence,
+  // so only whole sentences are shown.
+  const shown = hasSummary ? finishedSummary(aiSummary) : null;
   const generated = generatedAt && !Number.isNaN(Date.parse(generatedAt))
     ? new Date(generatedAt).toISOString().slice(0, 10)
     : null;
@@ -63,7 +64,7 @@ export function AISummarySection({
       </div>
       {isExpanded && (
         <div className="px-4 py-3">
-          {hasSummary ? (
+          {shown ? (
             <div className="relative">
               {onDismiss && isAuthenticated && (
                 <button

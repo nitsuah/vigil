@@ -10,6 +10,11 @@ describe('AISummarySection', () => {
     expect(screen.getByText('Generated 2026-11-20')).toBeTruthy();
   });
 
+  it('shows no summary when a stored one has no whole sentence', () => {
+    render(<AISummarySection aiSummary="A portfolio site built with Next.js and," />);
+    expect(screen.getByText('No AI summary generated yet.')).toBeTruthy();
+  });
+
   it('hides the dangling end of an older cut-off summary and says the date is unknown', () => {
     render(<AISummarySection aiSummary="A portfolio site. It is built with Next.js," />);
     expect(screen.getByText('A portfolio site.')).toBeTruthy();
