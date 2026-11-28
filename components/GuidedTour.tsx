@@ -15,7 +15,10 @@ interface GuidedTourProps {
 /** The first match that is actually rendered: phones and desktops each have their own copy. */
 function findTarget(selector: string): Element | null {
   const matches = Array.from(document.querySelectorAll(selector));
-  return matches.find((el) => el.getBoundingClientRect().width > 0) ?? null;
+  return matches.find((el) => {
+    const { width, height } = el.getBoundingClientRect();
+    return width > 0 && height > 0;
+  }) ?? null;
 }
 
 export default function GuidedTour({ onClose, resume = false }: GuidedTourProps) {
@@ -34,6 +37,8 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
   const clickWaitTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingTimersRef = useRef<NodeJS.Timeout[]>([]);
   const tooltipHeightRef = useRef(220);
+  // Which way the visitor is moving, so a skipped step keeps going that way.
+  const directionRef = useRef<1 | -1>(1);
 
   const step = steps[currentStep];
   const isFirstStep = currentStep === 0;
@@ -51,6 +56,7 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
       autoAdvanceTimerRef.current = setTimeout(() => {
         if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
+        directionRef.current = 1;
         setCurrentStep((prev) => prev + 1);
         setIsAutoAdvancing(false);
       }, 3000);
@@ -138,6 +144,28 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
     updateHighlightRef.current();
   }, []);
 
+  /**
+   * Shows the current step. A target that is still missing or zero-size after a
+   * short wait (reports load lazily) skips the step instead of pointing at nothing.
+   */
+  const showStep = useCallback((): void => {
+    const attempt = (retries: number): void => {
+      if (step.target !== 'header' && !findTarget(step.target)) {
+        if (retries > 0) {
+          scheduleDelayed(() => attempt(retries - 1), 300);
+          return;
+        }
+        if (!isLastStep) {
+          setCurrentStep((prev) => Math.max(0, prev + directionRef.current));
+          return;
+        }
+      }
+      updateHighlight();
+      startAutoAdvance();
+    };
+    attempt(5);
+  }, [step.target, isLastStep, scheduleDelayed, updateHighlight, startAutoAdvance]);
+
   const clickAndWait = (selector: string, delay: number, then: () => void): boolean => {
     const el = document.querySelector(selector) as HTMLElement | null;
     if (el) {
@@ -162,21 +190,9 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
     const firstRow = document.querySelector('tbody tr:first-child') as HTMLElement;
 
     if (['repo-name', 'health-score', 'docs-column', 'actions'].includes(step.id)) {
-      // On mobile the Docs column is CSS-hidden; skip the step so the tour
-      // doesn't highlight an invisible element.
-      if (step.id === 'docs-column') {
-        // Skip only when no copy of the target (mobile or desktop) is on screen.
-        if (document.querySelector('[data-tour="docs"]') && !findTarget('[data-tour="docs"]')) {
-          scheduleDelayed(() => setCurrentStep(prev => prev + 1), 50);
-          return cleanup;
-        }
-      }
       if (firstRow && !document.querySelector('[data-report-toggle][aria-expanded="true"]')) {
         firstRow.click();
-        scheduleDelayed(() => {
-          updateHighlight();
-          startAutoAdvance();
-        }, 400);
+        scheduleDelayed(() => showStep(), 400);
         return cleanup;
       }
     }
@@ -187,21 +203,11 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
         const clicked = clickAndWait(
           '[data-tour="features-section"] div[class*="cursor-pointer"]',
           400,
-          () => {
-            updateHighlight();
-            startAutoAdvance();
-          }
+          () => showStep()
         );
         if (clicked) return cleanup;
       }
-      updateHighlight(); // eslint-disable-line react-hooks/set-state-in-effect
-      startAutoAdvance();
-      return cleanup;
-    }
-
-    if (step.id === 'roadmap' || step.id === 'tasks') {
-      updateHighlight();
-      startAutoAdvance();
+      showStep();
       return cleanup;
     }
 
@@ -215,10 +221,10 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
           clickAndWait(
             '[data-tour="documentation"] div[class*="cursor-pointer"]',
             400,
-            () => scheduleDelayed(() => { updateHighlight(); startAutoAdvance(); }, 100)
+            () => scheduleDelayed(() => showStep(), 100)
           );
         } else {
-          scheduleDelayed(() => { updateHighlight(); startAutoAdvance(); }, 100);
+          scheduleDelayed(() => showStep(), 100);
         }
       };
 
@@ -235,7 +241,7 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
     }
 
     if (step.id === 'best-practices' || step.id === 'testing') {
-      scheduleDelayed(() => { updateHighlight(); startAutoAdvance(); }, 100);
+      scheduleDelayed(() => showStep(), 100);
       return cleanup;
     }
 
@@ -249,10 +255,10 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
           clickAndWait(
             '[data-tour="community"] div[class*="cursor-pointer"]',
             400,
-            () => scheduleDelayed(() => { updateHighlight(); startAutoAdvance(); }, 100)
+            () => scheduleDelayed(() => showStep(), 100)
           );
         } else {
-          scheduleDelayed(() => { updateHighlight(); startAutoAdvance(); }, 100);
+          scheduleDelayed(() => showStep(), 100);
         }
       };
 
@@ -268,16 +274,6 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
       return cleanup;
     }
 
-    if (step.id === 'metrics' || step.id === 'issues') {
-      const sectionEl = document.querySelector(`[data-tour="${step.id}"]`);
-      if (!sectionEl) {
-        scheduleDelayed(() => setCurrentStep((prev) => prev + 1), 100);
-        return cleanup;
-      }
-      scheduleDelayed(() => { updateHighlight(); startAutoAdvance(); }, 100);
-      return cleanup;
-    }
-
     if (['add-repo', 'filters', 'sync-all'].includes(step.id)) {
       if (step.id === 'add-repo') {
         const communitySection = document.querySelector('[data-tour="community"]');
@@ -285,13 +281,12 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
           clickAndWait(
             '[data-tour="community"] div[class*="cursor-pointer"]',
             400,
-            () => { updateHighlight(); startAutoAdvance(); }
+            () => showStep()
           );
           return cleanup;
         }
       }
-      updateHighlight();
-      startAutoAdvance();
+      showStep();
       return cleanup;
     }
 
@@ -299,24 +294,15 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
       // The status rows only exist while the profile menu is open.
       const authEl = document.querySelector('[data-tour="auth-status"]');
       if ((!authEl || authEl.getBoundingClientRect().width === 0) && document.querySelector('[data-tour="profile-toggle"]')) {
-        clickAndWait('[data-tour="profile-toggle"]', 500, () => {
-          updateHighlight();
-          startAutoAdvance();
-        });
+        clickAndWait('[data-tour="profile-toggle"]', 500, () => showStep());
         return cleanup;
       }
     }
 
-    if (step.id === 'profile-close') {
-      updateHighlight();
-      return cleanup;
-    }
-
-    updateHighlight();
-    startAutoAdvance();
+    showStep();
 
     return cleanup;
-  }, [currentStep, step.id, updateHighlight, startAutoAdvance, clearTimers, scheduleDelayed]);
+  }, [currentStep, step.id, updateHighlight, showStep, clearTimers, scheduleDelayed]);
 
   // Leaving early remembers where, so the intro can offer to resume.
   const handleSkip = (): void => {
@@ -346,6 +332,7 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
 
   const handleFullTour = (): void => {
     clearTimers();
+    directionRef.current = 1;
     setMode('full');
     setCurrentStep(0);
   };
@@ -353,6 +340,7 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
   const handleNext = (): void => {
     clearTimers();
     setIsAutoAdvancing(false);
+    directionRef.current = 1;
     if (isLastStep) {
       const profilePicture = document.querySelector('[data-tour="profile-toggle"]');
       const statusPillsVisible = document
@@ -369,6 +357,7 @@ export default function GuidedTour({ onClose, resume = false }: GuidedTourProps)
   const handlePrevious = (): void => {
     clearTimers();
     setIsAutoAdvancing(false);
+    directionRef.current = -1;
     if (currentStep > 0) setCurrentStep(currentStep - 1);
   };
 

@@ -109,6 +109,7 @@ export default function Header(props: HeaderProps = {}) {
                         disabled={syncing}
                         className="relative group/icon cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200"
                         title="Sync all repositories"
+                        data-tour="sync-all"
                     >
                         <div className="relative p-1.5 rounded-lg bg-gradient-to-br from-indigo-600/10 to-purple-600/10 border border-indigo-500/20 group-hover/icon:border-indigo-400/50 group-hover/icon:from-indigo-600/20 group-hover/icon:to-purple-600/20 group-hover/icon:shadow-lg group-hover/icon:shadow-indigo-500/20 transition-all duration-200">
                             {/* RGB animated glow ring */}
