@@ -24,11 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The guided tour skips steps whose target is missing or hidden, finds the sync-all button and the phone card's actions, and its security step points at the Security card (#569).
+- Signed-out visitors at an unknown address see the styled not-found page instead of the sign-in page (#575).
 
 - Report card titles and counters no longer split mid-word on laptop-width screens; header controls wrap to a second line when space runs out (#536).
 
 - Restored the visitor intro and short tour, the row expand button and other dead-end fixes, the mobile install-command wrap and the single security chip, which an out-of-date merge had removed (#536, #537).
+
+- The guided tour skips steps whose target is missing or hidden, finds the sync-all button and the phone card's actions, and its security step points at the Security card (#569).
 
 - The health strip labels each value and shows one security chip; roadmap and task items render inline code and links; an AI summary cut off mid-sentence is no longer saved as finished (#536).
 - Desktop rows have a keyboard expand button; the empty dashboard includes its own sync control; the app has a styled not-found page; reports use fewer columns below 1280 px and larger touch targets on phones (#536).
