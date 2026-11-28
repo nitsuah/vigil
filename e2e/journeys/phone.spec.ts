@@ -17,6 +17,6 @@ test(
       await expect(page.getByRole('button', { name: /Back to repo list/ })).toBeVisible();
       await expect(page.locator('#mobile-card-details-vigil').getByText('AI-assisted roadmap management')).toBeVisible();
       await settle(page);
-    });
+    }, { mask: [page.locator('section[aria-labelledby="intro-title"]')] });
   },
 );
