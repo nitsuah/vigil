@@ -11,10 +11,11 @@ describe('MetricsSection', () => {
   });
 
   it('shows whole dates and hides year-only rows from older syncs', () => {
-    render(<MetricsSection metrics={[{ name: 'Last Updated', value: 20260924, unit: 'date' }, { name: 'Last Updated', value: 2026, unit: null }]} />);
+    render(<MetricsSection metrics={[{ name: 'Last Updated', value: 20260924, unit: 'date' }, { name: 'Last Updated', value: 2026, unit: null }, { name: 'Updated', value: 2025, unit: 'date' }]} />);
     fireEvent.click(screen.getByRole('button', { name: /Metrics/ }));
     expect(screen.getByText('2026-09-24')).toBeTruthy();
     expect(screen.queryByText('2026')).toBeNull();
+    expect(screen.queryByText('2025')).toBeNull();
   });
 
   it('keeps ordinary counts whose names mention updates', () => {

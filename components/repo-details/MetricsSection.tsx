@@ -45,7 +45,7 @@ export function MetricsSection({ metrics, isExpanded: isExpandedProp, onToggleEx
   const otherMetrics = metrics.filter((m) => {
     const lowerName = m.name.toLowerCase();
     // Rows synced before dates were kept whole hold only the year; hide them until the next sync.
-    const bareYear = /^(last (updated|validated|audited|checked)|updated|date)$/.test(lowerName) && m.unit !== 'date' && /^(19|20)\d\d$/.test(`${m.value}`);
+    const bareYear = /^(last (updated|validated|audited|checked)|updated|date)$/.test(lowerName) && /^(19|20)\d\d$/.test(`${m.value}`);
     return !bareYear && !excludeKeywords.some((keyword) => lowerName.includes(keyword));
   });
 
