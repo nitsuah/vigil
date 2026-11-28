@@ -12,11 +12,15 @@ test(
       await settle(page);
     });
 
+    // The intro is covered by the expand-vigil screenshot; dismiss it for stats-focused shots.
+    await page.getByRole('button', { name: 'Dismiss' }).click();
+    await settle(page);
+
     await step(page, 'read the repository stats', async () => {
       await expect(page.getByText('48.2K')).toBeVisible();
       await expect(page.getByText('14.2h')).toBeVisible();
       await expect(page.getByText('7.9 tok/line')).toBeVisible();
-    }, { docs: 'repository-stats', mask: [page.locator('section[aria-labelledby="intro-title"]')] });
+    }, { docs: 'repository-stats' });
 
     await step(page, 'check the roadmap and tasks', async () => {
       await expect(page.getByRole('table').getByText('AI-assisted roadmap management')).toBeVisible();
