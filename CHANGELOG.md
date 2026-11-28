@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Report card titles and counters no longer split mid-word on laptop-width screens; header controls wrap to a second line when space runs out (#536).
+
 - Restored the visitor intro and short tour, the row expand button and other dead-end fixes, the mobile install-command wrap and the single security chip, which an out-of-date merge had removed (#536, #537).
 
 - The health strip labels each value and shows one security chip; roadmap and task items render inline code and links; an AI summary cut off mid-sentence is no longer saved as finished (#536).

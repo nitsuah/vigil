@@ -170,7 +170,7 @@ function ExpandableRowContent({
   // too narrow and clipped its header controls (#534).
   const sectionGridClass = isMobile
     ? 'flex flex-col gap-4'
-    : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 lg:gap-6 [&>*]:min-w-0 [&>*]:[overflow-wrap:anywhere]';
+    : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 lg:gap-6 report-grid';
 
   return (
     <div className="p-4 md:p-6 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-slate-950/80 border-t border-slate-700/50">
